@@ -120,6 +120,11 @@ body:not(.anfitriao) .menu { position: absolute; top: 34px; border-radius: 10px;
 body:not(.anfitriao) .cc { position: absolute; top: 34px; right: 8px; border-radius: 18px; background: var(--vidro-menu); backdrop-filter: blur(40px) saturate(180%); border: 1px solid var(--sep); }
 .bloco { background: var(--bloco); border-radius: 14px; padding: 10px 11px; }
 .bloco.l2 { grid-column: span 2; }
+.bloco.testar { display: flex; align-items: center; gap: 10px; border: 0; color: inherit; font: inherit; font-weight: 600; text-align: left; cursor: default; }
+.bloco.testar svg { width: 28px; height: 28px; padding: 7px; border-radius: 50%; background: var(--azul); color: #fff; }
+.bloco.testar small { display: block; color: var(--txt2); font-weight: 400; font-size: 11px; margin-top: 1px; }
+.bloco.testar:hover { filter: brightness(1.12); }
+.bloco.testar:active { transform: scale(0.98); }
 .bloco h6 { margin: 0 0 8px; font-size: 12px; font-weight: 600; }
 .bt { display: flex; align-items: center; gap: 9px; }
 .bt small { display: block; color: var(--txt2); font-size: 11px; }

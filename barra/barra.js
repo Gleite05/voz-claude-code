@@ -201,6 +201,7 @@
     return `<div class="cc">
       <div class="bloco"><div class="bt"><button class="redondo ${c.ligado ? 'on' : ''}" data-alternar="ligado">${svg(c.ligado ? 'altifalante' : 'mudo')}</button><div>Voz<small>${c.ligado ? 'Ligada' : 'Desligada'}</small></div></div></div>
       <div class="bloco"><div class="bt"><button class="redondo" data-acao="pausa" title="${E.pausado ? 'Retomar' : 'Pausar'}">${svg(E.pausado ? 'tocar' : 'pausa')}</button><button class="redondo" data-acao="saltar" title="Saltar a frase">${svg('saltar')}</button><div>Fala<small>${E.pausado ? 'Em pausa' : E.falando ? 'A falar' : 'Em silêncio'}</small></div></div></div>
+      <button class="bloco l2 testar" data-acao="testar">${svg('tocar')}<span>Testar a voz<small>«Olá, eu sou o Claude Code»</small></span></button>
       <div class="bloco l2"><h6>Volume</h6>${deslizador('volume', '', 0, 2, 0.05, v => Math.round(v * 100) + '%', true)}</div>
       <div class="bloco l2">${deslizador('velocidade', 'Velocidade', 0.6, 1.4, 0.02, v => num(v, 2))}${deslizador('altura', 'Altura', -6, 6, 1, sinal)}</div>
       <div class="bloco l2"><h6>Equalizador</h6><div class="eq">
@@ -345,7 +346,7 @@
       return renderMenuEmLinha()
     }
     if (d.acao) {
-      if (d.acao === 'testar') api({ acao: 'controlo', controlo: 'testar', texto: 'Olá! Esta é a voz da barra.' })
+      if (d.acao === 'testar') api({ acao: 'controlo', controlo: 'testar', texto: 'Olá, eu sou o Claude Code.' })
       else controlo(d.acao)
       return
     }
