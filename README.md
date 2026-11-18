@@ -50,7 +50,7 @@ Testado em **Windows 11** (terminal e app de ambiente de trabalho do Claude). ma
 | `/voz:ligar` / `/voz:desligar` | Liga ou desliga em todas as sessões |
 | `/voz:parar` | Cala a voz agora (continua ligada). Escrever uma mensagem nova também a cala |
 | `/voz:testar [texto]` | Diz uma frase de teste |
-| `/voz:velocidade 1.2` | Velocidade de 0.5 a 2.0 (predefinição 1.1) |
+| `/voz:velocidade 0.9` | Velocidade de 0.5 a 2.0 (predefinição 0.88, calma) |
 | `/voz:modo tudo\|acoes\|respostas` | Tudo, só o que está a fazer, ou só o que escreve |
 | `/voz:sessao ativa\|todas` | Só a sessão ativa fala tudo (predefinição), ou todas |
 | `/voz:motor auto\|piper\|sistema` | Força a voz do sistema ou o Piper |
@@ -65,7 +65,9 @@ As opções ficam em `~/.claude/voz/config.json`:
   "ligado": true,
   "anunciarAcoes": true,
   "lerRespostas": true,
-  "velocidade": 1.1,
+  "velocidade": 0.88,
+  "ruido": 0.4,
+  "ruidoDuracao": 0.5,
   "maxCaracteres": 1200,
   "soSessaoAtiva": true,
   "avisarOutrasSessoes": true,
@@ -74,7 +76,7 @@ As opções ficam em `~/.claude/voz/config.json`:
 }
 ```
 
-`maxCaracteres` é o máximo lido por mensagem (o resto fica só no ecrã). `vozSistema` escolhe uma voz do sistema pelo nome (por exemplo `"Helia"`).
+`ruido` e `ruidoDuracao` afinam o Piper (valores mais baixos = voz mais estável e menos metálica). `maxCaracteres` é o máximo lido por mensagem (o resto fica só no ecrã). `vozSistema` escolhe uma voz do sistema pelo nome (por exemplo `"Helia"`).
 
 ## Como funciona
 

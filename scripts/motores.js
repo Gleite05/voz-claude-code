@@ -193,7 +193,7 @@ function criarMotorPiper() {
   const sintetizador = new ProcessoDeLinhas(
     'piper',
     () =>
-      spawn(CAMINHOS.pythonExe, ['-I', trabalhador, CAMINHOS.modelo], {
+      spawn(CAMINHOS.pythonExe, ['-I', '-X', 'utf8', trabalhador, CAMINHOS.modelo], {
         windowsHide: true,
         stdio: ['pipe', 'pipe', 'pipe'],
         env: { ...process.env, PYTHONIOENCODING: 'utf-8', PYTHONUTF8: '1' },
@@ -214,7 +214,9 @@ function criarMotorPiper() {
     async preparar(texto, cfg) {
       const ficheiro = path.join(CAMINHOS.tmp, `v-${process.pid}-${++n}.wav`)
       const escala = 1 / Math.min(2, Math.max(0.5, Number(cfg.velocidade) || 1))
-      const resposta = await sintetizador.enviar(JSON.stringify({ texto, ficheiro, escala }))
+      const resposta = await sintetizador.enviar(
+        JSON.stringify({ texto, ficheiro, escala, ruido: Number(cfg.ruido), ruidoDuracao: Number(cfg.ruidoDuracao) }),
+      )
       let r
       try {
         r = JSON.parse(resposta)

@@ -28,7 +28,9 @@ const PREDEFINICOES = {
   ligado: true,
   anunciarAcoes: true, // "A editar config.ts", "A usar o git"...
   lerRespostas: true, // lê o texto do Claude enquanto ele escreve
-  velocidade: 1.1, // 0.5 a 2.0
+  velocidade: 0.88, // 0.5 a 2.0 (abaixo de 1 é mais calmo)
+  ruido: 0.4, // Piper noise_scale: mais baixo = voz mais estável e menos "metálica"
+  ruidoDuracao: 0.5, // Piper noise_w_scale: variação do ritmo entre sílabas
   maxCaracteres: 1200, // por mensagem; o resto fica só no ecrã
   soSessaoAtiva: true, // só a sessão onde escreveste por último fala tudo
   avisarOutrasSessoes: true, // as outras só dizem quando terminam ou precisam de ti

@@ -28,7 +28,11 @@ def main() -> int:
             continue
         try:
             pedido = json.loads(linha)
-            config = SynthesisConfig(length_scale=float(pedido.get("escala", 1.0)))
+            config = SynthesisConfig(
+                length_scale=float(pedido.get("escala") or 1.0),
+                noise_scale=float(pedido.get("ruido") or 0.4),
+                noise_w_scale=float(pedido.get("ruidoDuracao") or 0.5),
+            )
             with wave.open(pedido["ficheiro"], "wb") as saida:
                 voz.synthesize_wav(pedido["texto"], saida, syn_config=config)
             print(json.dumps({"ok": True}), flush=True)
