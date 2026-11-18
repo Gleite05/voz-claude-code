@@ -39,7 +39,7 @@ test('escolher: idioma automático e tom diferente por conversa', () => {
     fs.writeFileSync(path.join(PASTA, 'vozes', v + '.onnx'), '')
     fs.writeFileSync(path.join(PASTA, 'vozes', v + '.onnx.json'), '{}')
   }
-  const cfg = { vozPadrao: 'pt_PT-tugao-medium', vozPorConversa: 'auto', idiomaAuto: true }
+  const cfg = { vozPadrao: 'pt_PT-tugao-medium', vozPorConversa: 'auto', idiomaAuto: true, idioma: 'pt' }
   const ordem = ['s1', 's2']
   const a = vozes.escolher(cfg, 's1', 'I have fixed the bug and all the tests are passing now.', 'fala', ordem)
   assert.match(a.modelo, /en_US-lessac/)
@@ -48,6 +48,8 @@ test('escolher: idioma automático e tom diferente por conversa', () => {
   assert.notEqual(a.altura, b.altura) // conversas diferentes, tons diferentes
   // anúncios de ações ficam sempre na voz principal
   assert.match(vozes.escolher(cfg, 's1', 'I have fixed the bug and all the tests are passing.', 'acao', ordem).modelo, /pt_PT-tugao/)
+  // interface em inglês: os anúncios passam para a voz inglesa instalada
+  assert.match(vozes.escolher({ ...cfg, idioma: 'en' }, 's2', 'Reading config.ts.', 'acao', ordem).modelo, /en_US-lessac/)
   // escolha manual para uma conversa
   vozes.definirVozSessao('s1', 'en_US-lessac-medium', 2)
   const c = vozes.escolher(cfg, 's1', 'Olá, isto é uma frase em português para testar.', 'acao', ordem)
