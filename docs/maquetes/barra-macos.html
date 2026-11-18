@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="pt-PT">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Voz · barra estilo macOS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: #0a0a0c; color: #f5f5f7; padding: 28px 28px 60px;
+    font-family: Inter, "Segoe UI Variable Text", system-ui, sans-serif; -webkit-font-smoothing: antialiased;
+  }
+  h1 { font-size: 24px; font-weight: 650; letter-spacing: -0.02em; margin: 0 0 4px; }
+  .sub { color: #a1a1aa; font-size: 14px; margin: 0 0 22px; }
+  h2 { font-size: 15px; font-weight: 600; margin: 28px 0 10px; color: #d4d4d8; }
+  h2 small { color: #71717a; font-weight: 400; margin-left: 8px; }
+
+  /* ---------- ecrã ---------- */
+  .ecra { position: relative; height: 640px; border-radius: 14px; overflow: hidden; border: 1px solid #222; }
+  .escuro { background:
+      radial-gradient(900px 600px at 20% 100%, #3b1d6e 0%, transparent 60%),
+      radial-gradient(900px 600px at 90% 0%, #0e5a6b 0%, transparent 55%),
+      radial-gradient(700px 500px at 60% 60%, #6b2140 0%, transparent 60%),
+      #0d0f1a; }
+  .claro { background:
+      radial-gradient(900px 600px at 15% 100%, #f9c6a8 0%, transparent 60%),
+      radial-gradient(900px 600px at 90% 0%, #a9d8f5 0%, transparent 55%),
+      radial-gradient(700px 500px at 55% 55%, #f3b3cf 0%, transparent 60%),
+      #eef0f7; }
+  .janela { position: absolute; left: 70px; right: 70px; top: 70px; bottom: 70px; border-radius: 12px;
+    background: rgba(28,28,32,.55); border: 1px solid rgba(255,255,255,.08); backdrop-filter: blur(30px); box-shadow: 0 30px 80px rgba(0,0,0,.35); }
+  .claro .janela { background: rgba(255,255,255,.55); border-color: rgba(0,0,0,.06); }
+  .janela .semaf { position:absolute; left:14px; top:12px; display:flex; gap:8px; }
+  .janela .semaf i { width:12px; height:12px; border-radius:50%; background:#ff5f57; display:block } .janela .semaf i:nth-child(2){background:#febc2e} .janela .semaf i:nth-child(3){background:#28c840}
+  .janela .l1, .janela .l2 { position:absolute; left: 24px; height: 10px; border-radius: 5px; background: rgba(255,255,255,.08); }
+  .claro .janela .l1, .claro .janela .l2 { background: rgba(0,0,0,.07); }
+  .janela .l1 { top: 54px; width: 38%; } .janela .l2 { top: 76px; width: 24%; }
+  .tarefas { position:absolute; left: 50%; transform: translateX(-50%); bottom: 8px; height: 44px; padding: 0 10px; border-radius: 14px;
+    display:flex; align-items:center; gap: 8px; background: rgba(40,40,46,.55); backdrop-filter: blur(24px); border: 1px solid rgba(255,255,255,.1); }
+  .claro .tarefas { background: rgba(255,255,255,.55); border-color: rgba(0,0,0,.06); }
+  .tarefas i { width: 28px; height: 28px; border-radius: 7px; background: rgba(255,255,255,.18); display:block; }
+  .tarefas i:first-child { background: linear-gradient(135deg,#60a5fa,#2563eb); }
+
+  /* ---------- a barra ---------- */
+  .barra {
+    position: absolute; left: 0; right: 0; top: 0; height: 30px; padding: 0 10px 0 14px;
+    display: flex; align-items: center; gap: 4px; font-size: 13px; font-weight: 500; letter-spacing: -0.005em;
+    background: rgba(18,18,22,.38); backdrop-filter: blur(30px) saturate(180%); color: #fff;
+    text-shadow: 0 0 1px rgba(0,0,0,.25);
+  }
+  .claro .barra { background: rgba(255,255,255,.42); color: #1d1d1f; text-shadow: none; }
+  .item { padding: 3px 9px; border-radius: 6px; display:flex; align-items:center; gap: 6px; white-space: nowrap; cursor: default; }
+  .item.ativo { background: rgba(255,255,255,.18); }
+  .claro .item.ativo { background: rgba(0,0,0,.09); }
+  .marca { padding-left: 4px; }
+  .marca svg { width: 16px; height: 16px; }
+  .nome { font-weight: 700; }
+  .ten { opacity: .62; font-weight: 400; }
+  .legenda { opacity: .62; font-weight: 400; max-width: 420px; overflow: hidden; text-overflow: ellipsis; }
+  .espaco { flex: 1; }
+  .ico { width: 16px; height: 16px; display:block; }
+  .onda { display: inline-flex; gap: 1.6px; align-items: center; height: 14px; }
+  .onda b { width: 2px; border-radius: 1px; background: currentColor; animation: o 1s ease-in-out infinite; }
+  .onda b:nth-child(1){height:40%;animation-delay:-.1s}.onda b:nth-child(2){height:80%;animation-delay:-.5s}
+  .onda b:nth-child(3){height:55%;animation-delay:-.3s}.onda b:nth-child(4){height:100%;animation-delay:-.8s}
+  .onda b:nth-child(5){height:60%;animation-delay:-.2s}
+  @keyframes o { 0%,100% { transform: scaleY(.4) } 50% { transform: scaleY(1) } }
+  .pontos { display:flex; gap: 4px; align-items:center; }
+  .pontos i { width: 6px; height: 6px; border-radius: 50%; display:block; }
+  .anel { width: 15px; height: 15px; border-radius: 50%; background: conic-gradient(currentColor 0 38%, rgba(127,127,127,.35) 38% 100%);
+    -webkit-mask: radial-gradient(circle, transparent 4.2px, #000 4.6px); mask: radial-gradient(circle, transparent 4.2px, #000 4.6px); }
+  .num { font-variant-numeric: tabular-nums; }
+
+  /* ---------- menus (vibrancy) ---------- */
+  .menu {
+    position: absolute; top: 33px; min-width: 260px; padding: 5px; border-radius: 10px; font-size: 13px;
+    background: rgba(40,40,46,.72); backdrop-filter: blur(40px) saturate(180%); color: #fff;
+    border: 1px solid rgba(255,255,255,.12); box-shadow: 0 0 0 .5px rgba(0,0,0,.6), 0 18px 50px rgba(0,0,0,.45);
+  }
+  .claro .menu { background: rgba(246,246,248,.78); color: #1d1d1f; border-color: rgba(0,0,0,.08); box-shadow: 0 0 0 .5px rgba(0,0,0,.12), 0 18px 50px rgba(0,0,0,.18); }
+  .menu .op { display:flex; align-items:center; gap: 9px; padding: 4px 10px; border-radius: 5px; }
+  .menu .op.sel { background: #0a64d6; color: #fff; }
+  .menu .op small { margin-left: auto; opacity: .55; font-size: 12px; }
+  .menu .op.sel small { opacity: .85; }
+  .menu .chk { width: 12px; text-align: center; opacity: .9; }
+  .menu hr { border: 0; height: 1px; background: rgba(255,255,255,.12); margin: 5px 8px; }
+  .claro .menu hr { background: rgba(0,0,0,.1); }
+  .menu .tit { padding: 4px 10px 2px; font-size: 11.5px; font-weight: 600; opacity: .5; }
+  .menu .leg { padding: 6px 10px 8px; line-height: 1.45; opacity: .9; max-width: 320px; }
+
+  /* ---------- centro de controlo ---------- */
+  .cc {
+    position: absolute; top: 34px; right: 8px; width: 330px; padding: 10px; border-radius: 18px;
+    background: rgba(40,40,46,.6); backdrop-filter: blur(40px) saturate(180%); color: #fff;
+    border: 1px solid rgba(255,255,255,.12); box-shadow: 0 0 0 .5px rgba(0,0,0,.6), 0 24px 60px rgba(0,0,0,.5);
+    display: grid; grid-template-columns: 1fr 1fr; gap: 9px; font-size: 12.5px;
+  }
+  .claro .cc { background: rgba(246,246,248,.66); color: #1d1d1f; border-color: rgba(0,0,0,.08); box-shadow: 0 0 0 .5px rgba(0,0,0,.12), 0 24px 60px rgba(0,0,0,.2); }
+  .bloco { background: rgba(255,255,255,.1); border-radius: 14px; padding: 10px 11px; }
+  .claro .bloco { background: rgba(255,255,255,.62); box-shadow: 0 1px 2px rgba(0,0,0,.06); }
+  .bloco.l2 { grid-column: span 2; }
+  .bloco h6 { margin: 0 0 8px; font-size: 12px; font-weight: 600; }
+  .bt { display:flex; align-items:center; gap: 9px; }
+  .bt .c { width: 28px; height: 28px; border-radius: 50%; display:grid; place-items:center; background: rgba(255,255,255,.18); flex: none; }
+  .claro .bt .c { background: rgba(0,0,0,.08); }
+  .bt .c.on { background: #0a84ff; color: #fff; }
+  .bt small { display:block; opacity: .55; font-size: 11px; }
+  .pilula { position: relative; height: 24px; border-radius: 999px; background: rgba(255,255,255,.16); overflow: hidden; }
+  .claro .pilula { background: rgba(0,0,0,.08); }
+  .pilula i { position:absolute; left:0; top:0; bottom:0; background: #fff; border-radius: 999px; }
+  .claro .pilula i { background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.2); }
+  .pilula span { position:absolute; left: 9px; top: 50%; transform: translateY(-50%); color: #555; display:flex; }
+  .rot { display:flex; justify-content: space-between; opacity: .6; font-size: 11px; margin: 0 2px 5px; }
+  .eq { display:grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .eq .v { height: 92px; width: 34px; margin: 0 auto; border-radius: 12px; background: rgba(255,255,255,.16); position: relative; overflow: hidden; }
+  .claro .eq .v { background: rgba(0,0,0,.08); }
+  .eq .v i { position:absolute; left:0; right:0; bottom:0; background:#fff; }
+  .claro .eq .v i { box-shadow: 0 -1px 3px rgba(0,0,0,.15); }
+  .eq .v em { position:absolute; left:0; right:0; top: 50%; height: 1px; background: rgba(127,127,127,.5); }
+  .eq small { display:block; text-align:center; margin-top: 5px; opacity: .65; font-size: 11px; }
+  .pre { display:flex; gap: 6px; flex-wrap: wrap; }
+  .pre span { padding: 4px 10px; border-radius: 999px; background: rgba(255,255,255,.14); font-size: 12px; }
+  .claro .pre span { background: rgba(0,0,0,.07); }
+  .pre span.sel { background: #0a84ff; color: #fff; }
+  .lig { display:flex; justify-content: space-between; align-items:center; opacity: .9; }
+  .lig + .lig { margin-top: 7px; }
+
+  .nota { color: #a1a1aa; font-size: 13px; line-height: 1.55; margin-top: 18px; background: #111114; border: 1px solid #222; border-radius: 12px; padding: 12px 14px; }
+  .nota b { color: #f4f4f5; }
+</style>
+</head>
+<body>
+<h1>Voz · barra estilo macOS</h1>
+<p class="sub">Uma faixa fina e translúcida no topo. À esquerda o símbolo, a sessão e o que está a fazer; à direita ícones pequenos. Tudo o resto vive em menus e num «Centro de Controlo».</p>
+
+<svg width="0" height="0" style="position:absolute">
+  <symbol id="estrela" viewBox="0 0 24 24"><path fill="currentColor" d="M12 1.8c.5 0 .9.4 1 .9l.9 5.2 4.3-3.1c.4-.3 1-.3 1.3.1.4.4.4.9.1 1.3l-3.1 4.3 5.2.9c.5.1.9.5.9 1s-.4.9-.9 1l-5.2.9 3.1 4.3c.3.4.3 1-.1 1.3-.4.4-.9.4-1.3.1l-4.3-3.1-.9 5.2c-.1.5-.5.9-1 .9s-.9-.4-1-.9l-.9-5.2-4.3 3.1c-.4.3-1 .3-1.3-.1-.4-.4-.4-.9-.1-1.3l3.1-4.3-5.2-.9c-.5-.1-.9-.5-.9-1s.4-.9.9-1l5.2-.9-3.1-4.3c-.3-.4-.3-1 .1-1.3.4-.4.9-.4 1.3-.1l4.3 3.1.9-5.2c.1-.5.5-.9 1-.9z"/></symbol>
+  <symbol id="sliders" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2.2"/><circle cx="10" cy="17" r="2.2"/></g></symbol>
+  <symbol id="altifalante" viewBox="0 0 24 24"><path fill="currentColor" d="M4 9h3.5L12 5v14l-4.5-4H4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="pausa" viewBox="0 0 24 24"><path fill="currentColor" d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z"/></symbol>
+  <symbol id="saltar" viewBox="0 0 24 24"><path fill="currentColor" d="M5 6l8 6-8 6zM13 6l6 6-6 6zM19 6h2v12h-2z"/></symbol>
+  <symbol id="chave" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/><circle cx="12" cy="12" r="3.2" fill="none" stroke="currentColor" stroke-width="2"/></symbol>
+</svg>
+
+<!-- ============ 1. ESCURO, menu da sessão aberto ============ -->
+<h2>1 · Modo escuro <small>a falar, com o menu da sessão aberto</small></h2>
+<div class="ecra escuro">
+  <div class="janela"><div class="semaf"><i></i><i></i><i></i></div><div class="l1"></div><div class="l2"></div></div>
+  <div class="barra">
+    <div class="item marca"><svg style="color:#ff9b73"><use href="#estrela"/></svg></div>
+    <div class="item nome">Claude</div>
+    <div class="item ativo">voz-claude-code</div>
+    <div class="item">A editar servidor.js</div>
+    <div class="item legenda">«Corrigi o erro no servidor e os testes já passam todos…»</div>
+    <div class="espaco"></div>
+    <div class="item"><span class="onda"><b></b><b></b><b></b><b></b><b></b></span></div>
+    <div class="item"><span class="pontos"><i style="background:#fbbf24"></i><i style="background:#34d399"></i><i style="background:rgba(255,255,255,.45)"></i></span></div>
+    <div class="item"><span class="anel"></span><span class="num">38%</span></div>
+    <div class="item"><svg class="ico"><use href="#sliders"/></svg></div>
+    <div class="item num">01:42</div>
+  </div>
+  <div class="menu" style="left: 112px">
+    <div class="tit">Sessões</div>
+    <div class="op sel"><span class="chk">✓</span><span>voz-claude-code</span><small>a falar</small></div>
+    <div class="op"><span class="chk"></span><span>infra-docs</span><small>precisa de ti ●</small></div>
+    <div class="op"><span class="chk"></span><span>site</span><small>a trabalhar</small></div>
+    <div class="op"><span class="chk"></span><span>api</span><small>terminou</small></div>
+    <hr>
+    <div class="tit">A dizer agora</div>
+    <div class="leg">«Corrigi o erro no servidor e os testes já passam todos. Queres que publique as alterações?»</div>
+    <hr>
+    <div class="op"><span class="chk"></span><span>Opus 5.5 · 12,4 mil tokens</span><small>ctx 38%</small></div>
+    <div class="op"><span class="chk"></span><span>Pausar a voz</span><small>⌃⌥P</small></div>
+    <div class="op"><span class="chk"></span><span>Saltar frase</span><small>⌃⌥N</small></div>
+    <hr>
+    <div class="op"><span class="chk"></span><span>Definições da Voz…</span></div>
+  </div>
+  <div class="tarefas"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+</div>
+
+<!-- ============ 2. ESCURO, centro de controlo ============ -->
+<h2>2 · Centro de Controlo <small>clicar no ícone ⚟ abre o painel do som</small></h2>
+<div class="ecra escuro">
+  <div class="janela"><div class="semaf"><i></i><i></i><i></i></div><div class="l1"></div><div class="l2"></div></div>
+  <div class="barra">
+    <div class="item marca"><svg style="color:#ff9b73"><use href="#estrela"/></svg></div>
+    <div class="item nome">Claude</div>
+    <div class="item">voz-claude-code</div>
+    <div class="item ten">A correr os testes</div>
+    <div class="espaco"></div>
+    <div class="item"><span class="onda"><b></b><b></b><b></b><b></b><b></b></span></div>
+    <div class="item"><span class="pontos"><i style="background:#fbbf24"></i><i style="background:#34d399"></i><i style="background:rgba(255,255,255,.45)"></i></span></div>
+    <div class="item"><span class="anel"></span><span class="num">38%</span></div>
+    <div class="item ativo"><svg class="ico"><use href="#sliders"/></svg></div>
+    <div class="item num">01:42</div>
+  </div>
+  <div class="cc">
+    <div class="bloco"><div class="bt"><span class="c on"><svg class="ico"><use href="#altifalante"/></svg></span><div>Voz<small>Ligada</small></div></div></div>
+    <div class="bloco"><div class="bt"><span class="c"><svg class="ico"><use href="#pausa"/></svg></span><span class="c"><svg class="ico"><use href="#saltar"/></svg></span><div>Fala<small>Pausar · saltar</small></div></div></div>
+    <div class="bloco l2"><h6>Volume</h6><div class="pilula"><i style="width:62%"></i><span><svg class="ico"><use href="#altifalante"/></svg></span></div></div>
+    <div class="bloco l2">
+      <div class="rot"><span>Velocidade</span><span class="num">0,88</span></div><div class="pilula" style="height:8px"><i style="width:44%"></i></div>
+      <div class="rot" style="margin-top:9px"><span>Altura</span><span class="num">−1</span></div><div class="pilula" style="height:8px"><i style="width:42%"></i></div>
+    </div>
+    <div class="bloco l2"><h6>Equalizador</h6>
+      <div class="eq">
+        <div><div class="v"><i style="height:62%"></i><em></em></div><small>Graves +3</small></div>
+        <div><div class="v"><i style="height:50%"></i><em></em></div><small>Médios 0</small></div>
+        <div><div class="v"><i style="height:38%"></i><em></em></div><small>Agudos −3</small></div>
+      </div>
+    </div>
+    <div class="bloco l2"><h6>Predefinição</h6><div class="pre"><span>Natural</span><span class="sel">Calma</span><span>Clara</span><span>Quente</span><span>Rádio</span></div></div>
+    <div class="bloco l2">
+      <div class="lig"><span>Diz o que está a fazer</span><span>●</span></div>
+      <div class="lig"><span>Lê as respostas</span><span>●</span></div>
+      <div class="lig"><span style="opacity:.7">Definições da Voz…</span><span>›</span></div>
+    </div>
+  </div>
+  <div class="tarefas"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+</div>
+
+<!-- ============ 3. CLARO ============ -->
+<h2>3 · Modo claro <small>segue o tema do Windows; aqui a pedir a tua atenção</small></h2>
+<div class="ecra claro">
+  <div class="janela"><div class="semaf"><i></i><i></i><i></i></div><div class="l1"></div><div class="l2"></div></div>
+  <div class="barra">
+    <div class="item marca"><svg style="color:#d9622b"><use href="#estrela"/></svg></div>
+    <div class="item nome">Claude</div>
+    <div class="item">infra-docs</div>
+    <div class="item" style="color:#b45309;font-weight:600">● Precisa da tua autorização</div>
+    <div class="espaco"></div>
+    <div class="item"><span class="pontos"><i style="background:#f59e0b"></i><i style="background:#10b981"></i><i style="background:rgba(0,0,0,.3)"></i></span></div>
+    <div class="item"><span class="anel"></span><span class="num">61%</span></div>
+    <div class="item"><svg class="ico"><use href="#sliders"/></svg></div>
+    <div class="item num">03:15</div>
+  </div>
+  <div class="menu" style="right: 8px; min-width: 300px">
+    <div class="tit">Definições da Voz</div>
+    <div class="op"><span class="chk">✓</span><span>Posição: topo</span><small>›</small></div>
+    <div class="op"><span class="chk"></span><span>Módulos visíveis…</span><small>›</small></div>
+    <div class="op"><span class="chk">✓</span><span>Arrancar com o Windows</span></div>
+    <div class="op"><span class="chk"></span><span>Só com o Claude Code aberto</span></div>
+    <div class="op"><span class="chk"></span><span>Só à mão</span></div>
+    <hr>
+    <div class="op sel"><span class="chk">✓</span><span>Seguir o tema do Windows</span></div>
+    <div class="op"><span class="chk"></span><span>Sair da barra</span><small>⌃⌥Q</small></div>
+  </div>
+  <div class="tarefas"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+</div>
+
+<p class="nota"><b>À direita, da esquerda para a direita:</b> onda (só quando está a falar) · pontos das outras sessões (amarelo = precisa de ti, verde = a trabalhar, cinza = parada) · anel de contexto · ⚟ Centro de Controlo do som · tempo do pedido atual. <b>Clicar</b> no nome da sessão abre o menu com as sessões, a legenda e os tokens. Cada peça pode ser escondida em «Módulos visíveis…». As outras posições (esquerda, direita, fundo, flutuante, escondida) usam o mesmo estilo.</p>
+</body>
+</html>
