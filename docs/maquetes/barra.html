@@ -1,0 +1,373 @@
+<!doctype html>
+<html lang="pt-PT">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Voz · maquetes da barra</title>
+<style>
+  :root {
+    --fundo: #0b0d12;
+    --texto: #e8ebf2;
+    --suave: #9aa3b5;
+    --acento: #2dd4bf;
+    --acento2: #818cf8;
+    --alerta: #fbbf24;
+    --ok: #34d399;
+    --parado: #64748b;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--fundo); color: var(--texto);
+    font-family: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+    padding: 28px 28px 60px;
+  }
+  h1 { font-weight: 650; letter-spacing: -0.02em; margin: 0 0 4px; font-size: 26px; }
+  .sub { color: var(--suave); margin: 0 0 28px; font-size: 14px; }
+  h2 { font-size: 18px; margin: 34px 0 6px; display: flex; gap: 10px; align-items: baseline; }
+  h2 small { color: var(--suave); font-weight: 400; font-size: 13px; }
+  .linha { display: grid; grid-template-columns: 1fr 230px; gap: 18px; align-items: start; }
+
+  /* ---------- "ambiente de trabalho" falso ---------- */
+  .ecra {
+    position: relative; height: 600px; border-radius: 14px; overflow: hidden;
+    border: 1px solid #1f2533;
+    background:
+      radial-gradient(1200px 500px at 15% 110%, #1e3a8a 0%, transparent 60%),
+      radial-gradient(900px 500px at 95% -10%, #0f766e 0%, transparent 55%),
+      linear-gradient(135deg, #111827, #0b1220 60%, #111827);
+  }
+  .ecra .janela {
+    position: absolute; left: 40px; right: 40px; top: 80px; bottom: 58px; border-radius: 10px;
+    background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06);
+  }
+  .ecra .janela::before { content: ""; position: absolute; left: 14px; top: 12px; width: 180px; height: 9px; border-radius: 5px; background: rgba(255,255,255,0.08); }
+  .ecra .janela::after { content: ""; position: absolute; left: 14px; top: 34px; right: 40%; height: 120px; border-radius: 8px; background: rgba(255,255,255,0.035); }
+  .tarefas {
+    position: absolute; left: 0; right: 0; bottom: 0; height: 40px;
+    background: rgba(20,24,33,0.85); backdrop-filter: blur(20px);
+    border-top: 1px solid rgba(255,255,255,0.06);
+    display: flex; justify-content: center; gap: 8px; align-items: center;
+  }
+  .tarefas i { width: 22px; height: 22px; border-radius: 6px; background: rgba(255,255,255,0.14); display: block; }
+  .tarefas i:first-child { background: linear-gradient(135deg,#60a5fa,#2563eb); }
+  .ecra-v { height: 600px; }
+
+  /* ---------- peças comuns ---------- */
+  .onda { display: inline-flex; gap: 2px; align-items: center; height: 18px; }
+  .onda b { width: 3px; border-radius: 2px; background: currentColor; animation: o 1s ease-in-out infinite; }
+  .onda b:nth-child(1){height:30%;animation-delay:-.1s}.onda b:nth-child(2){height:70%;animation-delay:-.5s}
+  .onda b:nth-child(3){height:45%;animation-delay:-.3s}.onda b:nth-child(4){height:90%;animation-delay:-.8s}
+  .onda b:nth-child(5){height:55%;animation-delay:-.2s}.onda b:nth-child(6){height:80%;animation-delay:-.6s}
+  .onda b:nth-child(7){height:35%;animation-delay:-.4s}.onda b:nth-child(8){height:65%;animation-delay:-.9s}
+  .onda b:nth-child(9){height:40%;animation-delay:-.7s}.onda b:nth-child(10){height:75%;animation-delay:-.15s}
+  @keyframes o { 0%,100% { transform: scaleY(.45) } 50% { transform: scaleY(1) } }
+  .pt { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex: none; }
+  .pt.ok { background: var(--ok); box-shadow: 0 0 8px var(--ok); }
+  .pt.al { background: var(--alerta); box-shadow: 0 0 8px var(--alerta); animation: pis 1.2s infinite; }
+  .pt.pa { background: var(--parado); }
+  @keyframes pis { 50% { opacity: .35 } }
+  .ico { width: 16px; height: 16px; flex: none; }
+
+  /* ================= A · VIDRO ================= */
+  .a-barra {
+    position: absolute; left: 0; right: 0; top: 0; height: 46px;
+    display: flex; align-items: center; gap: 0; padding: 0 10px;
+    background: rgba(17, 22, 32, 0.62); backdrop-filter: blur(24px) saturate(160%);
+    border-bottom: 1px solid rgba(255,255,255,0.09);
+    box-shadow: 0 8px 30px rgba(0,0,0,0.35);
+    font-size: 13px;
+  }
+  .a-mod { display: flex; align-items: center; gap: 9px; padding: 0 14px; height: 30px; border-right: 1px solid rgba(255,255,255,0.08); white-space: nowrap; }
+  .a-mod:last-child { border-right: 0; }
+  .a-logo { display:flex; align-items:center; gap:8px; font-weight: 650; padding-right: 14px; }
+  .a-logo span { width: 26px; height: 26px; border-radius: 8px; display:grid; place-items:center; background: linear-gradient(135deg, var(--acento), var(--acento2)); color:#0b0d12; }
+  .a-acao b { font-weight: 600; } .a-acao em { color: var(--suave); font-style: normal; }
+  .a-tempo { font-variant-numeric: tabular-nums; color: var(--suave); background: rgba(255,255,255,0.07); padding: 2px 7px; border-radius: 6px; }
+  .a-leg { flex: 1; min-width: 0; color: var(--acento); }
+  .a-leg span { color: var(--texto); overflow: hidden; text-overflow: ellipsis; opacity: .92; }
+  .a-chip { display:flex; align-items:center; gap:6px; padding: 3px 9px; border-radius: 999px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.07); font-size: 12px; }
+  .a-tok { font-variant-numeric: tabular-nums; color: var(--suave); }
+  .a-tok .barra-ctx { width: 60px; height: 5px; border-radius: 3px; background: rgba(255,255,255,0.1); overflow: hidden; display:inline-block; vertical-align: middle; margin-left: 6px; }
+  .a-tok .barra-ctx i { display:block; height:100%; width: 38%; background: linear-gradient(90deg, var(--acento), var(--acento2)); }
+  .a-bt { width: 30px; height: 30px; border-radius: 9px; display:grid; place-items:center; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.08); color: var(--texto); }
+  .a-bt.on { background: linear-gradient(135deg, rgba(45,212,191,.25), rgba(129,140,248,.25)); border-color: rgba(45,212,191,.5); }
+
+  .a-painel {
+    position: absolute; right: 14px; top: 54px; width: 430px;
+    background: rgba(17, 22, 32, 0.78); backdrop-filter: blur(28px) saturate(160%);
+    border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; padding: 14px 16px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5); font-size: 12.5px;
+  }
+  .a-painel h4 { margin: 10px 0 8px; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--suave); font-weight: 600; }
+  .a-painel h4:first-child { margin-top: 0; }
+  .desl { display: grid; grid-template-columns: 70px 1fr 40px; gap: 10px; align-items: center; margin: 7px 0; }
+  .desl .trilho { height: 6px; border-radius: 4px; background: rgba(255,255,255,0.1); position: relative; }
+  .desl .trilho i { position:absolute; left:0; top:0; bottom:0; border-radius: 4px; background: linear-gradient(90deg, var(--acento), var(--acento2)); }
+  .desl .trilho u { position:absolute; top:50%; width: 14px; height: 14px; margin: -7px 0 0 -7px; border-radius: 50%; background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,.4); }
+  .desl output { text-align: right; color: var(--suave); font-variant-numeric: tabular-nums; }
+  .eq { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .eq .f { display:flex; flex-direction: column; align-items:center; gap:6px; background: rgba(255,255,255,0.04); border-radius: 12px; padding: 10px 0 8px; }
+  .eq .v { width: 6px; height: 74px; border-radius: 4px; background: rgba(255,255,255,0.1); position: relative; }
+  .eq .v i { position:absolute; left:0; right:0; bottom: 50%; border-radius: 4px; background: linear-gradient(0deg, var(--acento), var(--acento2)); }
+  .eq .v u { position:absolute; left:50%; width: 16px; height: 16px; margin-left: -8px; border-radius: 50%; background:#fff; box-shadow: 0 2px 8px rgba(0,0,0,.4); }
+  .eq small { color: var(--suave); }
+  .chips { display:flex; flex-wrap: wrap; gap: 6px; }
+  .chips span { padding: 4px 10px; border-radius: 999px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.08); }
+  .chips span.sel { background: rgba(45,212,191,.18); border-color: rgba(45,212,191,.6); color: #ccfbf1; }
+  .pos { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
+  .pos div { height: 40px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.03); position: relative; }
+  .pos div i { position: absolute; background: var(--acento); border-radius: 2px; }
+  .pos div.sel { border-color: var(--acento); box-shadow: 0 0 0 2px rgba(45,212,191,.25) inset; }
+  .pos .c i { left: 3px; right: 3px; top: 3px; height: 5px; }
+  .pos .e i { left: 3px; top: 3px; bottom: 3px; width: 5px; }
+  .pos .d i { right: 3px; top: 3px; bottom: 3px; width: 5px; }
+  .pos .b i { left: 3px; right: 3px; bottom: 9px; height: 5px; } .pos .b::after { content:""; position:absolute; left:3px; right:3px; bottom:3px; height:4px; background: rgba(255,255,255,.25); border-radius: 2px; }
+  .pos .h i { left: 3px; right: 3px; top: 3px; height: 5px; opacity: .35; border: 1px dashed var(--acento); background: transparent; }
+  .pos .f i { left: 12px; right: 12px; top: 14px; height: 9px; border-radius: 6px; }
+  .pos-leg { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; color: var(--suave); font-size: 10.5px; text-align: center; margin-top: 4px; }
+  .mods div { display:flex; align-items:center; gap: 10px; padding: 6px 8px; border-radius: 9px; }
+  .mods div:nth-child(odd) { background: rgba(255,255,255,0.03); }
+  .mods .alca { color: var(--suave); letter-spacing: -2px; }
+  .mods .tg { margin-left: auto; width: 32px; height: 18px; border-radius: 999px; background: rgba(255,255,255,.15); position: relative; }
+  .mods .tg::after { content:""; position:absolute; top:2px; left:2px; width:14px; height:14px; border-radius:50%; background:#fff; }
+  .mods .tg.on { background: var(--acento); } .mods .tg.on::after { left: 16px; }
+  .cols { display:grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+  /* vertical A */
+  .a-vert {
+    position: absolute; right: 0; top: 0; bottom: 40px; width: 220px;
+    background: rgba(17, 22, 32, 0.62); backdrop-filter: blur(24px) saturate(160%);
+    border-left: 1px solid rgba(255,255,255,0.09); padding: 14px 12px; font-size: 12.5px;
+    display: flex; flex-direction: column; gap: 12px;
+  }
+  .a-vert .bloco { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.07); border-radius: 12px; padding: 10px; }
+  .a-vert .bloco h5 { margin: 0 0 6px; font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--suave); font-weight: 600; }
+
+  /* ================= B · ILHA ================= */
+  .b-ilha {
+    position: absolute; left: 50%; top: 10px; transform: translateX(-50%);
+    background: #000; border-radius: 999px; padding: 7px 8px 7px 8px;
+    display: flex; align-items: center; gap: 12px; font-size: 13px;
+    box-shadow: 0 10px 40px rgba(0,0,0,.6), 0 0 0 1px rgba(255,255,255,0.06);
+  }
+  .b-av { width: 30px; height: 30px; border-radius: 50%; background: conic-gradient(from 200deg, var(--acento), var(--acento2), var(--acento)); display:grid; place-items:center; color:#000; }
+  .b-ilha .onda { color: var(--acento); }
+  .b-sep { width: 1px; height: 18px; background: rgba(255,255,255,0.12); }
+  .b-mini { display:flex; gap: 5px; }
+  .b-exp {
+    position: absolute; left: 50%; top: 62px; transform: translateX(-50%); width: 640px;
+    background: #000; border-radius: 26px; padding: 16px 18px; font-size: 13px;
+    box-shadow: 0 20px 60px rgba(0,0,0,.6), 0 0 0 1px rgba(255,255,255,0.06);
+    display: grid; grid-template-columns: 1.3fr 1fr; gap: 16px;
+  }
+  .b-exp .leg { font-size: 15px; line-height: 1.45; color: #f1f5f9; }
+  .b-exp .leg mark { background: none; color: var(--acento); }
+  .b-exp .kpi { display:grid; grid-template-columns: repeat(3,1fr); gap: 8px; margin-top: 12px; }
+  .b-exp .kpi div { background: #111; border-radius: 14px; padding: 8px 10px; }
+  .b-exp .kpi b { display:block; font-size: 17px; font-variant-numeric: tabular-nums; }
+  .b-exp .kpi small { color: var(--suave); font-size: 11px; }
+  .b-exp .sess div { display:flex; align-items:center; gap:8px; padding: 7px 10px; border-radius: 12px; background: #111; margin-bottom: 6px; }
+  .b-exp .sess small { margin-left:auto; color: var(--suave); }
+  .b-ctr { display:flex; gap: 8px; margin-top: 10px; }
+  .b-ctr span { flex:1; text-align:center; padding: 8px; border-radius: 12px; background: #161616; }
+  .b-vert {
+    position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+    background: #000; border-radius: 999px; padding: 10px 7px; display:flex; flex-direction: column; align-items:center; gap: 12px;
+    box-shadow: 0 10px 40px rgba(0,0,0,.6), 0 0 0 1px rgba(255,255,255,0.06);
+  }
+  .b-vert .onda { color: var(--acento); transform: rotate(90deg); margin: 8px 0; }
+
+  /* ================= C · ESTÚDIO ================= */
+  .c-barra {
+    position: absolute; left: 0; right: 0; top: 0; height: 50px;
+    background: linear-gradient(#1a1d24, #13151b); border-bottom: 1px solid #2a2f3a;
+    display:flex; align-items: stretch; font-family: "Cascadia Code", "Consolas", monospace; font-size: 12px;
+    box-shadow: 0 6px 24px rgba(0,0,0,.4);
+  }
+  .c-mod { display:flex; flex-direction: column; justify-content:center; padding: 0 14px; border-right: 1px solid #262b35; gap: 3px; white-space: nowrap; }
+  .c-mod label { font-size: 9.5px; letter-spacing: .14em; color: #6b7385; text-transform: uppercase; }
+  .c-led { font-size: 15px; color: #f59e0b; text-shadow: 0 0 10px rgba(245,158,11,.55); font-variant-numeric: tabular-nums; }
+  .c-vu { display:flex; gap: 2px; align-items: flex-end; height: 22px; }
+  .c-vu i { width: 4px; background: #22c55e; border-radius: 1px; }
+  .c-vu i.am { background: #eab308; } .c-vu i.ve { background: #ef4444; } .c-vu i.of { background: #2a2f3a; }
+  .c-leg { flex: 1; min-width: 0; }
+  .c-leg span { color: #d1d5db; overflow: hidden; text-overflow: ellipsis; }
+  .c-tecla { align-self: center; margin: 0 4px; padding: 5px 9px; border-radius: 4px; background: #232733; border: 1px solid #343a48; border-bottom-width: 3px; color: #e5e7eb; }
+  .c-painel {
+    position: absolute; right: 14px; top: 58px; width: 470px; background: #15181e; border: 1px solid #2a2f3a; border-radius: 10px;
+    padding: 14px; font-family: "Cascadia Code", "Consolas", monospace; font-size: 11.5px; box-shadow: 0 20px 60px rgba(0,0,0,.55);
+  }
+  .c-faders { display:grid; grid-template-columns: repeat(6, 1fr); gap: 10px; padding: 10px; background: #0f1115; border-radius: 8px; border: 1px solid #23272f; }
+  .c-f { display:flex; flex-direction: column; align-items:center; gap: 6px; color: #9ca3af; }
+  .c-f .cal { width: 8px; height: 110px; background: repeating-linear-gradient(0deg, #2a2f3a 0 1px, transparent 1px 11px), #0b0d10; border-radius: 3px; position: relative; border: 1px solid #23272f; }
+  .c-f .cal u { position:absolute; left: -11px; width: 28px; height: 14px; border-radius: 3px; background: linear-gradient(#e5e7eb, #9ca3af); box-shadow: 0 2px 4px rgba(0,0,0,.6); }
+  .c-f .cal u::after { content:""; position:absolute; left: 3px; right: 3px; top: 6px; height: 2px; background: #111; }
+  .c-f b { color: #f59e0b; font-weight: 400; }
+  .c-linha { display:flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+  .c-linha span { padding: 5px 9px; border: 1px solid #343a48; border-radius: 4px; background: #1b1f27; }
+  .c-linha span.sel { border-color: #f59e0b; color: #fbbf24; box-shadow: 0 0 10px rgba(245,158,11,.25) inset; }
+  .c-vert {
+    position: absolute; right: 0; top: 0; bottom: 40px; width: 64px; background: linear-gradient(90deg, #1a1d24, #13151b); border-left: 1px solid #2a2f3a;
+    display:flex; flex-direction: column; align-items:center; gap: 14px; padding: 12px 0; font-family: "Cascadia Code", Consolas, monospace; font-size: 10px; color: #9ca3af;
+  }
+  .c-vert .c-vu { flex-direction: column-reverse; height: auto; align-items: center; }
+  .c-vert .c-vu i { width: 22px; height: 4px; }
+
+  .nota { color: var(--suave); font-size: 13px; line-height: 1.5; background: #10141c; border: 1px solid #1f2533; border-radius: 12px; padding: 12px 14px; }
+  .nota b { color: var(--texto); }
+</style>
+</head>
+<body>
+<h1>Voz · maquetes da barra</h1>
+<p class="sub">Três estilos para escolheres. Em cada um: a barra no topo com o painel de definições aberto, e ao lado a mesma barra em vertical (esquerda/direita). Os dados são de exemplo.</p>
+
+<!-- ================= A ================= -->
+<h2>A · Vidro <small>translúcida e desfocada, ao estilo do Windows 11 — discreta, moderna</small></h2>
+<div class="linha">
+  <div class="ecra">
+    <div class="janela"></div>
+    <div class="a-barra">
+      <div class="a-logo"><span><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M4 10v4M8 7v10M12 4v16M16 8v8M20 11v2"/></svg></span>Voz</div>
+      <div class="a-mod a-acao"><span class="pt ok"></span><b>voz-claude-code</b><em>A editar servidor.js</em><span class="a-tempo">01:42</span></div>
+      <div class="a-mod a-leg"><span class="onda"><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b></span><span>«Corrigi o erro no servidor e os testes já passam todos…»</span></div>
+      <div class="a-mod"><span class="a-chip"><span class="pt al"></span>infra-docs</span><span class="a-chip"><span class="pt ok"></span>site</span><span class="a-chip"><span class="pt pa"></span>api</span></div>
+      <div class="a-mod a-tok">Opus · 12,4 mil tokens · ctx 38%<span class="barra-ctx"><i></i></span></div>
+      <div class="a-mod" style="gap:6px"><span class="a-bt">⏸</span><span class="a-bt">⏭</span><span class="a-bt on">⚙</span></div>
+    </div>
+    <div class="a-painel">
+      <div class="cols">
+        <div>
+          <h4>Voz</h4>
+          <div class="desl"><span>Velocidade</span><span class="trilho"><i style="width:44%"></i><u style="left:44%"></u></span><output>0,88</output></div>
+          <div class="desl"><span>Volume</span><span class="trilho"><i style="width:60%"></i><u style="left:60%"></u></span><output>1,0</output></div>
+          <div class="desl"><span>Altura</span><span class="trilho"><i style="width:42%"></i><u style="left:42%"></u></span><output>−1</output></div>
+          <h4>Predefinições</h4>
+          <div class="chips"><span>Natural</span><span class="sel">Calma</span><span>Clara</span><span>Quente</span><span>Rádio</span></div>
+        </div>
+        <div>
+          <h4>Equalizador</h4>
+          <div class="eq">
+            <div class="f"><span class="v"><i style="bottom:50%;top:38%"></i><u style="top:34%"></u></span><small>Graves</small><small>+3</small></div>
+            <div class="f"><span class="v"><u style="top:44%"></u></span><small>Médios</small><small>0</small></div>
+            <div class="f"><span class="v"><i style="top:50%;bottom:38%"></i><u style="top:57%"></u></span><small>Agudos</small><small>−3</small></div>
+          </div>
+        </div>
+      </div>
+      <h4>Posição</h4>
+      <div class="pos"><div class="c sel"><i></i></div><div class="h"><i></i></div><div class="f"><i></i></div><div class="e"><i></i></div><div class="d"><i></i></div><div class="b"><i></i></div></div>
+      <div class="pos-leg"><span>Topo</span><span>Escondida</span><span>Flutuante</span><span>Esquerda</span><span>Direita</span><span>Fundo</span></div>
+      <div class="cols" style="margin-top:4px">
+        <div>
+          <h4>Módulos (arrasta para ordenar)</h4>
+          <div class="mods">
+            <div><span class="alca">⋮⋮</span>Sessão e ação<span class="tg on"></span></div>
+            <div><span class="alca">⋮⋮</span>Legenda e onda<span class="tg on"></span></div>
+            <div><span class="alca">⋮⋮</span>Outras sessões<span class="tg on"></span></div>
+            <div><span class="alca">⋮⋮</span>Tokens e contexto<span class="tg on"></span></div>
+            <div><span class="alca">⋮⋮</span>Controlos rápidos<span class="tg on"></span></div>
+          </div>
+        </div>
+        <div>
+          <h4>Arranque</h4>
+          <div class="chips" style="flex-direction:column;align-items:stretch"><span class="sel">Com o Windows</span><span>Só com o Claude Code</span><span>Só à mão</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="tarefas"><i></i><i></i><i></i><i></i><i></i></div>
+  </div>
+  <div class="ecra ecra-v">
+    <div class="a-vert">
+      <div class="a-logo" style="padding:0"><span><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M4 10v4M8 7v10M12 4v16M16 8v8M20 11v2"/></svg></span>Voz</div>
+      <div class="bloco"><h5>Agora</h5><div style="display:flex;gap:7px;align-items:center"><span class="pt ok"></span><b>voz-claude-code</b></div><div style="color:var(--suave);margin-top:4px">A editar servidor.js · 01:42</div></div>
+      <div class="bloco" style="color:var(--acento)"><h5>A dizer</h5><span class="onda"><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b></span><div style="color:var(--texto);margin-top:6px">«Corrigi o erro no servidor e os testes já passam todos.»</div></div>
+      <div class="bloco"><h5>Sessões</h5><div style="display:flex;flex-direction:column;gap:6px"><span class="a-chip"><span class="pt al"></span>infra-docs · precisa de ti</span><span class="a-chip"><span class="pt ok"></span>site · a trabalhar</span><span class="a-chip"><span class="pt pa"></span>api · terminou</span></div></div>
+      <div class="bloco a-tok"><h5>Claude</h5>Opus · 12,4 mil tokens<br>contexto 38%<span class="barra-ctx" style="width:100%;margin:6px 0 0"><i></i></span></div>
+    </div>
+    <div class="tarefas"><i></i><i></i><i></i></div>
+  </div>
+</div>
+
+<!-- ================= B ================= -->
+<h2>B · Ilha <small>uma cápsula preta compacta que se expande ao passar o rato ou quando o Claude fala</small></h2>
+<div class="linha">
+  <div class="ecra">
+    <div class="janela"></div>
+    <div class="b-ilha">
+      <span class="b-av"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M4 10v4M8 7v10M12 4v16M16 8v8M20 11v2"/></svg></span>
+      <span><b>A editar servidor.js</b> <span style="color:var(--suave)">· voz-claude-code</span></span>
+      <span class="onda"><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b></span>
+      <span class="b-sep"></span>
+      <span class="b-mini"><span class="pt al"></span><span class="pt ok"></span><span class="pt pa"></span></span>
+      <span style="color:var(--suave);font-variant-numeric:tabular-nums">38%</span>
+    </div>
+    <div class="b-exp">
+      <div>
+        <div class="leg">«Corrigi o erro no servidor e <mark>os testes já passam todos</mark>. Queres que publique as alterações?»</div>
+        <div class="kpi"><div><b>01:42</b><small>neste pedido</small></div><div><b>12,4k</b><small>tokens · Opus</small></div><div><b>38%</b><small>contexto</small></div></div>
+        <div class="b-ctr"><span>⏸ Pausa</span><span>⏭ Saltar</span><span>🔇 Calar</span><span>⚙</span></div>
+      </div>
+      <div class="sess">
+        <div><span class="pt ok"></span>voz-claude-code<small>a falar</small></div>
+        <div><span class="pt al"></span>infra-docs<small>precisa de ti</small></div>
+        <div><span class="pt ok"></span>site<small>a trabalhar</small></div>
+        <div><span class="pt pa"></span>api<small>terminou</small></div>
+      </div>
+    </div>
+    <div class="tarefas"><i></i><i></i><i></i><i></i><i></i></div>
+  </div>
+  <div class="ecra ecra-v">
+    <div class="b-vert">
+      <span class="b-av"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M4 10v4M8 7v10M12 4v16M16 8v8M20 11v2"/></svg></span>
+      <span class="onda"><b></b><b></b><b></b><b></b><b></b><b></b></span>
+      <span class="pt al"></span><span class="pt ok"></span><span class="pt pa"></span>
+      <span style="font-size:11px;color:var(--suave)">38%</span>
+    </div>
+    <div class="tarefas"><i></i><i></i><i></i></div>
+  </div>
+</div>
+
+<!-- ================= C ================= -->
+<h2>C · Estúdio <small>mesa de som: medidores LED, faders a sério, letra monoespaçada</small></h2>
+<div class="linha">
+  <div class="ecra">
+    <div class="janela"></div>
+    <div class="c-barra">
+      <div class="c-mod"><label>Sessão</label><span style="color:#e5e7eb">voz-claude-code</span></div>
+      <div class="c-mod"><label>Ação</label><span style="color:#22d3ee">EDIT servidor.js</span></div>
+      <div class="c-mod"><label>Tempo</label><span class="c-led">01:42</span></div>
+      <div class="c-mod"><label>Nível</label><span class="c-vu"><i style="height:30%"></i><i style="height:45%"></i><i style="height:60%"></i><i style="height:70%"></i><i class="am" style="height:80%"></i><i class="am" style="height:88%"></i><i class="ve" style="height:96%"></i><i class="of" style="height:100%"></i></span></div>
+      <div class="c-mod c-leg"><label>A dizer</label><span>&gt; corrigi o erro no servidor e os testes já passam todos_</span></div>
+      <div class="c-mod"><label>Sessões</label><span><span class="pt al"></span> <span class="pt ok"></span> <span class="pt pa"></span></span></div>
+      <div class="c-mod"><label>Tokens / ctx</label><span class="c-led">12.4K · 38%</span></div>
+      <span class="c-tecla">❚❚</span><span class="c-tecla">▶▶</span><span class="c-tecla" style="border-color:#f59e0b;color:#fbbf24">EQ</span>
+    </div>
+    <div class="c-painel">
+      <div class="c-faders">
+        <div class="c-f"><span>VEL</span><span class="cal"><u style="top:62px"></u></span><b>0.88</b></div>
+        <div class="c-f"><span>VOL</span><span class="cal"><u style="top:44px"></u></span><b>1.0</b></div>
+        <div class="c-f"><span>TOM</span><span class="cal"><u style="top:56px"></u></span><b>-1</b></div>
+        <div class="c-f"><span>BASS</span><span class="cal"><u style="top:34px"></u></span><b>+3</b></div>
+        <div class="c-f"><span>MID</span><span class="cal"><u style="top:48px"></u></span><b>0</b></div>
+        <div class="c-f"><span>TREB</span><span class="cal"><u style="top:64px"></u></span><b>-3</b></div>
+      </div>
+      <div class="c-linha"><span>NATURAL</span><span class="sel">CALMA</span><span>CLARA</span><span>QUENTE</span><span>RÁDIO</span></div>
+      <div class="c-linha"><span class="sel">▀ TOPO</span><span>▔ ESCONDIDA</span><span>▭ FLUTUANTE</span><span>▌ ESQ</span><span>▐ DIR</span><span>▄ FUNDO</span></div>
+      <div class="c-linha"><span class="sel">● ARRANCA COM O WINDOWS</span><span>○ SÓ COM O CLAUDE</span><span>○ À MÃO</span></div>
+    </div>
+    <div class="tarefas"><i></i><i></i><i></i><i></i><i></i></div>
+  </div>
+  <div class="ecra ecra-v">
+    <div class="c-vert">
+      <span>VOZ</span>
+      <span class="c-vu"><i style="background:#22c55e"></i><i></i><i></i><i></i><i class="am"></i><i class="am"></i><i class="ve"></i><i class="of"></i></span>
+      <span class="c-led" style="font-size:12px">01:42</span>
+      <span><span class="pt al"></span></span><span><span class="pt ok"></span></span><span><span class="pt pa"></span></span>
+      <span class="c-led" style="font-size:11px">38%</span>
+    </div>
+    <div class="tarefas"><i></i><i></i><i></i></div>
+  </div>
+</div>
+
+<p class="nota" style="margin-top:28px"><b>Comum aos três:</b> as seis posições (topo, escondida, flutuante, esquerda, direita, fundo por cima da barra do Windows), os módulos que ligas/desligas e reordenas, o arranque (com o Windows, só com o Claude Code, ou à mão) e o painel de som. Podes misturar: por exemplo o painel do C com a barra do A.</p>
+</body>
+</html>
