@@ -113,6 +113,155 @@ async function instalar() {
   await enviar({ controlo: 'testar', texto: 'Olá! A voz em português de Portugal está instalada e pronta.' }, { resposta: true })
 }
 
+// ---------- barra (Windows) ----------
+
+const WEBVIEW2 = {
+  versao: '1.0.4314.35',
+  sha512: 'cOaiVqP3BmQHMnxGpZzANM22tUXgycrisyJHjIGNzIaMsm8iXj7Kx+ceYg+RbYwJtzT009qfcFTocvVLY+ekMw==',
+}
+const PASTA_BARRA = path.join(CAMINHOS.pasta, 'barra')
+const EXE_BARRA = path.join(PASTA_BARRA, 'VozBarra.exe')
+const CSC = path.join(process.env.WINDIR || 'C:\\Windows', 'Microsoft.NET', 'Framework64', 'v4.0.30319', 'csc.exe')
+const CHAVE_RUN = 'HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run'
+
+function webview2Instalado() {
+  const id = '{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}'
+  for (const raiz of [`HKLM\\SOFTWARE\\WOW6432Node\\Microsoft\\EdgeUpdate\\Clients\\${id}`, `HKCU\\Software\\Microsoft\\EdgeUpdate\\Clients\\${id}`]) {
+    const r = spawnSync('reg.exe', ['query', raiz, '/v', 'pv'], { encoding: 'utf8', windowsHide: true })
+    const m = /pv\s+REG_SZ\s+([\d.]+)/.exec(r.stdout || '')
+    if (m && m[1] !== '0.0.0.0') return m[1]
+  }
+  return null
+}
+
+function definirArranque(modo) {
+  const args =
+    modo === 'windows'
+      ? ['add', CHAVE_RUN, '/v', 'VozBarra', '/t', 'REG_SZ', '/d', `"${EXE_BARRA}"`, '/f']
+      : ['delete', CHAVE_RUN, '/v', 'VozBarra', '/f']
+  spawnSync('reg.exe', args, { windowsHide: true, stdio: 'ignore' })
+  escreverConfig({ barraArranque: modo })
+}
+
+function abrirBarra() {
+  const { spawn } = require('node:child_process')
+  spawn(EXE_BARRA, [], { detached: true, stdio: 'ignore' }).unref()
+}
+
+async function instalarBarra() {
+  if (!WIN) {
+    dizer('A barra é só para Windows (por agora). Noutros sistemas, abre http://127.0.0.1:47821 no browser com o token de ~/.claude/voz/barra/barra.json.')
+    return
+  }
+  dizer('Instalação da barra «Voz» (Windows)')
+  const wv = webview2Instalado()
+  if (!wv) {
+    dizer('Falta o Microsoft Edge WebView2 Runtime (vem com o Windows 11). Instala-o em https://developer.microsoft.com/microsoft-edge/webview2/ e volta a correr /voz:barra instalar.')
+    process.exitCode = 1
+    return
+  }
+  if (!fs.existsSync(CSC)) {
+    dizer(`Não encontrei o compilador do .NET Framework 4.x (${CSC}).`)
+    process.exitCode = 1
+    return
+  }
+  garantirPasta(PASTA_BARRA)
+  const pacote = path.join(PASTA_BARRA, 'pacote')
+  const nupkg = path.join(pacote, 'webview2.nupkg')
+  garantirPasta(pacote)
+  const hashOk = f => fs.existsSync(f) && crypto.createHash('sha512').update(fs.readFileSync(f)).digest('base64') === WEBVIEW2.sha512
+  if (!hashOk(nupkg)) {
+    dizer(`1/4 A descarregar o kit WebView2 ${WEBVIEW2.versao} do NuGet da Microsoft (~9 MB)…`)
+    const url = `https://api.nuget.org/v3-flatcontainer/microsoft.web.webview2/${WEBVIEW2.versao}/microsoft.web.webview2.${WEBVIEW2.versao}.nupkg`
+    const r = await fetch(url)
+    if (!r.ok) throw new Error(`download do WebView2 falhou (${r.status})`)
+    fs.writeFileSync(nupkg, Buffer.from(await r.arrayBuffer()))
+    if (!hashOk(nupkg)) throw new Error('o pacote WebView2 descarregado não tem o SHA-512 esperado')
+  } else dizer('1/4 Kit WebView2 já descarregado')
+
+  dizer('2/4 A extrair as bibliotecas')
+  const tar = path.join(process.env.WINDIR || 'C:\\Windows', 'System32', 'tar.exe')
+  const ex = spawnSync(tar, ['-xf', nupkg, '-C', pacote, 'lib/net462', 'runtimes/win-x64/native'], { windowsHide: true })
+  if (ex.status !== 0) throw new Error('não consegui extrair o pacote WebView2')
+  for (const [orig, nome] of [
+    ['lib/net462/Microsoft.Web.WebView2.Core.dll', 'Microsoft.Web.WebView2.Core.dll'],
+    ['lib/net462/Microsoft.Web.WebView2.WinForms.dll', 'Microsoft.Web.WebView2.WinForms.dll'],
+    ['runtimes/win-x64/native/WebView2Loader.dll', 'WebView2Loader.dll'],
+  ]) {
+    fs.copyFileSync(path.join(pacote, ...orig.split('/')), path.join(PASTA_BARRA, nome))
+  }
+
+  dizer('3/4 A compilar o anfitrião (compilador do .NET que já vem com o Windows)')
+  spawnSync('taskkill.exe', ['/IM', 'VozBarra.exe', '/F'], { windowsHide: true, stdio: 'ignore' })
+  const fonte = path.join(__dirname, '..', 'barra', 'anfitriao', 'VozBarra.cs')
+  const c = spawnSync(
+    CSC,
+    [
+      '/nologo', '/target:winexe', '/platform:x64', '/optimize+', `/out:${EXE_BARRA}`,
+      '/r:System.Windows.Forms.dll', '/r:System.Drawing.dll', '/r:System.Web.Extensions.dll',
+      `/r:${path.join(PASTA_BARRA, 'Microsoft.Web.WebView2.Core.dll')}`,
+      `/r:${path.join(PASTA_BARRA, 'Microsoft.Web.WebView2.WinForms.dll')}`,
+      fonte,
+    ],
+    { encoding: 'utf8', windowsHide: true },
+  )
+  const erros = (c.stdout || '').split('\n').filter(l => /error/i.test(l))
+  if (c.status !== 0 || erros.length) throw new Error(`a compilação falhou:\n${erros.join('\n') || c.stdout}`)
+
+  dizer('4/4 A arrancar')
+  await enviar({ controlo: 'estado' }, { resposta: true }) // garante o servidor (e o barra.json)
+  definirArranque(lerConfig().barraArranque || 'windows')
+  abrirBarra()
+  dizer(`Pronto! A barra está no topo do ecrã (WebView2 ${wv}). Clica na estrela para as definições: posição, módulos e arranque.`)
+}
+
+async function barra(args) {
+  const [sub = 'estado', valor = ''] = args.map(a => String(a).toLowerCase())
+  switch (sub) {
+    case 'instalar':
+      return instalarBarra()
+    case 'ligar':
+    case 'abrir':
+      if (!fs.existsSync(EXE_BARRA)) return dizer('A barra ainda não está instalada: corre /voz:barra instalar.')
+      await enviar({ controlo: 'estado' }, { resposta: true })
+      abrirBarra()
+      return dizer('Barra aberta.')
+    case 'desligar':
+    case 'fechar': {
+      const r = await semServidor({ controlo: 'barra-sair' })
+      return dizer(r && r.barras ? 'Barra fechada.' : 'A barra não estava aberta.')
+    }
+    case 'posicao':
+    case 'posição': {
+      const ok = ['topo', 'escondida', 'flutuante', 'esquerda', 'direita', 'fundo']
+      if (!ok.includes(valor)) return dizer(`Posições: ${ok.join(', ')}.`)
+      escreverConfig({ barraPosicao: valor })
+      await semServidor({ controlo: 'publicar' })
+      return dizer(`Posição: ${valor}.`)
+    }
+    case 'arranque': {
+      const ok = { windows: 'windows', claude: 'claude', mao: 'mao', 'mão': 'mao' }
+      if (!ok[valor]) return dizer('Arranque: windows (com o Windows), claude (só com o Claude Code) ou mao (só à mão).')
+      definirArranque(ok[valor])
+      return dizer({ windows: 'A barra arranca com o Windows.', claude: 'A barra abre quando começa uma sessão do Claude Code.', mao: 'A barra só abre com /voz:barra ligar.' }[ok[valor]])
+    }
+    case 'desinstalar':
+      await semServidor({ controlo: 'barra-sair' })
+      spawnSync('reg.exe', ['delete', CHAVE_RUN, '/v', 'VozBarra', '/f'], { windowsHide: true, stdio: 'ignore' })
+      spawnSync('taskkill.exe', ['/IM', 'VozBarra.exe', '/F'], { windowsHide: true, stdio: 'ignore' })
+      try {
+        fs.unlinkSync(EXE_BARRA)
+      } catch {}
+      return dizer('Barra desinstalada (a pasta ~/.claude/voz/barra pode ser apagada).')
+    default: {
+      const c = lerConfig()
+      dizer(`Barra: ${fs.existsSync(EXE_BARRA) ? 'instalada' : 'não instalada (/voz:barra instalar)'}`)
+      dizer(`Posição: ${c.barraPosicao} · arranque: ${c.barraArranque} · tema: ${c.barraTema}`)
+      dizer('Subcomandos: instalar, ligar, desligar, posicao <topo|escondida|flutuante|esquerda|direita|fundo>, arranque <windows|claude|mao>, desinstalar')
+    }
+  }
+}
+
 // ---------- som ----------
 
 const AJUSTES_SOM = {
@@ -241,6 +390,9 @@ async function principal(argv) {
 
     case 'som':
       return som(resto)
+
+    case 'barra':
+      return barra(resto)
 
     case 'instalar':
       return instalar()

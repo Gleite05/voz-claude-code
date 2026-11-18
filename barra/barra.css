@@ -46,6 +46,10 @@ body:not(.anfitriao) { background: linear-gradient(135deg, #1e1b4b, #0f766e 60%,
 body.claro:not(.anfitriao) { background: linear-gradient(135deg, #fbcfe8, #bae6fd 60%, #fde68a); }
 body.anfitriao.vista-barra { background: var(--vidro-barra); }
 body.anfitriao.vista-menu { background: var(--vidro-menu); }
+body.sem-vidro.vista-barra { background: #1e1e22; }
+body.sem-vidro.vista-menu { background: #2a2a30; }
+body.sem-vidro.claro.vista-barra { background: #ececef; }
+body.sem-vidro.claro.vista-menu { background: #f6f6f8; }
 
 svg.i { width: 16px; height: 16px; display: block; flex: none; }
 .num { font-variant-numeric: tabular-nums; }
@@ -98,17 +102,17 @@ body:not(.anfitriao) .barra.v { width: 40px; height: 100vh; }
 .barra.flut { padding: 0 10px; }
 
 /* ---------------- menus ---------------- */
-.menu { padding: 5px; font-size: 13px; display: inline-block; min-width: 250px; max-width: 360px; }
+.menu { padding: 5px; font-size: 13px; display: inline-block; min-width: 250px; max-width: 460px; white-space: nowrap; }
 body:not(.anfitriao) .menu { position: absolute; top: 34px; border-radius: 10px; background: var(--vidro-menu); backdrop-filter: blur(40px) saturate(180%); border: 1px solid var(--sep); box-shadow: 0 18px 50px rgba(0,0,0,.4); }
 .menu .tit { padding: 5px 10px 3px; font-size: 11.5px; font-weight: 600; color: var(--txt2); }
 .menu .op { display: flex; align-items: center; gap: 9px; padding: 4px 10px; border-radius: 5px; min-height: 24px; }
 .menu .op:hover { background: var(--sel); color: #fff; }
 .menu .op:hover small, .menu .op:hover .ponto { color: rgba(255,255,255,.85); }
-.menu .op small { margin-left: auto; color: var(--txt2); font-size: 12px; padding-left: 18px; }
+.menu .op small { margin-left: auto; color: var(--txt2); font-size: 12px; padding-left: 18px; max-width: 230px; overflow: hidden; text-overflow: ellipsis; }
 .menu .op .chk { width: 12px; text-align: center; flex: none; }
 .menu .op.inativo { opacity: .45; pointer-events: none; }
 .menu hr { border: 0; height: 1px; background: var(--sep); margin: 5px 8px; }
-.menu .leg { padding: 4px 10px 8px; line-height: 1.45; font-weight: 400; white-space: normal; }
+.menu .leg { padding: 4px 10px 8px; line-height: 1.45; font-weight: 400; white-space: normal; max-width: 380px; }
 .ponto { width: 7px; height: 7px; border-radius: 50%; background: var(--parada); flex: none; }
 
 /* ---------------- centro de controlo ---------------- */

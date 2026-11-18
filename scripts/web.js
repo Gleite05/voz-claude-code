@@ -42,10 +42,26 @@ function lerJson(f) {
 
 /** Copia scripts e interface para ~/.claude/voz/app, para a barra arrancar o servidor mesmo
  *  depois de uma atualização do plugin mudar a pasta de instalação. */
+function impressaoDigital() {
+  const h = crypto.createHash('sha1').update(versao())
+  for (const sub of ['scripts', 'barra']) {
+    const pasta = path.join(RAIZ, sub)
+    if (!fs.existsSync(pasta)) continue
+    for (const nome of fs.readdirSync(pasta, { recursive: true }).map(String).sort()) {
+      const f = path.join(pasta, nome)
+      try {
+        const st = fs.statSync(f)
+        if (st.isFile()) h.update(`${sub}/${nome}:${st.size}:${Math.floor(st.mtimeMs)}`)
+      } catch {}
+    }
+  }
+  return h.digest('hex')
+}
+
 function sincronizarApp() {
-  const v = versao()
   try {
     if (path.resolve(RAIZ) === path.resolve(PASTA_APP)) return
+    const v = impressaoDigital()
     const marca = path.join(PASTA_APP, 'versao.txt')
     if (fs.existsSync(marca) && fs.readFileSync(marca, 'utf8').trim() === v) return
     for (const sub of ['scripts', 'barra']) {

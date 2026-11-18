@@ -6,6 +6,8 @@ Um plugin para o [Claude Code](https://code.claude.com) que **narra em voz alta,
 - 💬 **O que escreve**: lê as respostas **enquanto vão aparecendo no ecrã**, sem blocos de código, tabelas, links nem caminhos compridos.
 - 🔔 **Quando precisa de ti**: «Preciso da tua autorização», «Tenho uma pergunta para ti», «O plano está pronto para aprovares».
 - 🗂️ **Várias sessões**: só a sessão onde escreveste por último fala tudo; as outras dizem apenas «A sessão de *pasta* terminou».
+- 🎚️ **Som afinável**: volume, altura (tom), equalizador de graves/médios/agudos e predefinições (natural, calma, clara, quente, rádio).
+- 🖥️ **Barra no Windows** ao estilo da barra de menus do macOS: a sessão, o que está a fazer, a legenda do que diz, as outras sessões, o contexto e um Centro de Controlo do som.
 
 **Gratuito e 100 % local.** Não precisa de conta, chave de API nem internet (só para instalar a voz uma vez). Nada do que o Claude escreve sai do teu computador.
 
@@ -51,6 +53,11 @@ Testado em **Windows 11** (terminal e app de ambiente de trabalho do Claude). ma
 | `/voz:parar` | Cala a voz agora (continua ligada). Escrever uma mensagem nova também a cala |
 | `/voz:testar [texto]` | Diz uma frase de teste |
 | `/voz:velocidade 0.9` | Velocidade de 0.5 a 2.0 (predefinição 0.88, calma) |
+| `/voz:som` | Mostra o som; `/voz:som graves 3`, `altura -1`, `volume 0.8`, ou uma predefinição: `/voz:som calma` |
+| `/voz:barra instalar` | Instala e abre a barra do Windows (ver abaixo) |
+| `/voz:barra ligar|desligar` | Abre ou fecha a barra |
+| `/voz:barra posicao …` | `topo`, `escondida`, `flutuante`, `esquerda`, `direita` ou `fundo` |
+| `/voz:barra arranque …` | `windows` (com o Windows), `claude` (só com o Claude Code) ou `mao` (só à mão) |
 | `/voz:modo tudo\|acoes\|respostas` | Tudo, só o que está a fazer, ou só o que escreve |
 | `/voz:sessao ativa\|todas` | Só a sessão ativa fala tudo (predefinição), ou todas |
 | `/voz:motor auto\|piper\|sistema` | Força a voz do sistema ou o Piper |
@@ -68,6 +75,11 @@ As opções ficam em `~/.claude/voz/config.json`:
   "velocidade": 0.88,
   "ruido": 0.4,
   "ruidoDuracao": 0.5,
+  "volume": 1.0,
+  "altura": 0,
+  "graves": 0,
+  "medios": 0,
+  "agudos": 0,
   "maxCaracteres": 1200,
   "soSessaoAtiva": true,
   "avisarOutrasSessoes": true,
@@ -77,6 +89,22 @@ As opções ficam em `~/.claude/voz/config.json`:
 ```
 
 `ruido` e `ruidoDuracao` afinam o Piper (valores mais baixos = voz mais estável e menos metálica). `maxCaracteres` é o máximo lido por mensagem (o resto fica só no ecrã). `vozSistema` escolhe uma voz do sistema pelo nome (por exemplo `"Helia"`).
+
+## A barra (Windows)
+
+```
+/voz:barra instalar
+```
+
+Uma barra fina e translúcida, ao estilo da barra de menus do macOS:
+
+- **À esquerda:** ✻ **Claude** · a sessão (clica para ver todas, a legenda e os tokens) · o que está a fazer agora · a legenda do que está a dizer.
+- **À direita:** a onda (quando fala; clica para saltar a frase) · pontos das outras sessões (verde a trabalhar, amarelo precisa de ti, cinza parada) · anel do contexto usado · ⚟ Centro de Controlo do som · tempo do pedido.
+- **Clicar na estrela:** posição (topo, escondida, flutuante, esquerda, direita, fundo por cima da barra do Windows), módulos visíveis (liga, desliga e arrasta para ordenar), arranque e tema (segue o Windows, escuro ou claro).
+
+Como é feita: um anfitrião pequeno em C# (`barra/anfitriao/VozBarra.cs`) compilado no teu PC pelo `csc.exe` que já vem com o .NET Framework 4.8, com a WebView2 do Windows 11 a desenhar a interface (`barra/`). Encaixa no ecrã como a barra de tarefas (as janelas maximizadas não a tapam) e usa o desfoque acrílico do Windows. O instalador só descarrega o kit WebView2 do NuGet da Microsoft (~9 MB, SHA-512 verificado). Se o vidro der problemas, cria o ficheiro vazio `~/.claude/voz/barra/sem-vidro` para um fundo opaco.
+
+A interface fala com o servidor da voz em `http://127.0.0.1:47821` (só local, com token). O arranque «com o Windows» usa uma entrada em `HKCU…Run` (sem administrador); `/voz:barra arranque mao` remove-a.
 
 ## Como funciona
 
@@ -99,7 +127,7 @@ Claude Code ──(ganchos: PreToolUse, MessageDisplay, Stop, Notification…)�
 
 ## Privacidade
 
-Tudo corre no teu computador. O único acesso à rede é o `/voz:instalar`, que descarrega o `piper-tts` do PyPI e a voz do Hugging Face (`rhasspy/piper-voices`). Não há telemetria.
+Tudo corre no teu computador. Os únicos acessos à rede são o `/voz:instalar`, que descarrega o `piper-tts` do PyPI e a voz do Hugging Face (`rhasspy/piper-voices`), e o `/voz:barra instalar`, que descarrega o kit WebView2 do NuGet. Não há telemetria. A barra lê do histórico local das sessões (`~/.claude/projects`) só o modelo e a contagem de tokens.
 
 ## Desinstalar
 
@@ -107,10 +135,11 @@ Tudo corre no teu computador. O único acesso à rede é o `/voz:instalar`, que 
 claude plugin uninstall voz@voz
 ```
 
-E apaga a pasta `~/.claude/voz` (voz, Python e configuração).
+Antes, se instalaste a barra: `/voz:barra desinstalar`. Depois apaga a pasta `~/.claude/voz` (voz, Python, barra e configuração).
 
 ## Créditos e licenças
 
 - Este plugin: [MIT](LICENSE).
 - [Piper](https://github.com/OHF-Voice/piper1-gpl) (GPL-3.0), instalado à parte pelo `/voz:instalar`, não incluído neste repositório.
+- [WebView2](https://www.nuget.org/packages/Microsoft.Web.WebView2) (Microsoft), descarregado pelo `/voz:barra instalar`, não incluído neste repositório.
 - Voz [«tugão»](https://huggingface.co/rhasspy/piper-voices/tree/main/pt/pt_PT/tug%C3%A3o/medium) (dados CC0).

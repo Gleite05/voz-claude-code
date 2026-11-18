@@ -10,6 +10,7 @@
   const raiz = document.getElementById('raiz')
   document.body.classList.add('vista-' + VISTA)
   if (host) document.body.classList.add('anfitriao')
+  if (q.get('vidro') === '0') document.body.classList.add('sem-vidro')
 
   let E = null
   let menuAtual = q.get('menu') || null

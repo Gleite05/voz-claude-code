@@ -280,6 +280,9 @@ function tratarControlo(msg, responder) {
       }
       publicar()
       return responder({ ok: true, pausado })
+    case 'publicar': // a configuração mudou fora da barra (linha de comandos)
+      publicar()
+      return responder({ ok: true })
     case 'barra-sair':
       if (web) web.emitir('sair', {})
       return responder({ ok: true, barras: web ? web.clientes() : 0 })
