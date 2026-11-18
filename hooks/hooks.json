@@ -10,6 +10,9 @@
     "PreToolUse": [
       { "hooks": [{ "type": "command", "command": "node", "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/gancho.js"], "async": true, "timeout": 10 }] }
     ],
+    "PermissionRequest": [
+      { "hooks": [{ "type": "command", "command": "node", "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/permissao.js"], "timeout": 600 }] }
+    ],
     "MessageDisplay": [
       { "hooks": [{ "type": "command", "command": "node", "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/gancho.js"], "async": true, "timeout": 10 }] }
     ],

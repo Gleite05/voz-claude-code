@@ -1,11 +1,11 @@
 {
   "name": "voz",
   "displayName": "Voz",
-  "version": "0.4.1",
-  "description": "Narra em voz alta, em português de Portugal, o que o Claude Code está a fazer e o que escreve, em tempo real, com uma barra ao estilo macOS no Windows. Gratuito e 100% local.",
+  "version": "1.0.0",
+  "description": "O Claude Code a falar contigo em português de Portugal, em tempo real, e uma barra ao estilo macOS no Windows: conversas, respostas e permissões pela barra, ditado, vozes de 11 idiomas, não incomodar e tokens do dia. Gratuito e 100% local.",
   "author": { "name": "Gleite05", "url": "https://github.com/Gleite05" },
   "homepage": "https://github.com/Gleite05/voz-claude-code",
   "repository": "https://github.com/Gleite05/voz-claude-code",
   "license": "MIT",
-  "keywords": ["voz", "tts", "portugues", "pt-pt", "acessibilidade", "piper"]
+  "keywords": ["voz", "tts", "stt", "portugues", "pt-pt", "acessibilidade", "piper", "whisper", "windows", "barra"]
 }

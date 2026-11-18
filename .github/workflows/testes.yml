@@ -1,0 +1,43 @@
+name: Testes
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  testes:
+    name: Node ${{ matrix.node }} · ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
+        node: [20, 22]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - name: Sintaxe
+        shell: bash
+        run: for f in scripts/*.js barra/barra.js; do node --check "$f"; done
+      - name: Testes
+        run: node --test
+      - name: Python (sintaxe dos trabalhadores)
+        shell: bash
+        run: python3 -c "import ast,sys;[ast.parse(open(f,encoding='utf-8').read()) for f in sys.argv[1:]]" scripts/*.py || python -c "import ast,sys;[ast.parse(open(f,encoding='utf-8').read()) for f in sys.argv[1:]]" scripts/*.py
+
+  barra-windows:
+    name: Compilar a barra (Windows)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Compilar o anfitrião com o csc do .NET Framework
+        run: node -e "process.env.VOZ_DIR=require('path').join(process.env.RUNNER_TEMP,'voz');require('./scripts/compilar-barra').compilar(console.log).then(()=>console.log('compilado')).catch(e=>{console.error(e.message);process.exit(1)})"

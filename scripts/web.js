@@ -102,8 +102,9 @@ function iguais(a, b) {
  */
 function arrancarWeb(ligacoes, cfg) {
   sincronizarApp()
-  const porta = Number(cfg.porta) || PORTA_PREDEFINIDA
-  const barra = prepararFicheiroBarra(porta)
+  const portaPedida = Number(cfg.porta) || PORTA_PREDEFINIDA
+  let porta = portaPedida
+  let barra = prepararFicheiroBarra(porta)
   const clientes = new Set()
   let pendente = null
 
@@ -148,13 +149,12 @@ function arrancarWeb(ligacoes, cfg) {
         if (corpo.length > 64 * 1024) req.destroy()
       })
       req.on('end', () => {
-        let resposta
-        try {
-          resposta = ligacoes.aoReceber(JSON.parse(corpo || '{}'))
-        } catch (erro) {
-          resposta = { ok: false, erro: erro.message }
-        }
-        res.writeHead(200, { 'content-type': TIPOS['.json'] }).end(JSON.stringify(resposta || { ok: true }))
+        Promise.resolve()
+          .then(() => ligacoes.aoReceber(JSON.parse(corpo || '{}')))
+          .catch(erro => ({ ok: false, erro: erro.message }))
+          .then(resposta => {
+            res.writeHead(200, { 'content-type': TIPOS['.json'] }).end(JSON.stringify(resposta || { ok: true }))
+          })
       })
       return
     }
@@ -173,8 +173,20 @@ function arrancarWeb(ligacoes, cfg) {
     res.writeHead(404).end()
   })
 
-  servidor.on('error', erro => log(`web: ${erro.code || erro.message} na porta ${porta}`))
-  servidor.listen(porta, '127.0.0.1', () => log(`web em http://127.0.0.1:${porta}`))
+  // Porta ocupada por outro programa: tenta as 10 seguintes e grava a escolhida no barra.json.
+  servidor.on('error', erro => {
+    if (erro.code === 'EADDRINUSE' && porta < portaPedida + 10) {
+      porta++
+      setTimeout(() => servidor.listen(porta, '127.0.0.1'), 50)
+      return
+    }
+    log(`web: ${erro.code || erro.message} na porta ${porta}`)
+  })
+  servidor.on('listening', () => {
+    barra = prepararFicheiroBarra(porta)
+    log(`web em http://127.0.0.1:${porta}`)
+  })
+  servidor.listen(porta, '127.0.0.1')
 
   function emitir(evento, dados) {
     const linha = `event: ${evento}\ndata: ${JSON.stringify(dados)}\n\n`

@@ -75,12 +75,26 @@ def main() -> int:
     try:
         from piper import PiperVoice, SynthesisConfig
 
-        voz = PiperVoice.load(sys.argv[1])
-        taxa = voz.config.sample_rate
+        padrao = sys.argv[1]
+        vozes = {padrao: PiperVoice.load(padrao)}  # cache das vozes carregadas (as mais usadas ficam)
+        ordem = [padrao]
     except Exception as erro:  # noqa: BLE001
         print(json.dumps({"pronto": False, "erro": str(erro)}), flush=True)
         return 1
-    print(json.dumps({"pronto": True, "taxa": taxa}), flush=True)
+    print(json.dumps({"pronto": True, "taxa": vozes[padrao].config.sample_rate}), flush=True)
+
+    def obter_voz(caminho):
+        caminho = caminho or padrao
+        if caminho not in vozes:
+            vozes[caminho] = PiperVoice.load(caminho)
+            ordem.append(caminho)
+            while len(ordem) > 4:  # no máximo 4 vozes em memória
+                velha = ordem.pop(0)
+                if velha != padrao:
+                    vozes.pop(velha, None)
+                else:
+                    ordem.append(velha)
+        return vozes[caminho]
 
     for linha in sys.stdin:
         linha = linha.strip()
@@ -88,6 +102,8 @@ def main() -> int:
             continue
         try:
             p = json.loads(linha)
+            voz = obter_voz(p.get("modelo"))
+            taxa = voz.config.sample_rate
             altura = float(p.get("altura") or 0)
             config = SynthesisConfig(
                 length_scale=float(p.get("escala") or 1.0) * (2 ** (altura / 12.0)),

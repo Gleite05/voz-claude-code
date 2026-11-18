@@ -1,20 +1,39 @@
-# Voz para o Claude Code 🔊🇵🇹
+<p align="center"><img src=".claude-plugin/icon.png" width="96" alt=""></p>
 
-Um plugin para o [Claude Code](https://code.claude.com) que **narra em voz alta, em português de Portugal e em tempo real**, o que o Claude está a fazer e o que te está a escrever:
+<h1 align="center">Voz para o Claude Code</h1>
 
-- 🛠️ **O que está a fazer**: «A editar config.ts», «A usar o git», «A ligar a um servidor remoto», «A pesquisar na internet»…
-- 💬 **O que escreve**: lê as respostas **enquanto vão aparecendo no ecrã**, sem blocos de código, tabelas, links nem caminhos compridos.
-- 🔔 **Quando precisa de ti**: «Preciso da tua autorização», «Tenho uma pergunta para ti», «O plano está pronto para aprovares».
-- 🗂️ **Várias sessões**: só a sessão onde escreveste por último fala tudo; as outras dizem apenas «A sessão de *pasta* terminou».
-- 🎚️ **Som afinável**: volume, altura (tom), equalizador de graves/médios/agudos e predefinições (natural, calma, clara, quente, rádio).
-- 🖥️ **Barra no Windows** ao estilo da barra de menus do macOS: a sessão, o que está a fazer, a legenda do que diz, as outras sessões, o contexto e um Centro de Controlo do som.
-- 💬 **Conversas na barra**: um avatar animado por conversa ativa, a última mensagem de cada uma, um aviso no canto quando acabam — e **respondes-lhes diretamente pela barra**.
+<p align="center">
+  <b>Português</b> · <a href="README.en.md">English</a> · <a href="README.es.md">Español</a>
+</p>
 
-**Gratuito e 100 % local.** Não precisa de conta, chave de API nem internet (só para instalar a voz uma vez). Nada do que o Claude escreve sai do teu computador.
+<p align="center">O Claude Code a falar contigo em <b>português de Portugal</b>, em tempo real — e uma barra no topo do Windows, ao estilo do macOS, para veres e responderes a todas as conversas.<br>Gratuito, local e sem contas.</p>
+
+<p align="center"><img src="docs/imagens/barra-escuro.png" alt="A barra no topo do ecrã"></p>
+
+## O que faz
+
+- 🗣️ **Diz o que o Claude está a fazer** — «A editar config.ts», «A correr o npm», «A ligar a um servidor remoto» — e **lê as respostas enquanto aparecem**, sem código, tabelas nem links.
+- 💬 **Conversas na barra** — um avatar animado por conversa (a rodar = a trabalhar, a pulsar = precisa de ti), a última mensagem de cada uma e uma caixa para **responder diretamente**.
+- 🛡️ **Aprovar permissões pela barra** — o pedido aparece num cartão com o comando exato: *Permitir* ou *Recusar*.
+- 🎤 **Falar com o Claude** — dita a resposta; o Whisper transcreve no teu PC.
+- 🌍 **Vozes de 11 idiomas** — instala mais vozes, escolhe uma voz e um tom para cada conversa, e as respostas noutro idioma usam a voz desse idioma.
+- 🌙 **Não incomodar** — um botão (ou um horário, ex.: 22:00 → 08:00) sem voz nem avisos.
+- 📊 **Tokens do dia** — gráfico dos últimos 7 dias e as conversas que mais gastaram.
+- 🎚️ **Som afinável** — volume, altura, equalizador e predefinições (natural, calma, clara, quente, rádio).
+
+| Conversas | Pedido de autorização e tokens | Centro de Controlo |
+| :-: | :-: | :-: |
+| <img src="docs/imagens/conversas-escuro.png" width="260" alt="Painel de conversas"> | <img src="docs/imagens/permissao.png" width="300" alt="Pedido de autorização"><br><br><img src="docs/imagens/tokens.png" width="300" alt="Tokens do dia"> | <img src="docs/imagens/centro-controlo.png" width="250" alt="Centro de Controlo do som"> |
+
+<p align="center"><img src="docs/imagens/barra-claro.png" alt="A barra em modo claro"></p>
+
+| Modo claro | Clique direito |
+| :-: | :-: |
+| <img src="docs/imagens/conversas-claro.png" width="280" alt="Conversas em modo claro"> | <img src="docs/imagens/clique-direito.png" width="210" alt="Menu do clique direito"> |
 
 ## Instalar
 
-No terminal (ou na caixa de mensagens do Claude Code, com `/plugin …`):
+Precisas do [Claude Code](https://code.claude.com) e do [Node.js 20+](https://nodejs.org). No terminal:
 
 ```bash
 claude plugin marketplace add Gleite05/voz-claude-code
@@ -24,133 +43,73 @@ claude plugin marketplace add Gleite05/voz-claude-code
 claude plugin install voz@voz
 ```
 
-Reinicia o Claude Code (ou corre `/reload-plugins`). A partir daí já fala com a voz do sistema.
-
-Para a **voz natural em português de Portugal** (recomendado), corre uma vez dentro do Claude Code:
+Reinicia o Claude Code e corre, dentro dele:
 
 ```
-/voz:instalar
+/voz:instalar tudo
 ```
 
-Isto cria um ambiente Python isolado em `~/.claude/voz/python`, instala o [Piper](https://github.com/OHF-Voice/piper1-gpl) e descarrega a voz «tugão» (pt-PT, ~63 MB), com verificação SHA-256. Demora um ou dois minutos.
+Isto instala a **voz portuguesa** (Piper + «tugão»), o **ditado** (Whisper) e, no Windows, a **barra**. Se não tiveres Python, o instalador descarrega o [uv](https://github.com/astral-sh/uv), que traz o seu próprio Python. Também podes instalar por partes: `/voz:instalar voz`, `/voz:instalar ouvir`, `/voz:barra instalar`.
 
-### Requisitos
+**Requisitos da barra:** Windows 10/11 com o WebView2 (já vem no Windows 11) e o .NET Framework 4.8 (vem no Windows). A barra é compilada no teu PC — não há executáveis neste repositório.
 
-- **Claude Code** recente (o tempo real usa o evento `MessageDisplay`; em versões sem ele, a voz lê a resposta final de uma vez).
-- **Node.js 18+** no `PATH` (é o que corre os ganchos).
-- Para a voz pt-PT natural: **Python 3.9+**. Sem Python, usa a voz do sistema:
-  - **Windows**: SAPI. Para ter uma voz pt-PT do sistema, instala a «Helia» em *Definições → Hora e idioma → Voz → Adicionar vozes → Português (Portugal)*.
-  - **macOS**: `say` (escolhe sozinho a «Joana» se existir).
-  - **Linux**: `espeak-ng` (`sudo apt install espeak-ng`), e `paplay`/`aplay` para o Piper.
+## Usar
 
-Testado em **Windows 11** (terminal e app de ambiente de trabalho do Claude). macOS e Linux estão implementados mas pouco testados.
+**Na barra:** clica no nome da conversa, nos avatares, no anel do contexto (tokens) ou no ⚟ (som). **Clique direito** em qualquer ponto: conversas, som, tokens, não incomodar, **posição** (topo, escondida, flutuante, esquerda, direita, fundo), **ecrã**, aspeto, definições e fechar. Na estrela: definições completas (módulos visíveis e ordem, vozes, horário de silêncio, arranque com o Windows / só com o Claude Code / à mão).
 
-## Comandos
+**Atalhos** (em qualquer lado): `Ctrl+Shift+Alt` + `V` falar · `P` pausar · `N` saltar · `C` conversas · `D` não incomodar.
+
+**Comandos:**
 
 | Comando | O que faz |
 | --- | --- |
-| `/voz:estado` | Diz se está ligada, que voz usa e as opções |
-| `/voz:ligar` / `/voz:desligar` | Liga ou desliga em todas as sessões |
-| `/voz:parar` | Cala a voz agora (continua ligada). Escrever uma mensagem nova também a cala |
-| `/voz:testar [texto]` | Diz uma frase de teste |
-| `/voz:velocidade 0.9` | Velocidade de 0.5 a 2.0 (predefinição 0.88, calma) |
-| `/voz:som` | Mostra o som; `/voz:som graves 3`, `altura -1`, `volume 0.8`, ou uma predefinição: `/voz:som calma` |
-| `/voz:barra instalar` | Instala e abre a barra do Windows (ver abaixo) |
-| `/voz:barra ligar|desligar` | Abre ou fecha a barra |
-| `/voz:barra posicao …` | `topo`, `escondida`, `flutuante`, `esquerda`, `direita` ou `fundo` |
-| `/voz:barra arranque …` | `windows` (com o Windows), `claude` (só com o Claude Code) ou `mao` (só à mão) |
-| `/voz:modo tudo\|acoes\|respostas` | Tudo, só o que está a fazer, ou só o que escreve |
-| `/voz:sessao ativa\|todas` | Só a sessão ativa fala tudo (predefinição), ou todas |
-| `/voz:motor auto\|piper\|sistema` | Força a voz do sistema ou o Piper |
-| `/voz:instalar` | Instala a voz neural pt-PT |
+| `/voz:estado` | Estado e opções |
+| `/voz:ligar` · `/voz:desligar` · `/voz:parar` | Liga, desliga, cala agora |
+| `/voz:silencio ligar\|desligar\|horario 22:00 08:00` | Não incomodar |
+| `/voz:som [graves 3 \| altura -1 \| calma …]` | Afinar o som |
+| `/voz:vozes [catalogo pt \| instalar <id> \| padrao <id>]` | Vozes e idiomas |
+| `/voz:modo tudo\|acoes\|respostas` | O que é dito |
+| `/voz:barra ligar\|desligar\|posicao …\|arranque …` | A barra |
+| `/voz:testar [texto]` | Frase de teste |
 
-Fora do Claude Code: `node <pasta-do-plugin>/scripts/voz.js estado` (e os mesmos subcomandos).
-
-As opções ficam em `~/.claude/voz/config.json`:
-
-```json
-{
-  "ligado": true,
-  "anunciarAcoes": true,
-  "lerRespostas": true,
-  "velocidade": 0.88,
-  "ruido": 0.4,
-  "ruidoDuracao": 0.5,
-  "volume": 1.0,
-  "altura": 0,
-  "graves": 0,
-  "medios": 0,
-  "agudos": 0,
-  "maxCaracteres": 1200,
-  "soSessaoAtiva": true,
-  "avisarOutrasSessoes": true,
-  "motor": "auto",
-  "vozSistema": "",
-  "pronuncias": { "Claude": "Cláude" }
-}
-```
-
-`ruido` e `ruidoDuracao` afinam o Piper (valores mais baixos = voz mais estável e menos metálica). `maxCaracteres` é o máximo lido por mensagem (o resto fica só no ecrã). `vozSistema` escolhe uma voz do sistema pelo nome (por exemplo `"Helia"`). `pronuncias` diz como ler certas palavras (só no áudio; a legenda mantém o original) — por omissão «Claude» lê-se «Cláude».
-
-## A barra (Windows)
-
-```
-/voz:barra instalar
-```
-
-Uma barra fina e translúcida, ao estilo da barra de menus do macOS:
-
-- **À esquerda:** ✻ **Claude** · a sessão (clica para ver todas, a legenda e os tokens) · o que está a fazer agora · a legenda do que está a dizer.
-- **À direita:** a onda (quando fala; clica para saltar a frase) · pontos das outras sessões (verde a trabalhar, amarelo precisa de ti, cinza parada) · anel do contexto usado · ⚟ Centro de Controlo do som · tempo do pedido.
-- **Aspeto:** o botão ◐/☀/☾ na barra alterna entre Automático (segue o Windows), Claro e Escuro; também está no Centro de Controlo. O vidro muda de tinta com o tema.
-- **Clicar na estrela:** posição (topo, escondida, flutuante, esquerda, direita, fundo por cima da barra do Windows), módulos visíveis (liga, desliga e arrasta para ordenar), arranque e tema (segue o Windows, escuro ou claro).
-
-Como é feita: um anfitrião pequeno em C# (`barra/anfitriao/VozBarra.cs`) compilado no teu PC pelo `csc.exe` que já vem com o .NET Framework 4.8, com a WebView2 do Windows 11 a desenhar a interface (`barra/`). Encaixa no ecrã como a barra de tarefas (as janelas maximizadas não a tapam) e usa o desfoque acrílico do Windows. O instalador só descarrega o kit WebView2 do NuGet da Microsoft (~9 MB, SHA-512 verificado). Se o vidro der problemas, cria o ficheiro vazio `~/.claude/voz/barra/sem-vidro` para um fundo opaco.
-
-A interface fala com o servidor da voz em `http://127.0.0.1:47821` (só local, com token). O arranque «com o Windows» usa uma entrada em `HKCU…Run` (sem administrador); `/voz:barra arranque mao` remove-a.
-
-### Conversas e respostas pela barra
-
-- **Avatares**: um por conversa, com a inicial do título. A rodar = a trabalhar; a pulsar = precisa de ti.
-- **Painel «Conversas»** (clica nos avatares): título de cada conversa, o que está a fazer, a última resposta do Claude, o teu último pedido e uma caixa para responder (Enter envia, Shift+Enter muda de linha).
-- **Aviso**: quando uma conversa termina ou precisa de ti, aparece um aviso no canto com a última mensagem e a caixa de resposta. Não rouba o foco e fecha sozinho ao fim de 12 s (desliga-o na estrela → «Avisar quando uma conversa termina»).
-
-Como a resposta chega ao Claude: no fim de cada resposta corre um gancho `Stop` com `asyncRewake` (`scripts/escuta.js`) que fica à escuta em segundo plano (até 12 h). Quando respondes na barra, ele entrega o texto e o Claude Code acorda o Claude com ele, mesmo com a conversa parada. Se a conversa ainda estiver a trabalhar, a resposta fica em fila e é entregue mal ela acabe o passo atual. Se escreveres na própria conversa, a escuta sai calada. Na conversa, a tua resposta aparece como uma mensagem de sistema do gancho (não como uma bolha normal tua).
+As opções ficam em `~/.claude/voz/config.json` (ex.: `pronuncias` para corrigir a pronúncia de palavras — «Claude» lê-se «Cláude»).
 
 ## Como funciona
 
-```
-Claude Code ──(ganchos: PreToolUse, MessageDisplay, Stop, Notification…)──▶ gancho.js
-                                                                              │ pipe local
-                                                                              ▼
-                                     servidor.js (um por utilizador, arranca sozinho, sai após 10 min parado)
-                                       • decide o que dizer (português, sem código nem tabelas)
-                                       • uma voz de cada vez; anúncios velhos ou repetidos são saltados
-                                       • sintetiza a frase seguinte enquanto a atual toca
-                                                                              │
-                                                     Piper «tugão» (Python)  ou  voz do sistema
-```
+- **Ganchos** do Claude Code (`PreToolUse`, `MessageDisplay` para o texto em tempo real, `Stop`, `Notification`, `PermissionRequest`) enviam os eventos para um **servidor local** (um por utilizador, por um pipe; arranca sozinho).
+- O servidor decide o que dizer, sintetiza com o **Piper** (a frase seguinte prepara-se enquanto a atual toca) e serve a barra em `http://127.0.0.1:47821` (só local, com token).
+- **Responder pela barra** usa um gancho `Stop` com `asyncRewake`: no fim de cada resposta fica à escuta e, quando escreves na barra, o Claude acorda com a tua mensagem. Na conversa, a tua resposta aparece como mensagem do gancho.
+- **Permissões:** na app do Claude, o gancho corre ao lado do diálogo normal (vale quem decidir primeiro). No terminal não espera (para não atrasar o diálogo).
+- **A barra** é um anfitrião pequeno em C# (`barra/anfitriao/VozBarra.cs`) com a WebView2, encaixado no ecrã como a barra de tarefas, com o vidro acrílico do Windows. Recompila-se sozinha quando o plugin atualiza.
 
-- Os ganchos são **assíncronos**: nunca atrasam o Claude nem o ecrã.
-- O texto é lido a partir do evento `MessageDisplay`, que recebe as linhas à medida que são mostradas.
-- Nas sessões sem ninguém a ver (tarefas agendadas) fica calado. Define `VOZ_SILENCIO=1` para calar uma sessão em particular.
-- Os subagentes não falam (só a sessão principal).
+## Privacidade e segurança
 
-## Privacidade
+- Tudo corre no teu computador: **nenhum texto, áudio ou dado sai do PC**. Sem telemetria.
+- Acessos à rede só nos instaladores: `piper-tts`, `faster-whisper` e `sounddevice` (PyPI), vozes (Hugging Face, `rhasspy/piper-voices`, MD5 verificado), modelo Whisper (Hugging Face), `uv` (GitHub, SHA-256 verificado) e o kit WebView2 (NuGet, SHA-512 verificado).
+- O servidor local só aceita ligações de `127.0.0.1`, exige um token aleatório guardado na tua pasta de utilizador e verifica o cabeçalho `Host` (contra *DNS rebinding*).
+- A barra lê do histórico local (`~/.claude/projects`) apenas o título das conversas e a contagem de tokens.
 
-Tudo corre no teu computador. Os únicos acessos à rede são o `/voz:instalar`, que descarrega o `piper-tts` do PyPI e a voz do Hugging Face (`rhasspy/piper-voices`), e o `/voz:barra instalar`, que descarrega o kit WebView2 do NuGet. Não há telemetria. A barra lê do histórico local das sessões (`~/.claude/projects`) só o modelo e a contagem de tokens.
+## Limites conhecidos
+
+- A voz pt-PT é a melhor gratuita e local que existe hoje («tugão», Piper); não é tão natural como uma voz paga.
+- A barra é só para Windows; a voz funciona em macOS e Linux mas está pouco testada.
+- Cada conversa parada deixa um pequeno processo `node` à escuta de respostas (até 12 h).
 
 ## Desinstalar
+
+```
+/voz:barra desinstalar
+```
 
 ```bash
 claude plugin uninstall voz@voz
 ```
 
-Antes, se instalaste a barra: `/voz:barra desinstalar`. Depois apaga a pasta `~/.claude/voz` (voz, Python, barra e configuração).
+Depois apaga a pasta `~/.claude/voz` (vozes, Python, barra e configuração).
 
-## Créditos e licenças
+## Licença e créditos
 
-- Este plugin: [MIT](LICENSE).
-- [Piper](https://github.com/OHF-Voice/piper1-gpl) (GPL-3.0), instalado à parte pelo `/voz:instalar`, não incluído neste repositório.
-- [WebView2](https://www.nuget.org/packages/Microsoft.Web.WebView2) (Microsoft), descarregado pelo `/voz:barra instalar`, não incluído neste repositório.
-- Voz [«tugão»](https://huggingface.co/rhasspy/piper-voices/tree/main/pt/pt_PT/tug%C3%A3o/medium) (dados CC0).
+- Este projeto: [MIT](LICENSE) © 2026 Gleite05.
+- [Piper](https://github.com/OHF-Voice/piper1-gpl) (GPL-3.0), [faster-whisper](https://github.com/SYSTRAN/faster-whisper) (MIT), [uv](https://github.com/astral-sh/uv) (MIT/Apache-2.0) e [WebView2](https://www.nuget.org/packages/Microsoft.Web.WebView2) (Microsoft) — descarregados pelos instaladores, não incluídos neste repositório.
+- Vozes do [piper-voices](https://huggingface.co/rhasspy/piper-voices) (cada voz tem a sua licença; a «tugão» usa dados CC0).
+- Não é um produto oficial da Anthropic.

@@ -11,6 +11,10 @@ const texto = require('./texto')
 const estado = require('./estado')
 const { criarMotor } = require('./motores')
 const { arrancarWeb, PASTA_BARRA, versao } = require('./web')
+const vozes = require('./vozes')
+const uso = require('./uso')
+const ouvido = require('./ouvido')
+const compilarBarra = require('./compilar-barra')
 
 const OCIOSO_MS = 10 * 60 * 1000
 const ACAO_VELHA_MS = 8000 // um anúncio que esperou mais do que isto já não interessa
@@ -33,6 +37,11 @@ let aoRetomar = []
 let web = null
 const escutas = new Map() // sessão -> socket do gancho escuta.js (asyncRewake) à espera de uma resposta
 const pendentes = new Map() // sessão -> [textos] escritos na barra enquanto a sessão trabalhava
+const permissoes = new Map() // id -> { socket, sessao, ferramenta, resumo, descricao, criado }
+const ordemSessoes = [] // pela ordem em que apareceram (para dar um tom diferente a cada conversa)
+let aOuvir = false
+
+const { emSilencio } = require('./comum')
 
 function publicar() {
   if (web) web.publicar()
@@ -63,9 +72,9 @@ function obterMotor() {
 
 // ---------- fila ----------
 
-function enfileirar(tipo, frase, sessao) {
+function enfileirar(tipo, frase, sessao, modelo) {
   if (!frase) return
-  fila.push({ tipo, texto: frase, sessao, criado: Date.now() })
+  fila.push({ tipo, texto: frase, sessao, criado: Date.now(), modelo })
   bombear()
 }
 
@@ -98,7 +107,9 @@ async function bombear() {
   }
   const preparar = item => {
     const cfg = lerConfig()
-    return m.preparar(texto.pronunciar(item.texto, cfg.pronuncias), cfg).catch(erro => (log(`preparar: ${erro.message}`), null))
+    // Voz da frase: a escolhida para a conversa (ou uma variação de tom automática) e o idioma do texto.
+    const v = item.modelo ? { modelo: item.modelo, altura: 0 } : vozes.escolher(cfg, item.sessao, item.texto, item.tipo, ordemSessoes)
+    return m.preparar(texto.pronunciar(item.texto, cfg.pronuncias), cfg, v).catch(erro => (log(`preparar: ${erro.message}`), null))
   }
   try {
     let atual = tirarProximo()
@@ -211,6 +222,7 @@ function tratarEvento(msg) {
   const cfg = lerConfig()
   if (DEPURAR) log(`evento ${msg.evento} sessão=${String(msg.sessao).slice(0, 8)}${msg.ferramenta ? ' ' + msg.ferramenta : ''}${msg.delta !== undefined ? ` #${msg.index}${msg.final ? ' final' : ''} ${JSON.stringify(String(msg.delta).slice(0, 60))}` : ''}`)
   estado.registar(msg) // a barra vê tudo, mesmo com a voz desligada
+  if (msg.sessao && !msg.agente && !ordemSessoes.includes(msg.sessao)) ordemSessoes.push(msg.sessao)
   if (msg.evento === 'UserPromptSubmit' && !msg.agente) {
     sessaoFoco = msg.sessao
     largarEscuta(msg.sessao) // escreveste na conversa: a escuta da barra já não é precisa
@@ -220,7 +232,7 @@ function tratarEvento(msg) {
     pendentes.delete(msg.sessao)
   }
   if (msg.evento === 'SessionStart') talvezAbrirBarra(cfg)
-  if (!cfg.ligado) return
+  if (!cfg.ligado || emSilencio(cfg) || aOuvir) return
   if (msg.agente) return // subagentes ficam calados
   const s = msg.sessao
 
@@ -383,28 +395,138 @@ function responder(id, texto) {
   return { ok: true, entregue: false }
 }
 
+// ---------- permissões pela barra ----------
+
+function registarPermissao(p, socket) {
+  if (!p || !p.id) return
+  permissoes.set(p.id, { ...p, socket, criado: Date.now() })
+  log(`pedido de autorização (${p.ferramenta}) da sessão ${String(p.sessao).slice(0, 8)}`)
+  publicar()
+  // Se o Claude Code decidir por outro lado (diálogo da app) ou desistir, o gancho fecha a ligação.
+  socket.on('close', () => {
+    if (permissoes.delete(p.id)) publicar()
+  })
+}
+
+function decidirPermissao(id, decisao) {
+  const p = permissoes.get(id)
+  if (!p) return { ok: false, erro: 'este pedido já foi respondido' }
+  if (decisao !== 'allow' && decisao !== 'deny') return { ok: false, erro: 'decisão inválida' }
+  permissoes.delete(id)
+  try {
+    p.socket.write(JSON.stringify({ decisao }) + '\n')
+  } catch {}
+  log(`autorização ${decisao === 'allow' ? 'dada' : 'recusada'} pela barra (${p.ferramenta})`)
+  publicar()
+  return { ok: true }
+}
+
+// ---------- ditado (Whisper) ----------
+
+async function ouvir(ordem, sessao) {
+  const cfg = lerConfig()
+  if (!ouvido.instalado()) return { ok: false, erro: 'O ditado não está instalado: corre /voz:instalar ouvir.' }
+  if (ordem === 'iniciar') {
+    pararTudo() // não grava a própria voz
+    aOuvir = true
+    publicar()
+    const r = await ouvido.gravar(cfg.ditadoModelo)
+    if (!r.ok) {
+      aOuvir = false
+      publicar()
+    }
+    return r
+  }
+  if (ordem === 'cancelar') {
+    aOuvir = false
+    publicar()
+    return ouvido.cancelar(cfg.ditadoModelo)
+  }
+  // parar: transcreve e entrega o texto à barra (que o mostra para confirmares).
+  if (web) web.emitir('ditado', { aTranscrever: true, sessao: sessao || sessaoFoco })
+  const r = await ouvido.parar(cfg.ditadoIdioma || 'pt', cfg.ditadoModelo)
+  aOuvir = false
+  publicar()
+  if (web) web.emitir('ditado', { texto: (r && r.texto) || '', erro: r && !r.ok ? r.erro : null, sessao: sessao || sessaoFoco })
+  return r
+}
+
+// ---------- vozes ----------
+
+async function pedidoVozes(p) {
+  switch (p.op) {
+    case 'catalogo':
+      return { ok: true, vozes: await vozes.listarCatalogo() }
+    case 'descarregar':
+      vozes
+        .descarregar(p.id, pct => web && web.emitir('progresso-voz', { id: p.id, pct }))
+        .then(() => {
+          if (web) web.emitir('progresso-voz', { id: p.id, pct: 100, fim: true })
+          publicar()
+        })
+        .catch(erro => web && web.emitir('progresso-voz', { id: p.id, erro: erro.message }))
+      return { ok: true, aComecar: true }
+    case 'remover':
+      if (vozes.caminhoModelo(p.id) === vozes.caminhoModelo(lerConfig().vozPadrao)) return { ok: false, erro: 'não podes apagar a voz principal' }
+      vozes.remover(p.id)
+      publicar()
+      return { ok: true }
+    case 'padrao':
+      if (!vozes.caminhoModelo(p.id)) return { ok: false, erro: 'voz não instalada' }
+      escreverConfig({ vozPadrao: p.id })
+      publicar()
+      return { ok: true }
+    case 'sessao':
+      vozes.definirVozSessao(p.sessao, p.voz || null, p.altura || 0)
+      publicar()
+      return { ok: true }
+    case 'experimentar': {
+      const m = vozes.caminhoModelo(p.id)
+      if (!m) return { ok: false, erro: 'voz não instalada' }
+      pararTudo()
+      const frases = { pt: 'Olá, eu sou o Claude Code.', en: 'Hello, I am Claude Code.', es: 'Hola, soy Claude Code.', fr: 'Bonjour, je suis Claude Code.', de: 'Hallo, ich bin Claude Code.', it: 'Ciao, sono Claude Code.' }
+      enfileirar('fala', frases[vozes.linguaDe(p.id).slice(0, 2)] || frases.en, null, m)
+      return { ok: true }
+    }
+  }
+  return { ok: false, erro: 'operação desconhecida' }
+}
+
 // ---------- barra ----------
 
 const CHAVES_BARRA = new Set([
   'ligado', 'anunciarAcoes', 'lerRespostas', 'velocidade', 'volume', 'altura', 'graves', 'medios', 'agudos',
   'soSessaoAtiva', 'avisarOutrasSessoes', 'barraPosicao', 'barraModulos', 'barraArranque', 'barraTema',
-  'barraAvisos', 'respostasPelaBarra',
+  'barraAvisos', 'respostasPelaBarra', 'naoIncomodar', 'silencioHorario', 'vozPorConversa', 'idiomaAuto',
+  'vozPadrao', 'aprovarPelaBarra', 'barraEcra', 'ditadoIdioma', 'ditadoModelo',
 ])
 
 function estadoParaBarra() {
   const c = lerConfig()
   const cfg = {}
   for (const k of CHAVES_BARRA) cfg[k] = c[k]
+  const sessoes = estado.lista()
+  const titulos = {}
+  for (const s of sessoes) titulos[s.id] = s.titulo
   return {
     versao: versao(),
     agora: Date.now(),
     cfg,
     motor: motor ? motor.nome : null,
-    sessoes: estado.lista(),
+    sessoes: sessoes.map(s => ({ ...s, voz: vozes.vozDaSessao(s.id) })),
     foco: sessaoFoco,
     falando,
     pausado,
+    silencio: emSilencio(c),
+    aOuvir,
     naFila: fila.length,
+    permissoes: [...permissoes.values()].map(({ socket, ...p }) => p),
+    vozes: {
+      instaladas: vozes.instaladas().map(({ modelo, ...v }) => v),
+      padrao: c.vozPadrao,
+      aDescarregar: Object.fromEntries(vozes.emCurso),
+    },
+    uso: uso.resumo(titulos),
   }
 }
 
@@ -414,7 +536,7 @@ function pedidoDaBarra(p) {
     for (const [k, val] of Object.entries(p.valores)) if (CHAVES_BARRA.has(k)) v[k] = val
     const antes = lerConfig()
     escreverConfig(v)
-    if (v.ligado === false) pararTudo()
+    if (v.ligado === false || v.naoIncomodar === true) pararTudo()
     if (v.barraArranque && v.barraArranque !== antes.barraArranque) aplicarArranque(v.barraArranque)
     publicar()
     return { ok: true }
@@ -425,6 +547,9 @@ function pedidoDaBarra(p) {
     return r
   }
   if (p.acao === 'responder') return responder(p.sessao, p.texto)
+  if (p.acao === 'permissao') return decidirPermissao(p.id, p.decisao)
+  if (p.acao === 'ouvir') return ouvir(p.ordem, p.sessao)
+  if (p.acao === 'vozes') return pedidoVozes(p)
   if (p.acao === 'foco' && p.sessao) {
     sessaoFoco = p.sessao
     publicar()
@@ -463,6 +588,7 @@ function aplicarArranque(modo) {
 function sair() {
   try {
     if (motor) motor.fechar()
+    ouvido.fechar()
   } catch {}
   setTimeout(() => process.exit(0), 50)
 }
@@ -503,6 +629,7 @@ function arrancar() {
         }
         try {
           if (msg.escuta) registarEscuta(msg, socket)
+          else if (msg.permissao) registarPermissao(msg.permissao, socket)
           else if (msg.controlo) tratarControlo(msg, r => socket.write(JSON.stringify(r) + '\n'))
           else tratarEvento(msg)
         } catch (erro) {
@@ -542,6 +669,9 @@ function arrancar() {
       lerConfig(),
     )
     estado.aoMudar(publicar)
+    uso.arrancarVigia(publicar)
+    // Uma atualização do plugin pode trazer uma barra nova: recompila-a sozinho.
+    setTimeout(() => compilarBarra.recompilarSePreciso().catch(() => {}), 2000)
   })
 
   setInterval(() => {

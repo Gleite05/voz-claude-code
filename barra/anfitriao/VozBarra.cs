@@ -21,7 +21,9 @@ namespace VozBarra
 {
     static class Programa
     {
-        public static readonly string Pasta = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".claude", "voz");
+        public static readonly string Pasta = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("VOZ_DIR"))
+            ? Environment.GetEnvironmentVariable("VOZ_DIR")
+            : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".claude", "voz");
         public static readonly string PastaBarra = Path.Combine(Pasta, "barra");
         public static readonly JavaScriptSerializer Json = new JavaScriptSerializer();
         /// Sem vidro: fundo opaco (para Windows sem acrílico, ou se o vidro der problemas).
@@ -280,6 +282,7 @@ namespace VozBarra
 
         protected override void AoCarregar()
         {
+            Enviar(barra.ListaEcras());
             if (pendente == null) return;
             var m = pendente;
             pendente = null;
@@ -323,7 +326,7 @@ namespace VozBarra
             var ecra = Screen.FromRectangle(ancora).Bounds;
             int x, y;
             int folga = (int)(4 * Escala);
-            bool aviso = Atual.StartsWith("aviso:");
+            bool aviso = Barra.EAviso(Atual);
             switch (barra.Posicao)
             {
                 case "fundo": x = aviso ? ancora.Right - w - folga : ancora.Left; y = ancora.Top - h - folga; break;
@@ -371,6 +374,7 @@ namespace VozBarra
             menu.Show(); // carrega a página do menu já, estacionada fora do ecrã
             menu.Estacionar();
             AplicarPosicao(Posicao);
+            RegistarAtalhos();
             relogio.Start();
         }
 
@@ -379,7 +383,45 @@ namespace VozBarra
             return (int)Math.Round((vertical ? 40 : 30) * Escala);
         }
 
-        Rectangle Ecra { get { return Screen.PrimaryScreen.Bounds; } }
+        int ecraEscolhido = -1; // -1 = principal
+
+        Rectangle Ecra
+        {
+            get
+            {
+                var todos = Screen.AllScreens;
+                if (ecraEscolhido >= 0 && ecraEscolhido < todos.Length) return todos[ecraEscolhido].Bounds;
+                return Screen.PrimaryScreen.Bounds;
+            }
+        }
+
+        /// Lista de monitores para o menu (largura, altura, principal).
+        public object ListaEcras()
+        {
+            var l = new List<object>();
+            foreach (var s in Screen.AllScreens)
+                l.Add(new Dictionary<string, object> { { "largura", s.Bounds.Width }, { "altura", s.Bounds.Height }, { "principal", s.Primary } });
+            return new Dictionary<string, object> { { "tipo", "ecras" }, { "lista", l } };
+        }
+
+        // ---------- atalhos globais (Ctrl+Shift+Alt + tecla) ----------
+        static readonly string[] Atalhos = { "falar", "pausa", "saltar", "conversas", "silencio" };
+        static readonly Keys[] TeclasAtalhos = { Keys.V, Keys.P, Keys.N, Keys.C, Keys.D };
+
+        void RegistarAtalhos()
+        {
+            for (int i = 0; i < Atalhos.Length; i++)
+            {
+                // MOD_ALT 1 | MOD_CONTROL 2 | MOD_SHIFT 4 | MOD_NOREPEAT 0x4000
+                if (!Nativo.RegisterHotKey(Handle, 100 + i, 0x1 | 0x2 | 0x4 | 0x4000, (uint)TeclasAtalhos[i]))
+                    Registo.Escrever("atalho ocupado: Ctrl+Shift+Alt+" + TeclasAtalhos[i]);
+            }
+        }
+
+        void RemoverAtalhos()
+        {
+            for (int i = 0; i < Atalhos.Length; i++) Nativo.UnregisterHotKey(Handle, 100 + i);
+        }
 
         public void AplicarPosicao(string p)
         {
@@ -463,7 +505,16 @@ namespace VozBarra
 
         protected override void WndProc(ref Message m)
         {
-            if (appBarRegistada && m.Msg == (int)mensagemAppBar)
+            if (m.Msg == 0x0312) // WM_HOTKEY
+            {
+                int i = m.WParam.ToInt32() - 100;
+                if (i >= 0 && i < Atalhos.Length)
+                {
+                    if (Posicao == "escondida") mostrarAte = DateTime.Now.AddSeconds(4);
+                    Enviar(new Dictionary<string, object> { { "tipo", "atalho" }, { "qual", Atalhos[i] } });
+                }
+            }
+            else if (appBarRegistada && m.Msg == (int)mensagemAppBar)
             {
                 int aviso = m.WParam.ToInt32();
                 if (aviso == Nativo.ABN_POSCHANGED) PosicionarAppBar(Posicao);
@@ -542,6 +593,10 @@ namespace VozBarra
                     var p = Texto(msg, "valor");
                     if (p != "" && p != Posicao) AplicarPosicao(p);
                     break;
+                case "ecra":
+                    int ec = (int)Numero(msg, "valor");
+                    if (ec != ecraEscolhido) { ecraEscolhido = ec; RemoverAppBar(); AplicarPosicao(Posicao); }
+                    break;
                 case "abrir":
                     object at;
                     bool ativar = !(msg.TryGetValue("ativar", out at) && at is bool && !(bool)at);
@@ -579,11 +634,17 @@ namespace VozBarra
             }
         }
 
+        /// Cartões que aparecem sozinhos no canto (aviso de conversa, pedido de autorização, ditado).
+        public static bool EAviso(string m)
+        {
+            return m.StartsWith("aviso:") || m.StartsWith("perm:") || m.StartsWith("ditado:");
+        }
+
         void AbrirMenu(string qual, double x, double y, double w, double h, bool ativar)
         {
-            bool aviso = qual.StartsWith("aviso:");
+            bool aviso = EAviso(qual);
             // Um aviso nunca tapa um menu que abriste à mão.
-            if (aviso && menu.Aberto && !menu.Atual.StartsWith("aviso:")) return;
+            if (aviso && menu.Aberto && !EAviso(menu.Atual)) return;
             if (!aviso && menu.Aberto && menu.Atual == qual) { menu.Esconder(); return; }
             // O clique que fechou o menu (perda de foco) não o deve voltar a abrir logo a seguir.
             if (!menu.Aberto && menu.Atual == qual && (DateTime.Now - menu.EscondidoEm).TotalMilliseconds < 250) return;
@@ -605,8 +666,14 @@ namespace VozBarra
             Application.Exit();
         }
 
+        protected override void AoCarregar()
+        {
+            Enviar(ListaEcras());
+        }
+
         protected override void OnFormClosing(FormClosingEventArgs e)
         {
+            RemoverAtalhos();
             RemoverAppBar();
             base.OnFormClosing(e);
         }
@@ -640,6 +707,8 @@ namespace VozBarra
         [DllImport("shell32.dll")] public static extern UIntPtr SHAppBarMessage(uint msg, ref APPBARDATA data);
         [DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern uint RegisterWindowMessage(string nome);
         [DllImport("user32.dll")] public static extern bool ReleaseCapture();
+        [DllImport("user32.dll")] public static extern bool RegisterHotKey(IntPtr h, int id, uint mods, uint vk);
+        [DllImport("user32.dll")] public static extern bool UnregisterHotKey(IntPtr h, int id);
         [DllImport("user32.dll")] public static extern IntPtr SendMessage(IntPtr h, int msg, IntPtr w, IntPtr l);
         [DllImport("user32.dll")] public static extern uint GetDpiForWindow(IntPtr h);
         [DllImport("user32.dll")] public static extern bool SetProcessDpiAwarenessContext(IntPtr ctx);

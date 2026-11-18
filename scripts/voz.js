@@ -76,63 +76,114 @@ function hash(f) {
   return crypto.createHash('sha256').update(fs.readFileSync(f)).digest('hex')
 }
 
-async function instalar() {
-  garantirPasta()
-  garantirPasta(CAMINHOS.vozes)
-  dizer('Instalação da voz portuguesa (Piper + «tugão», tudo local e gratuito)')
+// uv (Astral) traz o seu próprio Python: assim a voz funciona mesmo sem Python instalado.
+const UV = {
+  versao: '0.13.6',
+  ficheiros: {
+    'win32-x64': ['uv-x86_64-pc-windows-msvc.zip', 'a2a8820d5eea32f08ef467ef3b7f66883a9b076d5737a2fc2fbb5f458d1bb50f'],
+    'linux-x64': ['uv-x86_64-unknown-linux-gnu.tar.gz', 'f29c3e94ffabd7e6f3ba521dba169a9b7ec12100bf3257087f0f24f6123f3645'],
+    'linux-arm64': ['uv-aarch64-unknown-linux-gnu.tar.gz', '229e194255c7958d86d56e8790d969a6f74736592133f0dfd0076f754c642c1d'],
+    'darwin-arm64': ['uv-aarch64-apple-darwin.tar.gz', '60fbd5c8a1ed681845eea28d9d622fcde03c51e91a43465b64a1e17db1ed3472'],
+    'darwin-x64': ['uv-x86_64-apple-darwin.tar.gz', '63ba17fdda55ad1a230d4b37fc6017ffa10c23688c83818bd3bfdf914c652a02'],
+  },
+}
+const PASTA_UV = path.join(CAMINHOS.pasta, 'uv')
+const UV_EXE = path.join(PASTA_UV, WIN ? 'uv.exe' : 'uv')
 
-  if (!fs.existsSync(CAMINHOS.pythonExe)) {
-    const py = encontrarPython()
-    if (!py) {
-      dizer('Não encontrei o Python 3.9 ou mais recente. Instala-o (https://www.python.org/downloads/) e volta a correr /voz:instalar.')
-      dizer('Até lá, a voz usa a voz do sistema.')
-      process.exitCode = 1
-      return
-    }
-    dizer(`1/3 A criar o ambiente Python (${py[2]}) em ${CAMINHOS.python}`)
+async function obterUv() {
+  if (fs.existsSync(UV_EXE)) return UV_EXE
+  const par = UV.ficheiros[`${process.platform}-${process.arch}`]
+  if (!par) return null
+  const [nome, sha256] = par
+  dizer(`  sem Python no sistema: a descarregar o uv ${UV.versao} (traz o seu próprio Python)…`)
+  const r = await fetch(`https://github.com/astral-sh/uv/releases/download/${UV.versao}/${nome}`)
+  if (!r.ok) throw new Error(`download do uv falhou (${r.status})`)
+  const dados = Buffer.from(await r.arrayBuffer())
+  if (crypto.createHash('sha256').update(dados).digest('hex') !== sha256) throw new Error('o uv descarregado não tem o SHA-256 esperado')
+  garantirPasta(PASTA_UV)
+  const arquivo = path.join(PASTA_UV, nome)
+  fs.writeFileSync(arquivo, dados)
+  const tar = WIN ? path.join(process.env.WINDIR || 'C:\\Windows', 'System32', 'tar.exe') : 'tar'
+  const ex = spawnSync(tar, ['-xf', arquivo, '-C', PASTA_UV, ...(WIN ? [] : ['--strip-components=1'])], { windowsHide: true })
+  fs.rmSync(arquivo, { force: true })
+  if (ex.status !== 0 || !fs.existsSync(UV_EXE)) throw new Error('não consegui extrair o uv')
+  return UV_EXE
+}
+
+/** Garante o ambiente Python isolado em ~/.claude/voz/python (Python do sistema ou do uv). */
+async function ambientePython() {
+  if (fs.existsSync(CAMINHOS.pythonExe)) return
+  const py = encontrarPython()
+  if (py) {
+    dizer(`  a criar o ambiente Python (${py[2]}) em ${CAMINHOS.python}`)
     const r = spawnSync(py[0], [...py[1], '-m', 'venv', CAMINHOS.python], { stdio: 'inherit' })
     if (r.status !== 0) throw new Error('não foi possível criar o ambiente Python (venv)')
-  } else {
-    dizer('1/3 O ambiente Python já existe')
+    return
   }
+  const uv = await obterUv()
+  if (!uv) throw new Error('não há Python 3.9+ nem uv para este sistema — instala o Python (https://www.python.org/downloads/)')
+  dizer('  a criar o ambiente Python 3.12 com o uv…')
+  const r = spawnSync(uv, ['venv', '--python', '3.12', '--seed', CAMINHOS.python], { stdio: 'inherit', env: { ...process.env, UV_PYTHON_INSTALL_DIR: path.join(PASTA_UV, 'python') } })
+  if (r.status !== 0) throw new Error('o uv não conseguiu criar o ambiente Python')
+}
 
+function pipInstalar(pacotes) {
+  const r = spawnSync(CAMINHOS.pythonExe, ['-m', 'pip', 'install', '--disable-pip-version-check', '-q', ...pacotes], { stdio: 'inherit' })
+  if (r.status !== 0) throw new Error(`o pip não conseguiu instalar: ${pacotes.join(' ')}`)
+}
+
+async function instalarVoz() {
+  garantirPasta()
+  garantirPasta(CAMINHOS.vozes)
+  dizer('Voz portuguesa (Piper + «tugão», local e gratuita)')
+  dizer('1/3 Ambiente Python')
+  await ambientePython()
   dizer(`2/3 A instalar o piper-tts ${VERSAO_PIPER} (pode demorar um ou dois minutos)`)
-  const pip = spawnSync(
-    CAMINHOS.pythonExe,
-    ['-m', 'pip', 'install', '--disable-pip-version-check', '-q', `piper-tts==${VERSAO_PIPER}`],
-    { stdio: 'inherit' },
-  )
-  if (pip.status !== 0) throw new Error('o pip não conseguiu instalar o piper-tts')
-
+  pipInstalar([`piper-tts==${VERSAO_PIPER}`])
   dizer('3/3 A descarregar a voz «tugão» (cerca de 63 MB, licença CC0)')
   for (const f of FICHEIROS_VOZ) await descarregar(f)
-
   escreverConfig({ motor: 'auto' })
   await semServidor({ controlo: 'recarregar' })
   dizer('Pronto! A voz portuguesa está instalada.')
-  await enviar({ controlo: 'testar', texto: 'Olá! A voz em português de Portugal está instalada e pronta.' }, { resposta: true })
+  await enviar({ controlo: 'testar', texto: 'Olá, eu sou o Claude Code.' }, { resposta: true })
+}
+
+async function instalarOuvir() {
+  dizer('Ditado (falar com o Claude): Whisper local + microfone')
+  dizer('1/3 Ambiente Python')
+  await ambientePython()
+  dizer('2/3 A instalar o faster-whisper e o sounddevice')
+  pipInstalar(['faster-whisper==1.2.1', 'sounddevice==0.5.6'])
+  const modelo = lerConfig().ditadoModelo || 'small'
+  dizer(`3/3 A descarregar o modelo Whisper «${modelo}» (uma vez; ~${{ tiny: 75, base: 145, small: 480, medium: 1500 }[modelo] || '?'} MB)`)
+  const pasta = path.join(CAMINHOS.pasta, 'whisper')
+  const r = spawnSync(
+    CAMINHOS.pythonExe,
+    ['-I', '-X', 'utf8', '-c', 'import sys; from faster_whisper import WhisperModel; WhisperModel(sys.argv[1], device="cpu", compute_type="int8", download_root=sys.argv[2])', modelo, pasta],
+    { stdio: 'inherit', env: { ...process.env, HF_HUB_DISABLE_SYMLINKS_WARNING: '1', HF_HUB_DISABLE_TELEMETRY: '1' } },
+  )
+  if (r.status !== 0) throw new Error('não consegui descarregar o modelo Whisper')
+  dizer('Pronto! Carrega no microfone da barra (ou Ctrl+Shift+Alt+V) para falares com o Claude.')
+}
+
+async function instalar(args) {
+  const o = String(args[0] || 'voz').toLowerCase()
+  if (o === 'ouvir' || o === 'ditado') return instalarOuvir()
+  if (o === 'barra') return instalarBarra()
+  if (o === 'tudo') {
+    await instalarVoz()
+    await instalarOuvir()
+    if (WIN) await instalarBarra()
+    return
+  }
+  return instalarVoz()
 }
 
 // ---------- barra (Windows) ----------
 
-const WEBVIEW2 = {
-  versao: '1.0.4314.35',
-  sha512: 'cOaiVqP3BmQHMnxGpZzANM22tUXgycrisyJHjIGNzIaMsm8iXj7Kx+ceYg+RbYwJtzT009qfcFTocvVLY+ekMw==',
-}
-const PASTA_BARRA = path.join(CAMINHOS.pasta, 'barra')
-const EXE_BARRA = path.join(PASTA_BARRA, 'VozBarra.exe')
-const CSC = path.join(process.env.WINDIR || 'C:\\Windows', 'Microsoft.NET', 'Framework64', 'v4.0.30319', 'csc.exe')
+const compilarBarra = require('./compilar-barra')
+const EXE_BARRA = compilarBarra.EXE
 const CHAVE_RUN = 'HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run'
-
-function webview2Instalado() {
-  const id = '{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}'
-  for (const raiz of [`HKLM\\SOFTWARE\\WOW6432Node\\Microsoft\\EdgeUpdate\\Clients\\${id}`, `HKCU\\Software\\Microsoft\\EdgeUpdate\\Clients\\${id}`]) {
-    const r = spawnSync('reg.exe', ['query', raiz, '/v', 'pv'], { encoding: 'utf8', windowsHide: true })
-    const m = /pv\s+REG_SZ\s+([\d.]+)/.exec(r.stdout || '')
-    if (m && m[1] !== '0.0.0.0') return m[1]
-  }
-  return null
-}
 
 function definirArranque(modo) {
   const args =
@@ -143,10 +194,7 @@ function definirArranque(modo) {
   escreverConfig({ barraArranque: modo })
 }
 
-function abrirBarra() {
-  const { spawn } = require('node:child_process')
-  spawn(EXE_BARRA, [], { detached: true, stdio: 'ignore' }).unref()
-}
+const abrirBarra = () => compilarBarra.abrir()
 
 async function instalarBarra() {
   if (!WIN) {
@@ -154,68 +202,19 @@ async function instalarBarra() {
     return
   }
   dizer('Instalação da barra «Voz» (Windows)')
-  const wv = webview2Instalado()
+  const wv = compilarBarra.webview2Instalado()
   if (!wv) {
     dizer('Falta o Microsoft Edge WebView2 Runtime (vem com o Windows 11). Instala-o em https://developer.microsoft.com/microsoft-edge/webview2/ e volta a correr /voz:barra instalar.')
     process.exitCode = 1
     return
   }
-  if (!fs.existsSync(CSC)) {
-    dizer(`Não encontrei o compilador do .NET Framework 4.x (${CSC}).`)
-    process.exitCode = 1
-    return
-  }
-  garantirPasta(PASTA_BARRA)
-  const pacote = path.join(PASTA_BARRA, 'pacote')
-  const nupkg = path.join(pacote, 'webview2.nupkg')
-  garantirPasta(pacote)
-  const hashOk = f => fs.existsSync(f) && crypto.createHash('sha512').update(fs.readFileSync(f)).digest('base64') === WEBVIEW2.sha512
-  if (!hashOk(nupkg)) {
-    dizer(`1/4 A descarregar o kit WebView2 ${WEBVIEW2.versao} do NuGet da Microsoft (~9 MB)…`)
-    const url = `https://api.nuget.org/v3-flatcontainer/microsoft.web.webview2/${WEBVIEW2.versao}/microsoft.web.webview2.${WEBVIEW2.versao}.nupkg`
-    const r = await fetch(url)
-    if (!r.ok) throw new Error(`download do WebView2 falhou (${r.status})`)
-    fs.writeFileSync(nupkg, Buffer.from(await r.arrayBuffer()))
-    if (!hashOk(nupkg)) throw new Error('o pacote WebView2 descarregado não tem o SHA-512 esperado')
-  } else dizer('1/4 Kit WebView2 já descarregado')
-
-  dizer('2/4 A extrair as bibliotecas')
-  // A barra aberta bloqueia as DLLs e o .exe: fecha-a antes de os substituir.
-  spawnSync('taskkill.exe', ['/IM', 'VozBarra.exe', '/F'], { windowsHide: true, stdio: 'ignore' })
-  await new Promise(r => setTimeout(r, 700))
-  const tar = path.join(process.env.WINDIR || 'C:\\Windows', 'System32', 'tar.exe')
-  const ex = spawnSync(tar, ['-xf', nupkg, '-C', pacote, 'lib/net462', 'runtimes/win-x64/native'], { windowsHide: true })
-  if (ex.status !== 0) throw new Error('não consegui extrair o pacote WebView2')
-  for (const [orig, nome] of [
-    ['lib/net462/Microsoft.Web.WebView2.Core.dll', 'Microsoft.Web.WebView2.Core.dll'],
-    ['lib/net462/Microsoft.Web.WebView2.WinForms.dll', 'Microsoft.Web.WebView2.WinForms.dll'],
-    ['runtimes/win-x64/native/WebView2Loader.dll', 'WebView2Loader.dll'],
-  ]) {
-    fs.copyFileSync(path.join(pacote, ...orig.split('/')), path.join(PASTA_BARRA, nome))
-  }
-
-  dizer('3/4 A compilar o anfitrião (compilador do .NET que já vem com o Windows)')
-  spawnSync('taskkill.exe', ['/IM', 'VozBarra.exe', '/F'], { windowsHide: true, stdio: 'ignore' })
-  const fonte = path.join(__dirname, '..', 'barra', 'anfitriao', 'VozBarra.cs')
-  const c = spawnSync(
-    CSC,
-    [
-      '/nologo', '/target:winexe', '/platform:x64', '/optimize+', `/out:${EXE_BARRA}`,
-      '/r:System.Windows.Forms.dll', '/r:System.Drawing.dll', '/r:System.Web.Extensions.dll',
-      `/r:${path.join(PASTA_BARRA, 'Microsoft.Web.WebView2.Core.dll')}`,
-      `/r:${path.join(PASTA_BARRA, 'Microsoft.Web.WebView2.WinForms.dll')}`,
-      fonte,
-    ],
-    { encoding: 'utf8', windowsHide: true },
-  )
-  const erros = (c.stdout || '').split('\n').filter(l => /error/i.test(l))
-  if (c.status !== 0 || erros.length) throw new Error(`a compilação falhou:\n${erros.join('\n') || c.stdout}`)
-
-  dizer('4/4 A arrancar')
+  dizer('1/2 A preparar e compilar')
+  await compilarBarra.compilar(t => dizer('  ' + t))
+  dizer('2/2 A arrancar')
   await enviar({ controlo: 'estado' }, { resposta: true }) // garante o servidor (e o barra.json)
   definirArranque(lerConfig().barraArranque || 'windows')
   abrirBarra()
-  dizer(`Pronto! A barra está no topo do ecrã (WebView2 ${wv}). Clica na estrela para as definições: posição, módulos e arranque.`)
+  dizer(`Pronto! A barra está no ecrã (WebView2 ${wv}). Clique direito na barra para fechar, mudar a posição e os ajustes.`)
 }
 
 async function barra(args) {
@@ -263,6 +262,85 @@ async function barra(args) {
       dizer('Subcomandos: instalar, ligar, desligar, posicao <topo|escondida|flutuante|esquerda|direita|fundo>, arranque <windows|claude|mao>, desinstalar')
     }
   }
+}
+
+// ---------- vozes ----------
+
+async function comandoVozes(args) {
+  const vozes = require('./vozes')
+  const [sub = 'listar', ...resto] = args
+  const id = resto.join(' ').trim()
+  switch (String(sub).toLowerCase()) {
+    case 'catalogo':
+    case 'catálogo': {
+      const filtro = id.toLowerCase()
+      const lista = (await vozes.listarCatalogo()).filter(v => !filtro || v.lingua.toLowerCase().includes(filtro) || v.linguaNome.toLowerCase().includes(filtro))
+      let lingua = ''
+      for (const v of lista) {
+        if (v.lingua !== lingua) dizer(`\n${(lingua = v.lingua)} — ${v.linguaNome}`)
+        dizer(`  ${v.instalada ? '✓' : ' '} ${v.id}  (${v.qualidade}, ${v.mb} MB${v.oradores > 1 ? `, ${v.oradores} oradores` : ''})`)
+      }
+      dizer('\nPara instalar: /voz:vozes instalar <id>   (ex.: /voz:vozes instalar en_US-lessac-medium)')
+      return
+    }
+    case 'instalar': {
+      if (!id) return dizer('Indica a voz: /voz:vozes instalar <id> (vê a lista com /voz:vozes catalogo).')
+      if (!fs.existsSync(CAMINHOS.pythonExe)) return dizer('Primeiro instala o motor de voz: /voz:instalar')
+      let ultimo = -10
+      await vozes.descarregar(id, pct => {
+        if (pct - ultimo >= 20 || pct === 100) dizer(`  ${id}: ${(ultimo = pct)}%`)
+      })
+      await semServidor({ controlo: 'publicar' })
+      return dizer(`Voz ${id} instalada. Usa-a com /voz:vozes padrao ${id}, ou escolhe-a para uma conversa na barra.`)
+    }
+    case 'remover':
+      if (!id) return dizer('Indica a voz a remover.')
+      if (vozes.caminhoModelo(id) === vozes.caminhoModelo(lerConfig().vozPadrao)) return dizer('Essa é a voz principal: escolhe outra primeiro.')
+      dizer(vozes.remover(id) ? `Voz ${id} removida.` : 'Essa voz não está instalada.')
+      return semServidor({ controlo: 'publicar' })
+    case 'padrao':
+    case 'padrão':
+      if (!vozes.caminhoModelo(id)) return dizer('Essa voz não está instalada (vê /voz:vozes).')
+      escreverConfig({ vozPadrao: id })
+      await semServidor({ controlo: 'publicar' })
+      return dizer(`Voz principal: ${id}.`)
+    case 'conversas': {
+      const v = String(id).toLowerCase()
+      if (v !== 'auto' && v !== 'igual') return dizer(`Agora: ${lerConfig().vozPorConversa}. Opções: auto (cada conversa com um tom diferente) ou igual.`)
+      escreverConfig({ vozPorConversa: v })
+      return dizer(v === 'auto' ? 'Cada conversa passa a ter um tom diferente.' : 'Todas as conversas usam a mesma voz.')
+    }
+    default: {
+      const c = lerConfig()
+      dizer('Vozes instaladas:')
+      for (const v of vozes.instaladas()) dizer(`  ${vozes.caminhoModelo(c.vozPadrao) === v.modelo ? '★' : ' '} ${v.id}  — ${v.linguaNome}`)
+      dizer(`Voz por conversa: ${c.vozPorConversa} · idioma automático: ${c.idiomaAuto !== false ? 'sim' : 'não'}`)
+      dizer('Subcomandos: catalogo [língua], instalar <id>, remover <id>, padrao <id>, conversas auto|igual')
+    }
+  }
+}
+
+// ---------- não incomodar ----------
+
+async function comandoSilencio(args) {
+  const [sub = '', a = '', b = ''] = args.map(x => String(x).toLowerCase())
+  const c = lerConfig()
+  const h = { ativo: false, inicio: '22:00', fim: '08:00', ...(c.silencioHorario || {}) }
+  const hora = s => /^\d{1,2}:\d{2}$/.test(s)
+  if (sub === 'ligar' || sub === 'on') {
+    escreverConfig({ naoIncomodar: true })
+    await semServidor({ controlo: 'parar' })
+  } else if (sub === 'desligar' || sub === 'off') {
+    escreverConfig({ naoIncomodar: false })
+  } else if (sub === 'horario' || sub === 'horário') {
+    if (a === 'desligar' || a === 'off') escreverConfig({ silencioHorario: { ...h, ativo: false } })
+    else if (hora(a) && hora(b)) escreverConfig({ silencioHorario: { ativo: true, inicio: a, fim: b } })
+    else return dizer('Uso: /voz:silencio horario 22:00 08:00   ou   /voz:silencio horario desligar')
+  }
+  await semServidor({ controlo: 'publicar' })
+  const n = lerConfig()
+  const hh = n.silencioHorario || {}
+  dizer(`Não incomodar: ${n.naoIncomodar ? 'LIGADO' : 'desligado'} · horário de silêncio: ${hh.ativo ? `${hh.inicio} → ${hh.fim}` : 'desligado'}`)
 }
 
 // ---------- som ----------
@@ -397,8 +475,15 @@ async function principal(argv) {
     case 'barra':
       return barra(resto)
 
+    case 'vozes':
+      return comandoVozes(resto)
+
+    case 'silencio':
+    case 'silêncio':
+      return comandoSilencio(resto)
+
     case 'instalar':
-      return instalar()
+      return instalar(resto)
 
     case 'estado': {
       const c = lerConfig()

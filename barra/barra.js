@@ -15,6 +15,7 @@
   let E = null
   let menuAtual = q.get('menu') || null
   let posicaoEnviada = null
+  let ecraEnviado = null
   let temaEnviado = null
   let interagindo = false
   let semSessoesDesde = null
@@ -35,6 +36,12 @@
     sol: '<circle cx="12" cy="12" r="4.2" fill="currentColor"/><g stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6"/></g>',
     lua: '<path fill="currentColor" d="M20.5 14.6A8.6 8.6 0 0 1 9.4 3.5a8.6 8.6 0 1 0 11.1 11.1z"/>',
     auto: '<circle cx="12" cy="12" r="8.4" fill="none" stroke="currentColor" stroke-width="2"/><path fill="currentColor" d="M12 3.6a8.4 8.4 0 0 1 0 16.8z"/>',
+    sino: '<path fill="currentColor" d="M12 3a6 6 0 0 0-6 6v3.6L4.4 15.4c-.4.7.1 1.6.9 1.6h13.4c.8 0 1.3-.9.9-1.6L18 12.6V9a6 6 0 0 0-6-6zM9.5 18.5a2.5 2.5 0 0 0 5 0z"/>',
+    semSino: '<path fill="currentColor" d="M12 3a6 6 0 0 0-6 6v3.6L4.4 15.4c-.4.7.1 1.6.9 1.6h13.4c.8 0 1.3-.9.9-1.6L18 12.6V9a6 6 0 0 0-6-6zM9.5 18.5a2.5 2.5 0 0 0 5 0z" opacity=".35"/><path d="M4 3.5l16 17" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>',
+    lua2: '<path fill="currentColor" d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/>',
+    micro: '<rect x="9" y="3" width="6" height="11" rx="3" fill="currentColor"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
+    escudo: '<path fill="currentColor" d="M12 2.5l7.5 3v6c0 4.6-3.2 8.7-7.5 10-4.3-1.3-7.5-5.4-7.5-10v-6z"/>',
+    grafico: '<path fill="currentColor" d="M4 20h16v-1.6H4zM5.5 17h2.6V10H5.5zm5.2 0h2.6V5h-2.6zm5.2 0h2.6v-5h-2.6z"/>',
   }
   const TEMAS = [
     ['sistema', 'auto', 'Automático'],
@@ -43,7 +50,12 @@
   ]
   const svg = n => `<svg class="i" viewBox="0 0 24 24">${ICONES[n]}</svg>`
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c])
-  const mil = n => (n >= 1000 ? (n / 1000).toLocaleString('pt-PT', { maximumFractionDigits: n >= 100000 ? 0 : 1 }) + ' mil' : String(n))
+  const mil = n =>
+    n >= 1e6
+      ? (n / 1e6).toLocaleString('pt-PT', { maximumFractionDigits: n >= 1e8 ? 0 : 1 }) + ' M'
+      : n >= 1000
+        ? (n / 1000).toLocaleString('pt-PT', { maximumFractionDigits: n >= 100000 ? 0 : 1 }) + ' mil'
+        : String(n)
   const num = (v, d) => Number(v).toLocaleString('pt-PT', { minimumFractionDigits: d, maximumFractionDigits: d })
   const ESTADOS = { trabalhar: 'a trabalhar', atencao: 'precisa de ti', terminou: 'terminou', parada: 'parada' }
   const POSICOES = [
@@ -52,7 +64,8 @@
   ]
   const MODULOS = {
     sessao: 'Sessão', acao: 'O que está a fazer', legenda: 'Legenda do que diz', onda: 'Onda da voz',
-    conversas: 'Conversas ativas', sessoes: 'Pontos das sessões', contexto: 'Contexto e tokens', tema: 'Botão claro/escuro', som: 'Centro de Controlo', tempo: 'Tempo do pedido',
+    conversas: 'Conversas ativas', sessoes: 'Pontos das sessões', contexto: 'Contexto e tokens', microfone: 'Microfone (falar com o Claude)',
+    silencio: 'Não incomodar', tema: 'Botão claro/escuro', som: 'Centro de Controlo', tempo: 'Tempo do pedido',
   }
   const ESQUERDA = new Set(['sessao', 'acao', 'legenda'])
   const PREDEF = {
@@ -110,10 +123,12 @@
         mods.splice(i, 0, { id: 'conversas', on: true })
       }
     }
-    // O botão do aspeto entra logo antes do Centro de Controlo.
-    if (!mods.some(m => m.id === 'tema')) {
-      const i = mods.findIndex(m => m.id === 'som')
-      mods.splice(i >= 0 ? i : mods.length, 0, { id: 'tema', on: true })
+    // Módulos novos entram logo antes do Centro de Controlo.
+    for (const id of ['microfone', 'silencio', 'tema']) {
+      if (!mods.some(m => m.id === id)) {
+        const i = mods.findIndex(m => m.id === 'som')
+        mods.splice(i >= 0 ? i : mods.length, 0, { id, on: true })
+      }
     }
     for (const id of Object.keys(MODULOS)) if (!mods.some(m => m.id === id)) mods.push({ id, on: id === 'conversas' })
     return mods
@@ -165,7 +180,11 @@
       }
       case 'contexto':
         if (!s || !s.uso) return ''
-        return `<div class="it contexto" title="${esc(`${s.uso.modelo} · contexto ${mil(s.uso.usados)} de ${mil(s.uso.limite)} tokens · ${mil(s.uso.saidaPedido)} gerados neste pedido`)}"><span class="anel" style="--p:${s.uso.pct}%"></span><span class="num">${s.uso.pct}%</span></div>`
+        return `<div class="it contexto clic" data-menu="uso" title="${esc(`${s.uso.modelo} · contexto ${mil(s.uso.usados)} de ${mil(s.uso.limite)} tokens · ${mil(s.uso.saidaPedido)} gerados neste pedido`)}"><span class="anel" style="--p:${s.uso.pct}%"></span><span class="num">${s.uso.pct}%</span></div>`
+      case 'microfone':
+        return `<div class="it clic ${E.aOuvir ? 'a-ouvir' : ''}" data-falar="1" title="${E.aOuvir ? 'A ouvir — clica para terminar e transcrever' : 'Falar com o Claude (Ctrl+Shift+Alt+V)'}">${svg('micro')}${E.aOuvir ? '<span class="ponto-rec"></span>' : ''}</div>`
+      case 'silencio':
+        return `<div class="it clic ${E.silencio ? 'silencio-on' : ''}" data-alternar-silencio="1" title="${E.silencio ? (E.cfg.naoIncomodar ? 'Não incomodar ligado — clica para desligar' : 'Horário de silêncio em curso') : 'Não incomodar: sem voz nem avisos (Ctrl+Shift+Alt+D)'}">${svg(E.silencio ? 'lua2' : 'sino')}</div>`
       case 'tema': {
         const t = TEMAS.find(x => x[0] === (E.cfg.barraTema || 'sistema')) || TEMAS[0]
         const prox = TEMAS[(TEMAS.indexOf(t) + 1) % TEMAS.length]
@@ -196,6 +215,11 @@
     if (pos !== posicaoEnviada) {
       posicaoEnviada = pos
       enviarHost({ tipo: 'posicao', valor: pos })
+    }
+    const ecra = Number.isInteger(E.cfg.barraEcra) ? E.cfg.barraEcra : -1
+    if (ecra !== ecraEnviado) {
+      ecraEnviado = ecra
+      enviarHost({ tipo: 'ecra', valor: ecra })
     }
     if (flut) {
       const b = raiz.firstElementChild
@@ -275,6 +299,26 @@
     </div>`
   }
 
+  // Lista de ecrãs, enviada pelo anfitrião (para escolher o monitor da barra).
+  let ecras = []
+
+  function opcoesEcra(c) {
+    if (ecras.length < 2) return ''
+    const atual = Number.isInteger(c.barraEcra) ? c.barraEcra : -1
+    return `<div class="tit">Ecrã</div>
+      <div class="op" data-ecra="-1"><span class="chk">${atual === -1 ? '✓' : ''}</span>Ecrã principal</div>
+      ${ecras.map((e, i) => `<div class="op" data-ecra="${i}"><span class="chk">${atual === i ? '✓' : ''}</span>Ecrã ${i + 1}${e.principal ? ' (principal)' : ''}<small>${esc(e.largura)}×${esc(e.altura)}</small></div>`).join('')}
+      <hr>`
+  }
+
+  function blocoSilencio(c) {
+    const h = { ativo: false, inicio: '22:00', fim: '08:00', ...(c.silencioHorario || {}) }
+    return `<div class="tit">Não incomodar</div>
+      <div class="op" data-alternar="naoIncomodar"><span class="chk">${c.naoIncomodar ? '✓' : ''}</span>Ligado agora (sem voz nem avisos)</div>
+      <div class="op" data-horario-ativo="1"><span class="chk">${h.ativo ? '✓' : ''}</span>Horário de silêncio</div>
+      <div class="linha-horas ${h.ativo ? '' : 'inativo'}">das <input type="time" data-hora="inicio" value="${esc(h.inicio)}"> às <input type="time" data-hora="fim" value="${esc(h.fim)}"></div>`
+  }
+
   function menuDefinicoes() {
     const c = E.cfg
     const chk = b => (b ? '✓' : '')
@@ -282,11 +326,16 @@
       <div class="tit">Posição da barra</div>
       ${POSICOES.map(([v, r]) => `<div class="op" data-posicao="${v}"><span class="chk">${chk(c.barraPosicao === v)}</span>${r}</div>`).join('')}
       <hr>
+      ${opcoesEcra(c)}
       <div class="op" data-ir="modulos"><span class="chk"></span>Módulos visíveis…<small>›</small></div>
+      <div class="op" data-ir="vozes"><span class="chk"></span>Vozes e idiomas…<small>›</small></div>
+      <hr>
+      ${blocoSilencio(c)}
       <hr>
       <div class="tit">Conversas</div>
       <div class="op" data-alternar="barraAvisos"><span class="chk">${chk(c.barraAvisos !== false)}</span>Avisar quando uma conversa termina</div>
       <div class="op" data-alternar="respostasPelaBarra"><span class="chk">${chk(c.respostasPelaBarra !== false)}</span>Responder às conversas pela barra</div>
+      <div class="op" data-alternar="aprovarPelaBarra"><span class="chk">${chk(c.aprovarPelaBarra !== false)}</span>Aprovar permissões pela barra</div>
       <hr>
       <div class="tit">Arranque</div>
       <div class="op" data-arranque="windows"><span class="chk">${chk(c.barraArranque === 'windows')}</span>Arrancar com o Windows</div>
@@ -300,6 +349,125 @@
       <hr>
       <div class="op" data-acao="testar"><span class="chk"></span>Testar a voz</div>
       <div class="op" data-sair="1"><span class="chk"></span>Sair da barra</div>
+    </div>`
+  }
+
+  /** Menu do clique direito: o essencial à mão. */
+  function menuDireito() {
+    const c = E.cfg
+    const chk = b => (b ? '✓' : '')
+    return `<div class="menu">
+      <div class="op" data-ir="conversas"><span class="chk"></span>Conversas…</div>
+      <div class="op" data-ir="som"><span class="chk"></span>Som…</div>
+      <div class="op" data-ir="uso"><span class="chk"></span>Tokens de hoje…</div>
+      <hr>
+      <div class="op" data-alternar="naoIncomodar"><span class="chk">${chk(c.naoIncomodar)}</span>Não incomodar<small>Ctrl+Shift+Alt+D</small></div>
+      <div class="op" data-alternar="ligado"><span class="chk">${chk(c.ligado)}</span>Voz ligada</div>
+      <hr>
+      <div class="tit">Posição</div>
+      ${POSICOES.map(([v, r]) => `<div class="op" data-posicao="${v}"><span class="chk">${chk(c.barraPosicao === v)}</span>${r}</div>`).join('')}
+      <hr>
+      ${opcoesEcra(c)}
+      <div class="tit">Aspeto</div>
+      ${TEMAS.map(([v, , r]) => `<div class="op" data-tema="${v}"><span class="chk">${chk((c.barraTema || 'sistema') === v)}</span>${r}</div>`).join('')}
+      <hr>
+      <div class="op" data-ir="definicoes"><span class="chk"></span>Definições…</div>
+      <div class="op" data-sair="1"><span class="chk"></span>Fechar a barra</div>
+    </div>`
+  }
+
+  // ---------------- vozes ----------------
+  let catalogoVozes = null
+  let filtroLingua = 'pt_PT'
+  const progressoVoz = {}
+
+  function menuVozes() {
+    const v = E.vozes || { instaladas: [] }
+    const padrao = (v.padrao || '').normalize('NFD').replace(/[̀-ͯ]/g, '')
+    const ePadrao = id => id.normalize('NFD').replace(/[̀-ͯ]/g, '') === padrao
+    const linguas = catalogoVozes ? [...new Map(catalogoVozes.map(x => [x.lingua, x.linguaNome])).entries()] : []
+    const lista = (catalogoVozes || []).filter(x => x.lingua === filtroLingua)
+    return `<div class="painel vozes">
+      <div class="tit">Vozes instaladas</div>
+      ${v.instaladas
+        .map(
+          x => `<div class="voz ${ePadrao(x.id) ? 'principal' : ''}"><div><b>${esc(x.nome)}</b><small>${esc(x.linguaNome)} · ${esc(x.qualidade)}${ePadrao(x.id) ? ' · principal' : ''}</small></div>
+            <button class="chip" data-voz-experimentar="${esc(x.id)}" title="Ouvir">▶</button>
+            ${ePadrao(x.id) ? '' : `<button class="chip" data-voz-padrao="${esc(x.id)}">Principal</button><button class="chip" data-voz-remover="${esc(x.id)}" title="Apagar">✕</button>`}</div>`,
+        )
+        .join('')}
+      <div class="lig" data-alternar="idiomaAuto"><span>Resposta noutro idioma usa a voz desse idioma</span><span class="interruptor ${E.cfg.idiomaAuto !== false ? 'on' : ''}"></span></div>
+      <div class="lig" data-alternar-por-conversa="1"><span>Um tom diferente para cada conversa</span><span class="interruptor ${E.cfg.vozPorConversa !== 'igual' ? 'on' : ''}"></span></div>
+      <div class="tit" style="margin-top:6px">Descarregar mais vozes</div>
+      ${
+        catalogoVozes
+          ? `<select data-filtro-lingua="1">${linguas.map(([l, n]) => `<option value="${esc(l)}" ${l === filtroLingua ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select>
+             <div class="catalogo">${lista
+               .map(x => {
+                 const p = progressoVoz[x.id]
+                 const estadoBt = x.instalada
+                   ? '<span class="ok-txt">✓ instalada</span>'
+                   : p && p.erro
+                     ? `<span class="erro-txt">${esc(p.erro)}</span>`
+                     : p
+                       ? `<span class="barra-prog"><i style="width:${p.pct || 0}%"></i></span>`
+                       : `<button class="chip azul" data-voz-baixar="${esc(x.id)}">Descarregar · ${x.mb} MB</button>`
+                 return `<div class="voz"><div><b>${esc(x.nome)}</b><small>${esc(x.qualidade)}${x.oradores > 1 ? ` · ${x.oradores} vozes` : ''}</small></div>${estadoBt}</div>`
+               })
+               .join('')}</div>`
+          : '<div class="vazio">A carregar o catálogo…</div>'
+      }
+      <div class="op" data-ir="definicoes"><span class="chk">‹</span>Voltar</div>
+    </div>`
+  }
+
+  async function carregarCatalogo() {
+    const r = await api({ acao: 'vozes', op: 'catalogo' })
+    catalogoVozes = (r && r.vozes) || []
+    redesenharMenuAtual()
+  }
+
+  // ---------------- uso (tokens) ----------------
+  let graficoVisto = false
+  function menuUso() {
+    const u = E.uso
+    setTimeout(() => (graficoVisto = true), 700)
+    if (!u) return '<div class="painel"><div class="vazio">Sem dados ainda.</div></div>'
+    const total = d => d.entrada + d.saida
+    const max = Math.max(1, ...u.dias.map(total))
+    const nomeDia = k => ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'][new Date(k + 'T12:00:00').getDay()]
+    const s = foco()
+    return `<div class="painel uso">
+      <div class="tit">Tokens — últimos 7 dias</div>
+      <div class="grafico${graficoVisto ? '' : ' entra'}">${u.dias
+        .map(
+          d => `<div class="col" title="${esc(d.dia)}: ${mil(d.entrada)} de entrada · ${mil(d.saida)} gerados · ${mil(d.cache)} da cache"><div class="b" style="height:${Math.round((total(d) / max) * 100)}%"><i style="height:${total(d) ? Math.round((d.saida / total(d)) * 100) : 0}%"></i></div><small>${nomeDia(d.dia)}</small></div>`,
+        )
+        .join('')}</div>
+      <div class="kpis">
+        <div><b class="num">${mil(u.hoje.entrada)}</b><small>entrada hoje</small></div>
+        <div><b class="num">${mil(u.hoje.saida)}</b><small>gerados hoje</small></div>
+        <div><b class="num">${mil(u.hoje.cache)}</b><small>lidos da cache</small></div>
+      </div>
+      ${
+        u.topo.length
+          ? `<div class="tit">Conversas de hoje</div>${u.topo
+              .map(t => `<div class="linha-uso"><span>${esc(t.titulo || t.id.slice(0, 8))}</span><small class="num">${mil(t.saida)} gerados</small></div>`)
+              .join('')}`
+          : ''
+      }
+      ${s && s.uso ? `<div class="tit">Esta conversa</div><div class="linha-uso"><span>${esc(s.uso.modelo)} · contexto</span><small class="num">${mil(s.uso.usados)} / ${mil(s.uso.limite)} (${s.uso.pct}%)</small></div>` : ''}
+    </div>`
+  }
+
+  // ---------------- permissões ----------------
+  function cartaoPermissao(p, aviso) {
+    const s = E.sessoes.find(x => x.id === p.sessao)
+    return `<div class="cartao permissao" data-perm="${esc(p.id)}">
+      <div class="cab"><span class="av g atencao" style="--c:#fbbf24"><i>${svg('escudo')}</i></span><div class="tt"><b>${esc(s ? s.titulo : 'Conversa')}</b><small>quer usar <b>${esc(p.ferramenta)}</b></small></div>${aviso ? '<button class="x" data-fechar="1" title="Fechar (decides depois)">✕</button>' : ''}</div>
+      ${p.descricao ? `<div class="ultima">${esc(p.descricao)}</div>` : ''}
+      <pre class="cmd">${esc(p.resumo)}</pre>
+      <div class="botoes"><button class="recusar" data-decidir="deny" data-id="${esc(p.id)}">Recusar</button><button class="permitir" data-decidir="allow" data-id="${esc(p.id)}">Permitir</button></div>
     </div>`
   }
 
@@ -334,6 +502,7 @@
   }
 
   const rascunhos = {}
+  const cartoesVistos = new Set() // a animação de entrada só corre a primeira vez
   const envios = {} // sessão -> { texto, t } do último envio (para mostrar «enviado»)
 
   function estadoEnvio(x) {
@@ -354,13 +523,30 @@
           : esc(ESTADOS[x.estado] || '')
     const msg = x.resposta ? resumo(x.resposta, aviso ? 260 : 340) : ''
     const podeResponder = E.cfg.respostasPelaBarra !== false
-    return `<div class="cartao ${x.estado}" data-cartao="${esc(x.id)}">
+    const pedidos = (E.permissoes || []).filter(p => p.sessao === x.id)
+    const instaladas = (E.vozes && E.vozes.instaladas) || []
+    const vozAtual = x.voz && x.voz.manual ? x.voz.voz || '' : ''
+    const tomAtual = x.voz && x.voz.manual ? Number(x.voz.altura) || 0 : 0
+    const escolhaVoz = aviso
+      ? ''
+      : `<div class="linha-voz"><label>Voz <select data-voz-sessao="${esc(x.id)}"><option value="">Automática</option>${instaladas
+          .map(v => `<option value="${esc(v.id)}" ${v.id === vozAtual ? 'selected' : ''}>${esc(v.nome)} · ${esc(v.lingua.replace('_', '-'))}</option>`)
+          .join('')}</select></label><label>Tom <select data-tom-sessao="${esc(x.id)}">${[-4, -3, -2, -1, 0, 1, 2, 3, 4]
+          .map(t => `<option value="${t}" ${t === tomAtual ? 'selected' : ''}>${t > 0 ? '+' : ''}${t}</option>`)
+          .join('')}</select></label></div>`
+    const micro = `<button type="button" class="mic ${E.aOuvir && ditadoSessao === x.id ? 'a-ouvir' : ''}" data-falar-sessao="${esc(x.id)}" title="Ditar a resposta">${svg('micro')}</button>`
+    const chave = (aviso ? 'a:' : 'p:') + x.id
+    const entra = !cartoesVistos.has(chave)
+    cartoesVistos.add(chave)
+    return `<div class="cartao ${x.estado}${entra ? ' entra' : ''}" data-cartao="${esc(x.id)}">
       <div class="cab">${avatar(x, true)}<div class="tt"><b>${esc(x.titulo)}</b><small>${linhaEstado}${x.inicio ? ` · <span class="num">${duracao(x)}</span>` : ''}</small></div>${aviso ? '<button class="x" data-fechar="1" title="Fechar">✕</button>' : ''}</div>
       ${msg ? `<div class="ultima">${esc(msg)}</div>` : x.estado === 'trabalhar' ? '' : '<div class="ultima vazia">Ainda sem resposta nesta sessão.</div>'}
       ${x.pedido && !aviso ? `<div class="eu"><span>Tu:</span> ${esc(resumo(x.pedido, 140))}</div>` : ''}
+      ${pedidos.map(p => cartaoPermissao(p, false)).join('')}
+      ${escolhaVoz}
       ${
         podeResponder
-          ? `<form class="resp" data-sessao="${esc(x.id)}"><textarea rows="1" placeholder="Responder a esta conversa…" data-sessao="${esc(x.id)}"></textarea><button type="submit" title="Enviar (Enter)">↑</button></form>${estadoEnvio(x)}`
+          ? `<form class="resp" data-sessao="${esc(x.id)}"><textarea rows="1" placeholder="${E.aOuvir && ditadoSessao === x.id ? 'A ouvir… fala agora' : 'Responder a esta conversa…'}" data-sessao="${esc(x.id)}"></textarea>${micro}<button type="submit" title="Enviar (Enter)">↑</button></form>${estadoEnvio(x)}`
           : ''
       }
     </div>`
@@ -379,8 +565,24 @@
     return `<div class="painel aviso">${cartao(x, true)}</div>`
   }
 
+  function menuPermissao(id) {
+    const p = (E.permissoes || []).find(x => x.id === id)
+    return `<div class="painel aviso">${p ? cartaoPermissao(p, true) : '<div class="vazio">Este pedido já foi respondido.</div>'}</div>`
+  }
+
+  function menuDitado(sessao) {
+    const x = E.sessoes.find(s => s.id === sessao) || foco()
+    if (!x) return '<div class="painel aviso"><div class="vazio">Não há conversas abertas para onde enviar.</div></div>'
+    return `<div class="painel aviso ditado">${cartao(x, true)}</div>`
+  }
+
   function htmlMenu(m) {
     if (m && m.startsWith('aviso:')) return menuAviso(m.slice(6))
+    if (m && m.startsWith('perm:')) return menuPermissao(m.slice(5))
+    if (m && m.startsWith('ditado:')) return menuDitado(m.slice(7))
+    if (m === 'direito') return menuDireito()
+    if (m === 'vozes') return menuVozes()
+    if (m === 'uso') return menuUso()
     return m === 'som'
       ? menuSom()
       : m === 'definicoes'
@@ -461,26 +663,80 @@
   let avisoAtual = null
   let avisoTemporizador = null
 
+  const permissoesVistas = new Set()
+  let ditadoSessao = null
+
   /** Quando uma conversa acaba (ou passa a precisar de ti), mostra um aviso no canto. */
   function verificarAvisos() {
+    const calado = E.silencio || E.cfg.barraAvisos === false
     for (const x of E.sessoes) {
       const antes = estadoAnterior[x.id]
       estadoAnterior[x.id] = x.estado
-      if (!antes || antes === x.estado || E.cfg.barraAvisos === false) continue
+      if (!antes || antes === x.estado || calado) continue
+      // Um pedido de autorização tem o seu próprio aviso (com Permitir/Recusar).
+      if (x.estado === 'atencao' && (E.permissoes || []).some(p => p.sessao === x.id)) continue
       if ((antes === 'trabalhar' && x.estado === 'terminou') || x.estado === 'atencao') abrirAviso(x.id)
+    }
+    for (const p of E.permissoes || []) {
+      if (permissoesVistas.has(p.id)) continue
+      permissoesVistas.add(p.id)
+      if (!E.silencio && E.cfg.aprovarPelaBarra !== false) abrirMenuAviso('perm:' + p.id, false)
     }
   }
 
   function abrirAviso(id) {
     avisoAtual = id
+    abrirMenuAviso('aviso:' + id, false)
+  }
+
+  /** Abre um cartão no canto direito (aviso, permissão ou ditado). ativar = dar-lhe o foco do teclado. */
+  function abrirMenuAviso(menu, ativar) {
     if (host) {
-      // Âncora: canto direito da barra (o anfitrião encosta o aviso à direita, sem roubar o foco).
-      enviarHost({ tipo: 'abrir', menu: 'aviso:' + id, x: innerWidth - 4, y: 0, w: 0, h: innerHeight, ativar: false })
+      // Âncora: canto direito da barra (o anfitrião encosta o aviso à direita).
+      enviarHost({ tipo: 'abrir', menu, x: innerWidth - 4, y: 0, w: 0, h: innerHeight, ativar: !!ativar })
     } else {
-      menuEmLinha = { menu: 'aviso:' + id, x: innerWidth }
+      menuEmLinha = { menu, x: innerWidth }
       renderMenuEmLinha()
       armarFechoDoAviso()
     }
+  }
+
+  // ---------------- ditado ----------------
+  async function alternarDitado(sessao) {
+    if (E.aOuvir) {
+      return api({ acao: 'ouvir', ordem: 'parar', sessao: ditadoSessao || sessao })
+    }
+    ditadoSessao = sessao || (foco() && foco().id) || null
+    const r = await api({ acao: 'ouvir', ordem: 'iniciar', sessao: ditadoSessao })
+    if (r && !r.ok) mostrarErro(r.erro || 'Não foi possível usar o microfone.')
+  }
+
+  function mostrarErro(texto) {
+    const el = document.createElement('div')
+    el.className = 'toast-erro'
+    el.textContent = texto
+    document.body.appendChild(el)
+    setTimeout(() => el.remove(), 4500)
+  }
+
+  /** Texto ditado: vai para a caixa de resposta da conversa, para reveres e carregares Enter. */
+  function aoDitado(d) {
+    if (d.aTranscrever) return
+    const sessao = d.sessao || ditadoSessao
+    ditadoSessao = null
+    if (d.erro) return mostrarErro(d.erro)
+    if (!d.texto || !sessao) return
+    rascunhos[sessao] = (rascunhos[sessao] ? rascunhos[sessao] + ' ' : '') + d.texto
+    const aberto = VISTA === 'menu' ? menuAtual : menuEmLinha && menuEmLinha.menu
+    if (aberto === 'conversas' || (aberto || '').endsWith(':' + sessao)) return redesenharMenuAtual()
+    if (VISTA === 'barra') abrirMenuAviso('ditado:' + sessao, true)
+  }
+
+  function redesenharMenuAtual() {
+    if (VISTA === 'menu') {
+      tamanhoEnviado = ''
+      renderMenu()
+    } else renderMenuEmLinha()
   }
 
   /** No aviso (janela do menu): fecha sozinho ao fim de 12 s, se não estiveres a mexer nele. */
@@ -577,7 +833,11 @@
 
   document.addEventListener('click', ev => {
     if (ev.target.closest('[data-fechar]')) return fecharMenu()
-    const t = ev.target.closest('[data-menu],[data-acao],[data-foco],[data-ir],[data-posicao],[data-arranque],[data-tema],[data-ciclo-tema],[data-predef],[data-alternar],[data-sair],[data-mod]')
+    const t = ev.target.closest(
+      '[data-menu],[data-acao],[data-foco],[data-ir],[data-posicao],[data-arranque],[data-tema],[data-ciclo-tema],[data-predef],[data-alternar],[data-sair],[data-mod],' +
+        '[data-falar],[data-falar-sessao],[data-alternar-silencio],[data-decidir],[data-voz-baixar],[data-voz-padrao],[data-voz-remover],' +
+        '[data-voz-experimentar],[data-ecra],[data-horario-ativo],[data-alternar-por-conversa]',
+    )
     if (!t) {
       if (!host && menuEmLinha && !ev.target.closest('#menu-em-linha')) {
         menuEmLinha = null
@@ -588,10 +848,39 @@
     const d = t.dataset
     if (d.menu) return abrirMenu(d.menu, t)
     if (d.ir) {
+      if (d.ir === 'vozes') carregarCatalogo()
       if (host && VISTA === 'menu') return abrirMenu(d.ir, t)
       menuEmLinha = { menu: d.ir, x: menuEmLinha ? menuEmLinha.x : 8 }
       return renderMenuEmLinha()
     }
+    if (d.falar) return alternarDitado(null)
+    if (d.falarSessao) return alternarDitado(d.falarSessao)
+    if (d.alternarSilencio) {
+      // Durante o horário de silêncio, o botão liga/desliga o «não incomodar» manual por cima.
+      const p = config({ naoIncomodar: !E.cfg.naoIncomodar })
+      render()
+      return p
+    }
+    if (d.decidir) {
+      return api({ acao: 'permissao', id: d.id, decisao: d.decidir }).then(r => {
+        if (r && !r.ok) mostrarErro(r.erro)
+        if ((menuAtual || '').startsWith('perm:') || (menuEmLinha && menuEmLinha.menu.startsWith('perm:'))) fecharMenu()
+      })
+    }
+    if (d.vozBaixar) {
+      progressoVoz[d.vozBaixar] = { pct: 0 }
+      redesenharMenuAtual()
+      return api({ acao: 'vozes', op: 'descarregar', id: d.vozBaixar })
+    }
+    if (d.vozPadrao) return api({ acao: 'vozes', op: 'padrao', id: d.vozPadrao })
+    if (d.vozRemover) return api({ acao: 'vozes', op: 'remover', id: d.vozRemover }).then(carregarCatalogo)
+    if (d.vozExperimentar) return api({ acao: 'vozes', op: 'experimentar', id: d.vozExperimentar })
+    if (d.ecra !== undefined) return config({ barraEcra: Number(d.ecra) })
+    if (d.horarioAtivo) {
+      const h = { ativo: false, inicio: '22:00', fim: '08:00', ...(E.cfg.silencioHorario || {}) }
+      return config({ silencioHorario: { ...h, ativo: !h.ativo } }).then(redesenharMenuAtual)
+    }
+    if (d.alternarPorConversa) return config({ vozPorConversa: E.cfg.vozPorConversa === 'igual' ? 'auto' : 'igual' }).then(redesenharMenuAtual)
     if (d.acao) {
       if (d.acao === 'testar') api({ acao: 'controlo', controlo: 'testar', texto: 'Olá, eu sou o Claude Code.' })
       else controlo(d.acao)
@@ -612,6 +901,39 @@
       const mods = modulosCompletos()
       mods[Number(d.mod)].on = !mods[Number(d.mod)].on
       return config({ barraModulos: mods }).then(() => render())
+    }
+  })
+
+  // Seletores e horas (voz por conversa, tom, idioma do catálogo, horário de silêncio).
+  document.addEventListener('change', ev => {
+    const el = ev.target
+    if (el.dataset.vozSessao !== undefined || el.dataset.tomSessao !== undefined) {
+      const id = el.dataset.vozSessao || el.dataset.tomSessao
+      const cartao = el.closest('[data-cartao]')
+      const voz = cartao.querySelector('[data-voz-sessao]').value
+      const tom = Number(cartao.querySelector('[data-tom-sessao]').value)
+      api({ acao: 'vozes', op: 'sessao', sessao: id, voz, altura: tom })
+      return
+    }
+    if (el.dataset.filtroLingua) {
+      filtroLingua = el.value
+      return redesenharMenuAtual()
+    }
+    if (el.dataset.hora) {
+      const h = { ativo: true, inicio: '22:00', fim: '08:00', ...(E.cfg.silencioHorario || {}) }
+      h[el.dataset.hora] = el.value
+      config({ silencioHorario: h })
+    }
+  })
+
+  // Clique direito na barra: menu com fechar, posição, ecrã, aspeto e definições.
+  document.addEventListener('contextmenu', ev => {
+    ev.preventDefault()
+    if (VISTA !== 'barra' || !E) return
+    if (host) enviarHost({ tipo: 'abrir', menu: 'direito', x: ev.clientX, y: ev.clientY, w: 1, h: 1 })
+    else {
+      menuEmLinha = { menu: 'direito', x: ev.clientX }
+      renderMenuEmLinha()
     }
   })
 
@@ -689,6 +1011,8 @@
       const d = ev.data || {}
       if (d.tipo === 'menu') {
         menuAtual = d.menu
+        cartoesVistos.clear()
+        graficoVisto = false
         tamanhoEnviado = ''
         interagindo = false
         renderMenu()
@@ -698,7 +1022,21 @@
           if (ta) ta.focus()
         }
       } else if (d.tipo === 'menu-fechado') {
+        cartoesVistos.clear()
+        graficoVisto = false
         document.querySelectorAll('.it.aberto').forEach(x => x.classList.remove('aberto'))
+      } else if (d.tipo === 'ecras') {
+        ecras = Array.isArray(d.lista) ? d.lista : []
+      } else if (d.tipo === 'atalho' && E) {
+        // Atalhos globais (Ctrl+Shift+Alt+…), registados pelo anfitrião.
+        if (d.qual === 'pausa') controlo('pausa')
+        else if (d.qual === 'saltar') controlo('saltar')
+        else if (d.qual === 'silencio') config({ naoIncomodar: !E.cfg.naoIncomodar }).then(render)
+        else if (d.qual === 'falar') alternarDitado(null)
+        else if (d.qual === 'conversas') {
+          const el = raiz.querySelector('[data-menu="conversas"]') || raiz.querySelector('.it.marca')
+          if (el) abrirMenu('conversas', el)
+        }
       }
     })
   }
@@ -707,12 +1045,32 @@
   let falhasDesde = null
   function ligar() {
     const es = new EventSource(`/eventos?t=${encodeURIComponent(TOKEN)}`)
+    let primeira = true
     es.addEventListener('estado', ev => {
       falhasDesde = null
       E = JSON.parse(ev.data)
+      // Pré-visualização (sem anfitrião): ?tema=claro|escuro e ?abrir=<menu> para capturas e testes.
+      if (!host && q.get('tema')) E.cfg.barraTema = q.get('tema')
       render()
+      if (primeira && !host && q.get('abrir')) {
+        primeira = false
+        const m = q.get('abrir')
+        if (m === 'vozes') carregarCatalogo()
+        menuEmLinha = { menu: m, x: m === 'sessao' ? 90 : m === 'direito' ? 420 : innerWidth }
+        renderMenuEmLinha()
+      }
     })
     es.addEventListener('sair', () => enviarHost({ tipo: 'sair' }))
+    es.addEventListener('ditado', ev => aoDitado(JSON.parse(ev.data)))
+    es.addEventListener('progresso-voz', ev => {
+      const p = JSON.parse(ev.data)
+      if (p.fim) {
+        delete progressoVoz[p.id]
+        carregarCatalogo()
+      } else progressoVoz[p.id] = p
+      const aberto = VISTA === 'menu' ? menuAtual : menuEmLinha && menuEmLinha.menu
+      if (aberto === 'vozes') redesenharMenuAtual()
+    })
     es.onerror = () => {
       if (!falhasDesde) falhasDesde = Date.now()
       else if (Date.now() - falhasDesde > 5000) {

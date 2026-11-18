@@ -19,8 +19,11 @@ const CAMINHOS = {
   modelo: path.join(PASTA, 'vozes', 'pt_PT-tugao-medium.onnx'),
   avisoMostrado: path.join(PASTA, '.aviso-instalar'),
   // Um servidor por utilizador: pipe com nome no Windows, socket Unix nos outros.
+  // Com VOZ_DIR (pasta própria, ex.: testes ou demonstração) o canal também é próprio.
   canal: WIN
-    ? `\\\\.\\pipe\\voz-claude-code-${(os.userInfo().username || 'user').replace(/[^\w.-]/g, '_')}`
+    ? `\\\\.\\pipe\\voz-claude-code-${(os.userInfo().username || 'user').replace(/[^\w.-]/g, '_')}${
+        process.env.VOZ_DIR ? '-' + require('node:crypto').createHash('sha1').update(PASTA).digest('hex').slice(0, 8) : ''
+      }`
     : path.join(PASTA, 'voz.sock'),
 }
 
@@ -59,7 +62,20 @@ const PREDEFINICOES = {
     { id: 'som', on: true },
     { id: 'tempo', on: true },
   ],
-  porta: 47821, // servidor web local da barra (só 127.0.0.1)
+  porta: 47821, // servidor web local da barra (só 127.0.0.1); se estiver ocupada usa a seguinte livre
+  barraEcra: -1, // -1 = ecrã principal; 0, 1, 2… = esse monitor
+  // Não incomodar
+  naoIncomodar: false, // botão: sem voz nem avisos no ecrã
+  silencioHorario: { ativo: false, inicio: '22:00', fim: '08:00' },
+  // Vozes
+  vozPadrao: 'pt_PT-tugao-medium',
+  vozPorConversa: 'auto', // auto = cada conversa com um tom diferente; igual = todas iguais
+  idiomaAuto: true, // resposta noutro idioma usa uma voz instalada desse idioma
+  // Permissões e ditado
+  aprovarPelaBarra: true, // pedidos de autorização na barra (app do Claude)
+  aprovarPelaBarraNoTerminal: false, // no terminal o gancho atrasaria o diálogo: desligado
+  ditadoIdioma: 'pt',
+  ditadoModelo: 'small', // tiny | base | small | medium (Whisper)
 }
 
 /** Predefinições de som: só mexem na velocidade, tom e equalizador. */
@@ -109,8 +125,24 @@ function log(...partes) {
   } catch {}
 }
 
+/** Não incomodar: o botão manual ou o horário de silêncio (ex.: 22:00 → 08:00, atravessa a meia-noite). */
+function emSilencio(cfg, data = new Date()) {
+  if (cfg.naoIncomodar) return true
+  const h = cfg.silencioHorario
+  if (!h || !h.ativo) return false
+  const min = s => {
+    const m = /^(\d{1,2}):(\d{2})$/.exec(String(s || ''))
+    return m ? Number(m[1]) * 60 + Number(m[2]) : null
+  }
+  const ini = min(h.inicio)
+  const fim = min(h.fim)
+  if (ini === null || fim === null || ini === fim) return false
+  const agora = data.getHours() * 60 + data.getMinutes()
+  return ini < fim ? agora >= ini && agora < fim : agora >= ini || agora < fim
+}
+
 function piperInstalado() {
   return fs.existsSync(CAMINHOS.pythonExe) && fs.existsSync(CAMINHOS.modelo) && fs.existsSync(CAMINHOS.modelo + '.json')
 }
 
-module.exports = { CAMINHOS, PREDEFINICOES, PREDEFINICOES_SOM, WIN, garantirPasta, lerConfig, escreverConfig, log, piperInstalado }
+module.exports = { emSilencio, CAMINHOS, PREDEFINICOES, PREDEFINICOES_SOM, WIN, garantirPasta, lerConfig, escreverConfig, log, piperInstalado }
