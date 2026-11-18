@@ -107,6 +107,7 @@ function obter(msg) {
       pedido: '',
       resposta: '',
       respostaEm: null,
+      historico: [], // últimas ações (para a linha temporal da barra)
     }
     sessoes.set(id, s)
   }
@@ -151,7 +152,11 @@ function registar(msg) {
       const frase = texto.anunciarFerramenta(msg.ferramenta, msg.entrada, msg.idioma)
       s.estado = 'trabalhar'
       if (!s.inicio) s.inicio = Date.now()
-      if (frase) s.acao = frase.replace(/\.$/, '')
+      if (frase) {
+        s.acao = frase.replace(/\.$/, '')
+        s.historico.push({ t: Date.now(), acao: s.acao })
+        if (s.historico.length > 6) s.historico.shift()
+      }
       atualizarUso(s, false)
       break
     }
@@ -218,6 +223,7 @@ function lista() {
       respostaEm: s.respostaEm,
       estado: s.estado,
       acao: s.acao,
+      historico: s.historico.slice(-4),
       inicio: s.inicio,
       fim: s.fim,
       uso: s.uso,

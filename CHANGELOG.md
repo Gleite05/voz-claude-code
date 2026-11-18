@@ -1,5 +1,13 @@
 # Histórico de versões
 
+## 1.2.0
+
+- **Ilha dinâmica:** uma cápsula de vidro no centro da barra mostra o que se passa — a ação da conversa em foco, a legenda e a onda enquanto a voz fala, «X pede autorização» com halo âmbar, «X terminou» com um check animado e o ditado a ouvir-te. Cresce e encolhe com uma curva com mola; clicar nela autoriza, salta a fala ou abre a conversa.
+- **Os cartões saem da ilha:** pedidos de autorização, avisos e ditado abrem centrados por baixo dela (antes iam para o canto).
+- **Avatares com anel:** cada conversa tem a sua cor; o anel enche com o contexto usado, roda enquanto trabalha e pulsa quando precisa de ti. Clicar num avatar abre o cartão dessa conversa com a **linha temporal** das últimas ações.
+- **Centro de Controlo em mosaicos:** voz, ler respostas, anunciar ações, não incomodar, pausar/saltar, volume, velocidade e tom, tokens do dia com gráfico, língua, aspeto e a posição da barra em miniaturas; equalizador num painel que abre.
+- **Clique direito curto:** conversas, Centro de Controlo, tokens, não incomodar, voz, definições e fechar.
+
 ## 1.1.0
 
 - **Interface em inglês e espanhol:** a barra (menus, definições, conversas, tokens, permissões) e as frases faladas («A ler config.ts», «Preciso da tua autorização»…) existem em português, inglês e espanhol.

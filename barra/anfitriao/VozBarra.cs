@@ -269,12 +269,14 @@ namespace VozBarra
         protected override bool ShowWithoutActivation { get { return false; } }
 
         bool ativar = true;
+        bool centrar; // cartão centrado por baixo (ou por cima) da âncora: a ilha da barra
 
-        public void Abrir(string menu, Rectangle ancoraEcra, bool ativarJanela)
+        public void Abrir(string menu, Rectangle ancoraEcra, bool ativarJanela, bool centrado)
         {
             Atual = menu;
             ancora = ancoraEcra;
             ativar = ativarJanela;
+            centrar = centrado;
             aEsperarTamanho = true;
             if (!Pronta) { pendente = menu; return; }
             Enviar(new Dictionary<string, object> { { "tipo", "menu" }, { "menu", menu } });
@@ -334,6 +336,8 @@ namespace VozBarra
                 case "direita": x = ancora.Left - w - folga; y = ancora.Top + (aviso ? folga : 0); break;
                 default: x = aviso ? ancora.Right - w - folga : ancora.Left; y = ancora.Bottom + folga; break;
             }
+            if (centrar && (barra.Posicao == "topo" || barra.Posicao == "escondida" || barra.Posicao == "fundo" || barra.Posicao == "flutuante"))
+                x = ancora.Left + (ancora.Width - w) / 2;
             x = Math.Max(ecra.Left + folga, Math.Min(x, ecra.Right - w - folga));
             y = Math.Max(ecra.Top + folga, Math.Min(y, ecra.Bottom - h - folga));
             SetBounds(x, y, w, h);
@@ -600,7 +604,9 @@ namespace VozBarra
                 case "abrir":
                     object at;
                     bool ativar = !(msg.TryGetValue("ativar", out at) && at is bool && !(bool)at);
-                    AbrirMenu(Texto(msg, "menu"), Numero(msg, "x"), Numero(msg, "y"), Numero(msg, "w"), Numero(msg, "h"), ativar);
+                    object ce;
+                    bool centrado = msg.TryGetValue("centrar", out ce) && ce is bool && (bool)ce;
+                    AbrirMenu(Texto(msg, "menu"), Numero(msg, "x"), Numero(msg, "y"), Numero(msg, "w"), Numero(msg, "h"), ativar, centrado);
                     break;
                 case "largura":
                     if (Posicao == "flutuante")
@@ -640,7 +646,7 @@ namespace VozBarra
             return m.StartsWith("aviso:") || m.StartsWith("perm:") || m.StartsWith("ditado:");
         }
 
-        void AbrirMenu(string qual, double x, double y, double w, double h, bool ativar)
+        void AbrirMenu(string qual, double x, double y, double w, double h, bool ativar, bool centrado)
         {
             bool aviso = EAviso(qual);
             // Um aviso nunca tapa um menu que abriste à mão.
@@ -650,7 +656,7 @@ namespace VozBarra
             if (!menu.Aberto && menu.Atual == qual && (DateTime.Now - menu.EscondidoEm).TotalMilliseconds < 250) return;
             var e = Escala;
             var r = new Rectangle(Left + (int)(x * e), Top + (int)(y * e), Math.Max(1, (int)(w * e)), Math.Max(1, (int)(h * e)));
-            menu.Abrir(qual, r, ativar);
+            menu.Abrir(qual, r, ativar, centrado);
         }
 
         public void MenuFechou()

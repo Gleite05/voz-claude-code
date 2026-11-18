@@ -20,6 +20,7 @@
 - 💬 **Conversations in the bar** — an animated avatar per conversation (spinning = working, pulsing = needs you), the last message of each one and a box to **reply directly**.
 - 🛡️ **Approve permissions from the bar** — the request shows up as a card with the exact command: *Allow* or *Deny*.
 - 🎤 **Talk to Claude** — dictate your reply; Whisper transcribes it on your PC.
+- 🏝️ **Dynamic island** — a glass capsule in the middle of the bar shows the current action, live captions while it speaks, permission requests and when a conversation finishes.
 - 🌐 **English, Spanish and Portuguese interface** — the bar and the announcements follow your system language.
 - 🌍 **Voices in 11 languages** — install more voices, pick a voice and pitch per conversation; replies in another language use that language's voice.
 - 🌙 **Do not disturb** — a button (or a schedule, e.g. 22:00 → 08:00) with no voice and no pop-ups.

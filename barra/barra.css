@@ -16,6 +16,11 @@
   --alerta: #fbbf24;
   --parada: rgba(255, 255, 255, 0.42);
   --estrela: #ff9b73;
+  --laranja: #e5794f;
+  --disco: rgba(30, 30, 36, 0.94);
+  --ilha-fundo: rgba(255, 255, 255, 0.08);
+  --ilha-brilho: rgba(255, 255, 255, 0.14);
+  --ilha-borda: rgba(255, 255, 255, 0.12);
   color-scheme: dark;
 }
 /* Modo claro ao estilo macOS: vidro leitoso, texto quase preto, blocos brancos com sombra suave. */
@@ -34,6 +39,11 @@
   --alerta: #d97706;
   --parada: rgba(60, 60, 67, 0.32);
   --estrela: #d9622b;
+  --laranja: #e0703f;
+  --disco: #ffffff;
+  --ilha-fundo: rgba(255, 255, 255, 0.55);
+  --ilha-brilho: rgba(255, 255, 255, 0.9);
+  --ilha-borda: rgba(0, 0, 0, 0.08);
   --sombra-bloco: 0 0.5px 0 rgba(0, 0, 0, 0.04), 0 1px 3px rgba(0, 0, 0, 0.07);
   color-scheme: light;
 }
@@ -50,7 +60,6 @@ body { transition: background-color 0.25s ease, color 0.25s ease; }
 .claro .chip.sel { background: var(--azul); }
 .claro .resp { background: rgba(120, 120, 128, 0.1); }
 .claro .it.marca svg { filter: drop-shadow(0 0 0.5px rgba(0, 0, 0, 0.25)); }
-.claro .av { box-shadow: 0 0 0 1.5px #fff, 0 1px 2px rgba(0, 0, 0, 0.15); }
 .claro .cartao.atencao { box-shadow: var(--sombra-bloco), inset 0 0 0 1.5px rgba(217, 119, 6, 0.55); }
 .claro .painel > .tit, .claro .menu .tit { color: rgba(29, 29, 31, 0.5); }
 
@@ -142,9 +151,51 @@ body:not(.anfitriao) .menu { position: absolute; top: 34px; border-radius: 10px;
 .menu .leg { padding: 4px 10px 8px; line-height: 1.45; font-weight: 400; white-space: normal; max-width: 380px; }
 .ponto { width: 7px; height: 7px; border-radius: 50%; background: var(--parada); flex: none; }
 
-/* ---------------- centro de controlo ---------------- */
-.cc { width: 330px; padding: 10px; display: grid; grid-template-columns: 1fr 1fr; gap: 9px; font-size: 12.5px; }
-body:not(.anfitriao) .cc { position: absolute; top: 34px; right: 8px; border-radius: 18px; background: var(--vidro-menu); backdrop-filter: blur(40px) saturate(180%); border: 1px solid var(--sep); }
+/* ---------------- centro de controlo (mosaicos) ---------------- */
+.cc { width: 356px; padding: 10px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 9px; font-size: 12.5px; white-space: normal; }
+body:not(.anfitriao) .cc { position: absolute; top: 34px; right: 8px; border-radius: 20px; background: var(--vidro-menu); backdrop-filter: blur(40px) saturate(180%); border: 1px solid var(--sep); box-shadow: 0 18px 50px rgba(0,0,0,.35); }
+.cc-t { background: var(--bloco); border-radius: 15px; padding: 10px; min-height: 58px; min-width: 0; }
+.claro .cc-t { box-shadow: var(--sombra-bloco); }
+.cc-t.w2 { grid-column: span 2; }
+.cc-t.w4 { grid-column: span 4; }
+.cc-t.h2 { grid-row: span 2; }
+.cc-t.centro { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; font-size: 11.5px; font-weight: 600; text-align: center; }
+.cc-t.clic:hover { filter: brightness(1.1); }
+.claro .cc-t.clic:hover { filter: brightness(0.97); }
+.cc-l { display: flex; align-items: center; gap: 9px; padding: 1px 0; min-width: 0; }
+.cc-l + .cc-l { margin-top: 8px; }
+.cc-l > div { min-width: 0; }
+.cc-l b { display: block; font-size: 12.5px; font-weight: 600; line-height: 1.2; }
+.cc-l small { display: block; font-size: 11px; color: var(--txt2); font-weight: 400; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-transform: capitalize; }
+.cc-l:hover .cc-bola { filter: brightness(1.12); }
+.cc-bola { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; background: var(--trilho); flex: none; transition: background 0.2s; }
+.cc-bola svg.i { width: 15px; height: 15px; }
+.cc-bola.on { background: var(--laranja); color: #fff; }
+.cc-bola.roxo.on { background: #8e62f0; }
+.cc-rot { display: flex; justify-content: space-between; align-items: center; font-size: 12px; font-weight: 600; margin-bottom: 7px; }
+.cc-rot span { color: var(--txt2); font-weight: 500; }
+.cc-num { font-size: 19px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.1; }
+.cc-spark { display: flex; align-items: end; gap: 4px; height: 28px; margin-top: 6px; }
+.cc-spark i { flex: 1; border-radius: 3px; background: color-mix(in srgb, var(--txt) 22%, transparent); }
+.cc-spark i.hoje { background: var(--laranja); }
+.cc-pos { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
+.cc-pos div { aspect-ratio: 1.45; border-radius: 6px; border: 1.5px solid var(--parada); position: relative; }
+.cc-pos div:hover { border-color: var(--txt2); }
+.cc-pos div::after { content: ""; position: absolute; background: var(--txt2); border-radius: 2px; }
+.cc-pos .p-topo::after { inset: 2px 2px auto 2px; height: 3px; }
+.cc-pos .p-escondida::after { inset: 2px 2px auto 2px; height: 3px; opacity: 0.35; }
+.cc-pos .p-flutuante::after { left: 25%; right: 25%; top: 4px; height: 4px; border-radius: 3px; }
+.cc-pos .p-esquerda::after { inset: 2px auto 2px 2px; width: 3px; }
+.cc-pos .p-direita::after { inset: 2px 2px 2px auto; width: 3px; }
+.cc-pos .p-fundo::after { inset: auto 2px 2px 2px; height: 3px; }
+.cc-pos div.on { border-color: var(--laranja); background: color-mix(in srgb, var(--laranja) 14%, transparent); }
+.cc-pos div.on::after { background: var(--laranja); }
+.cc .pre { margin-top: 2px; }
+.cc .eq { margin-top: 12px; }
+.cc .chip.sel { background: var(--laranja); }
+.cc-rod { grid-column: span 4; display: flex; justify-content: space-between; gap: 8px; font-size: 11.5px; color: var(--txt2); padding: 0 4px 2px; font-weight: 400; }
+.cc-rod b, .cc-rod a { color: var(--txt); font-weight: 600; }
+.cc-rod a:hover { color: var(--laranja); }
 .bloco { background: var(--bloco); border-radius: 14px; padding: 10px 11px; }
 .bloco.l2 { grid-column: span 2; }
 .bloco.testar { display: flex; align-items: center; gap: 10px; border: 0; color: inherit; font: inherit; font-weight: 600; text-align: left; cursor: default; }
@@ -177,33 +228,91 @@ input[type=range].grosso::-webkit-slider-thumb { width: 24px; height: 24px; }
 .interruptor { width: 32px; height: 19px; border-radius: 999px; background: var(--trilho); position: relative; flex: none; }
 .interruptor::after { content: ""; position: absolute; top: 2px; left: 2px; width: 15px; height: 15px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.3); transition: left .15s; }
 .interruptor.on { background: var(--azul); } .interruptor.on::after { left: 15px; }
-/* ---------------- conversas: avatares animados ---------------- */
-.avs { display: flex; align-items: center; }
-.av { position: relative; width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center; flex: none;
-  background: var(--c); color: #111; font-size: 10px; font-weight: 700; margin-left: -4px;
-  box-shadow: 0 0 0 1.5px rgba(20, 20, 24, 0.85); }
-.claro .av { box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.9); }
-.avs .av:first-child { margin-left: 0; }
-.av i { font-style: normal; position: relative; z-index: 1; }
-.av.parada, .av.terminou { filter: saturate(0.55) brightness(0.85); }
-/* a trabalhar: anel a rodar */
+/* ---------------- conversas: avatares com anel ---------------- */
+/* A cor é da conversa; o anel enche com o contexto usado (--p). */
+.avs { display: flex; align-items: center; gap: 5px; }
+.av { position: relative; width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; flex: none;
+  background: conic-gradient(var(--c) var(--p, 100%), color-mix(in srgb, var(--c) 24%, transparent) 0);
+  font-size: 9.5px; font-weight: 700; }
+.av i { position: absolute; inset: 2px; border-radius: 50%; display: grid; place-items: center; font-style: normal; z-index: 1;
+  background: var(--disco); color: var(--c); }
+.av[data-conv]:hover { transform: scale(1.12); transition: transform 0.15s; }
+.av.parada, .av.terminou { filter: saturate(0.6) brightness(0.92); }
+/* a trabalhar: arco a rodar à volta */
 .av.trabalhar::before { content: ""; position: absolute; inset: -3px; border-radius: 50%;
-  background: conic-gradient(from 0deg, transparent 0 55%, var(--c) 80%, #fff 100%);
-  -webkit-mask: radial-gradient(circle, transparent 9.5px, #000 10px); mask: radial-gradient(circle, transparent 9.5px, #000 10px);
-  animation: roda 1.1s linear infinite; }
-/* precisa de ti: pulso */
+  background: conic-gradient(from 0deg, transparent 0 60%, var(--c) 92%, transparent 100%);
+  -webkit-mask: radial-gradient(circle, transparent 11.4px, #000 11.9px); mask: radial-gradient(circle, transparent 11.4px, #000 11.9px);
+  animation: roda 1.2s linear infinite; }
+/* precisa de ti: pulso âmbar */
 .av.atencao::after { content: ""; position: absolute; inset: -2px; border-radius: 50%; border: 2px solid var(--alerta); animation: pulso 1.4s ease-out infinite; }
-/* conversa nova: entra a crescer */
 .av.novo { animation: entra 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
 @keyframes roda { to { transform: rotate(360deg); } }
 @keyframes pulso { 0% { transform: scale(0.9); opacity: 1; } 100% { transform: scale(1.7); opacity: 0; } }
 @keyframes entra { from { transform: scale(0); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 .conversas { gap: 7px; }
 .fraco-n { color: var(--txt2); font-weight: 600; font-size: 12px; }
-.barra.v .avs { flex-direction: column; gap: 4px; }
-.barra.v .avs .av { margin-left: 0; }
-.av.g { width: 30px; height: 30px; font-size: 13px; margin: 0; }
-.av.g.trabalhar::before { -webkit-mask: radial-gradient(circle, transparent 15.5px, #000 16px); mask: radial-gradient(circle, transparent 15.5px, #000 16px); }
+.barra.v .avs { flex-direction: column; gap: 6px; }
+.av.g { width: 32px; height: 32px; font-size: 12.5px; }
+.av.g i { inset: 2.5px; }
+.av.g.trabalhar::before { -webkit-mask: radial-gradient(circle, transparent 18.4px, #000 19px); mask: radial-gradient(circle, transparent 18.4px, #000 19px); }
+
+/* ---------------- ilha dinâmica (vidro líquido) ---------------- */
+.ilha-lugar { display: none; }
+.barra.flut .ilha-lugar { display: block; flex: none; height: 24px; }
+.ilha[hidden] { display: none; }
+.barra { position: relative; }
+.ilha { position: fixed; left: 50%; top: 15px; transform: translate(-50%, -50%); height: 24px; border-radius: 12px; overflow: hidden; flex: none; z-index: 2;
+  background: linear-gradient(180deg, var(--ilha-brilho), transparent 62%), var(--ilha-fundo);
+  border: 1px solid var(--ilha-borda);
+  box-shadow: inset 0 1px 0 var(--ilha-brilho), 0 3px 12px rgba(0, 0, 0, 0.16);
+  transition: width 0.55s cubic-bezier(0.32, 1.28, 0.5, 1), box-shadow 0.45s, border-color 0.45s; }
+.ilha:hover { filter: brightness(1.07); }
+.ilha:active { transform: translate(-50%, -50%) scale(0.97); }
+.ilha.fala, .ilha.acao { --halo: var(--laranja); }
+.ilha.perm { --halo: var(--alerta); }
+.ilha.fim { --halo: #34c759; }
+.ilha.dit { --halo: #ff453a; }
+.ilha.fala, .ilha.perm, .ilha.fim, .ilha.dit {
+  border-color: color-mix(in srgb, var(--halo) 45%, transparent);
+  box-shadow: inset 0 1px 0 var(--ilha-brilho), 0 0 14px color-mix(in srgb, var(--halo) 38%, transparent); }
+.ilha.perm { animation: halo 1.8s ease-in-out infinite; }
+@keyframes halo { 50% { box-shadow: inset 0 1px 0 var(--ilha-brilho), 0 0 20px color-mix(in srgb, var(--halo) 60%, transparent); } }
+.ilha-c { position: absolute; left: 0; top: 0; bottom: 0; width: max-content; display: flex; align-items: center; gap: 8px; padding: 0 11px; white-space: nowrap; font-size: 12px; }
+.ilha-c.aperta { width: auto; right: 0; }
+.ilha-c.entra { animation: ilha-entra 0.38s 0.12s both cubic-bezier(0.2, 0.9, 0.3, 1); }
+@keyframes ilha-entra { from { opacity: 0; transform: scale(0.94); } to { opacity: 1; transform: none; } }
+.ilha-c svg.i { width: 13px; height: 13px; }
+.ilha.repouso .ilha-c > svg.i { color: var(--estrela); }
+.ilha-c b { font-weight: 650; }
+.i-pontos { display: flex; gap: 4px; }
+.i-pontos i { width: 6px; height: 6px; border-radius: 50%; background: var(--c); opacity: 0.5; }
+.i-pontos i.trabalhar { opacity: 1; animation: pisca 1.6s infinite; }
+.i-pontos i.atencao { background: var(--alerta); opacity: 1; animation: pisca 1s infinite; }
+.i-chip { display: inline-flex; align-items: center; gap: 6px; font-weight: 650; flex: none; max-width: 190px; min-width: 0; }
+.i-chip span { overflow: hidden; text-overflow: ellipsis; }
+.i-chip i { width: 7px; height: 7px; border-radius: 50%; background: var(--c); box-shadow: 0 0 7px var(--c); flex: none; }
+.i-leg { color: var(--txt2); font-weight: 450; overflow: hidden; min-width: 0; }
+.ilha-c.aperta .i-leg { flex: 1; }
+.i-leg span { display: inline-block; }
+.i-leg.corre { -webkit-mask: linear-gradient(90deg, transparent, #000 10px, #000 88%, transparent); mask: linear-gradient(90deg, transparent, #000 10px, #000 88%, transparent); }
+.i-leg.corre span { padding-left: 8px; animation: corre var(--dur, 6s) ease-in-out 0.8s infinite alternate; }
+@keyframes corre { 0%, 12% { transform: none; } 88%, 100% { transform: translateX(var(--desl, 0)); } }
+.i-onda { display: flex; align-items: center; gap: 2px; height: 14px; flex: none; }
+.i-onda b { width: 2.5px; height: 100%; border-radius: 2px; background: var(--laranja); transform: scaleY(0.25); animation: o-ilha 0.9s ease-in-out infinite; }
+@keyframes o-ilha { 0%, 100% { transform: scaleY(0.22); } 50% { transform: scaleY(1); } }
+.i-esc { width: 17px; height: 17px; border-radius: 5px; display: grid; place-items: center; flex: none;
+  background: color-mix(in srgb, var(--alerta) 24%, transparent); color: var(--alerta); }
+.i-esc svg.i { width: 11px; height: 11px; }
+.i-t2 { color: var(--txt2); font-weight: 450; }
+.i-ok { width: 16px; height: 16px; border-radius: 50%; background: #34c759; display: grid; place-items: center; flex: none; }
+.i-ok svg { width: 10px; height: 10px; fill: none; stroke: #fff; stroke-width: 3.2; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 20; stroke-dashoffset: 20; animation: risca 0.5s 0.4s forwards; }
+@keyframes risca { to { stroke-dashoffset: 0; } }
+.i-rec { position: relative; width: 16px; height: 16px; border-radius: 50%; background: #ff453a; color: #fff; display: grid; place-items: center; flex: none; }
+.i-rec svg.i { width: 10px; height: 10px; }
+.i-rec::after { content: ""; position: absolute; inset: -3px; border-radius: 50%; border: 2px solid #ff453a; animation: pulso 1.3s ease-out infinite; }
+.i-kbd { font-size: 10px; color: var(--txt2); background: var(--trilho); padding: 1px 6px; border-radius: 5px; font-weight: 600; }
+.ilha .aescrever { color: var(--txt2); }
+.ilha .aescrever b { width: 3px; height: 3px; }
 
 /* ---------------- painel de conversas e aviso ---------------- */
 .painel { width: 380px; padding: 8px; display: flex; flex-direction: column; gap: 8px; white-space: normal; }
@@ -232,7 +341,7 @@ body:not(.anfitriao) .painel { position: absolute; top: 34px; border-radius: 16p
 .resp:focus-within { box-shadow: 0 0 0 2px color-mix(in srgb, var(--azul) 70%, transparent); }
 .resp textarea { flex: 1; border: 0; background: transparent; color: inherit; font: inherit; font-weight: 400; font-size: 12.5px; resize: none; outline: none; padding: 5px 0; min-height: 24px; max-height: 110px; line-height: 1.35; user-select: text; }
 .resp textarea::placeholder { color: var(--txt2); }
-.resp button { width: 26px; height: 26px; border-radius: 50%; border: 0; background: var(--azul); color: #fff; font-size: 14px; font-weight: 700; flex: none; }
+.resp button { width: 26px; height: 26px; border-radius: 50%; border: 0; background: var(--laranja); color: #fff; font-size: 14px; font-weight: 700; flex: none; }
 .resp button:hover { filter: brightness(1.12); }
 .envio { font-size: 11.5px; color: var(--txt2); font-weight: 400; margin-top: -2px; }
 .envio.ok { color: var(--ok); } .envio.erro { color: #f87171; }
@@ -262,12 +371,15 @@ body:not(.anfitriao) .painel.aviso { top: 38px; }
 
 /* ---------------- permissões ---------------- */
 .cartao.permissao { box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--alerta) 65%, transparent); }
-.cartao.permissao .av.g i svg { width: 15px; height: 15px; color: #111; }
+.cartao.permissao .escudo { width: 32px; height: 32px; border-radius: 10px; display: grid; place-items: center; flex: none;
+  background: color-mix(in srgb, var(--alerta) 22%, transparent); color: var(--alerta); }
+.cartao.permissao .escudo svg.i { width: 16px; height: 16px; }
+.cmd .pr { color: var(--laranja); font-weight: 700; }
 .cmd { margin: 0; padding: 8px 10px; border-radius: 9px; background: rgba(0, 0, 0, 0.28); font-family: "Cascadia Code", Consolas, monospace; font-size: 11.5px; line-height: 1.4; white-space: pre-wrap; word-break: break-all; max-height: 120px; overflow: auto; user-select: text; }
 .claro .cmd { background: rgba(0, 0, 0, 0.05); }
 .botoes { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .botoes button { border: 0; border-radius: 9px; padding: 7px 0; font: inherit; font-weight: 600; color: inherit; background: var(--trilho); }
-.botoes .permitir { background: var(--azul); color: #fff; }
+.botoes .permitir { background: var(--laranja); color: #fff; }
 .botoes button:hover { filter: brightness(1.1); }
 
 /* ---------------- vozes ---------------- */
@@ -310,3 +422,21 @@ body:not(.anfitriao) .painel.aviso { top: 38px; }
 .aviso-voz { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 4px 10px 6px 31px; color: var(--alerta); font-size: 11.5px; font-weight: 500; white-space: normal; }
 .mods .op { cursor: grab; }
 .mods .op.arrastar { opacity: .5; }
+
+/* ---------------- cartão de uma conversa (clique no avatar) ---------------- */
+.painel.conversa { width: 340px; }
+.tl-tit { font-size: 11px; font-weight: 600; color: var(--txt2); margin: 0 0 -4px 2px; }
+.tl-acoes { list-style: none; margin: 0; padding: 0 0 0 15px; position: relative; font-size: 12px; font-weight: 400; }
+.tl-acoes::before { content: ""; position: absolute; left: 4px; top: 8px; bottom: 8px; width: 1.5px; background: var(--sep); }
+.tl-acoes li { position: relative; display: flex; gap: 8px; padding: 3px 0; align-items: baseline; }
+.tl-acoes li::before { content: ""; position: absolute; left: -14.5px; top: 8px; width: 8px; height: 8px; border-radius: 50%; background: var(--parada); }
+.tl-acoes li.agora::before { background: var(--laranja); box-shadow: 0 0 0 3px color-mix(in srgb, var(--laranja) 28%, transparent); }
+.tl-acoes li span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tl-acoes small { color: var(--txt2); font-size: 11px; flex: none; }
+.uso-linha { display: flex; gap: 14px; font-size: 11px; color: var(--txt2); font-weight: 400; }
+.uso-linha b { color: var(--txt); font-weight: 650; text-transform: capitalize; }
+
+/* ---------------- cartões que saem da ilha ---------------- */
+.painel.entra-ilha > .cartao { animation: cai 0.42s cubic-bezier(0.32, 1.28, 0.5, 1) both; transform-origin: 50% 0; }
+@keyframes cai { from { transform: translateY(-10px) scale(0.94); opacity: 0; } to { transform: none; opacity: 1; } }
+body:not(.anfitriao) .painel.conversa { top: 36px; }

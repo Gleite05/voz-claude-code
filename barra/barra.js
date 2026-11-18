@@ -42,6 +42,9 @@
     micro: '<rect x="9" y="3" width="6" height="11" rx="3" fill="currentColor"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
     escudo: '<path fill="currentColor" d="M12 2.5l7.5 3v6c0 4.6-3.2 8.7-7.5 10-4.3-1.3-7.5-5.4-7.5-10v-6z"/>',
     grafico: '<path fill="currentColor" d="M4 20h16v-1.6H4zM5.5 17h2.6V10H5.5zm5.2 0h2.6V5h-2.6zm5.2 0h2.6v-5h-2.6z"/>',
+    balao: '<path fill="currentColor" d="M4 5.5A2.5 2.5 0 0 1 6.5 3h11A2.5 2.5 0 0 1 20 5.5v8a2.5 2.5 0 0 1-2.5 2.5H10l-4.5 4v-4A2.5 2.5 0 0 1 4 13.5z"/>',
+    raio: '<path fill="currentColor" d="M13.5 2L5 13.5h6L9.8 22 19 10h-6.2z"/>',
+    globo: '<circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M3.5 12h17M12 3.5c2.6 2.6 2.6 14.4 0 17M12 3.5c-2.6 2.6-2.6 14.4 0 17" fill="none" stroke="currentColor" stroke-width="1.8"/>',
   }
   // Temas: [valor, ícone, nome na língua atual]
   const temas = () => [['sistema', 'auto'], ['claro', 'sol'], ['escuro', 'lua']].map(([v, ic]) => [v, ic, t('tema.' + v)])
@@ -59,6 +62,7 @@
   const posicoes = () => ['topo', 'escondida', 'flutuante', 'esquerda', 'direita', 'fundo'].map(v => [v, t('pos.' + v)])
   // Módulos: id -> chave do nome (o nome vem de t()).
   const MODULOS = {
+    ilha: 'mod.ilha',
     sessao: 'mod.sessao', acao: 'mod.acao', legenda: 'mod.legenda', onda: 'mod.onda', conversas: 'mod.conversas', sessoes: 'mod.sessoes',
     contexto: 'mod.contexto', microfone: 'mod.microfone', silencio: 'mod.silencio', tema: 'mod.tema', som: 'mod.som', tempo: 'mod.tempo',
   }
@@ -118,6 +122,11 @@
         mods.splice(i, 0, { id: 'conversas', on: true })
       }
     }
+    // A ilha dinâmica (v1.2) entra ligada e substitui a ação, a legenda e a onda soltas.
+    if (!mods.some(m => m.id === 'ilha')) {
+      for (const m of mods) if (m.id === 'acao' || m.id === 'legenda' || m.id === 'onda') m.on = false
+      mods.unshift({ id: 'ilha', on: true })
+    }
     // Módulos novos entram logo antes do Centro de Controlo.
     for (const id of ['microfone', 'silencio', 'tema']) {
       if (!mods.some(m => m.id === id)) {
@@ -133,10 +142,119 @@
   const cor = id => CORES[[...String(id)].reduce((a, ch) => (a * 31 + ch.charCodeAt(0)) >>> 0, 7) % CORES.length]
   const inicial = t => (String(t || '?').trim().match(/[\p{L}\p{N}]/u) || ['?'])[0].toUpperCase()
   const vistos = new Set()
+  /** Avatar com anel: a cor é da conversa e o anel enche com o contexto usado. */
   function avatar(x, grande) {
     const novo = !vistos.has(x.id)
     vistos.add(x.id)
-    return `<span class="av ${x.estado}${grande ? ' g' : ''}${novo ? ' novo' : ''}" style="--c:${cor(x.id)}"><i>${esc(inicial(x.titulo))}</i></span>`
+    const p = x.uso && Number.isFinite(x.uso.pct) ? Math.max(4, Math.min(100, x.uso.pct)) : 100
+    const clique = grande ? '' : ` data-conv="${esc(x.id)}" title="${esc(x.titulo + ' · ' + (ESTADOS[x.estado] || x.estado))}"`
+    return `<span class="av ${x.estado}${grande ? ' g' : ''}${novo ? ' novo' : ''}" style="--c:${cor(x.id)};--p:${p}%"${clique}><i>${esc(inicial(x.titulo))}</i></span>`
+  }
+
+  // ---------------- ilha dinâmica ----------------
+  // Cápsula de vidro no centro da barra: repouso → a trabalhar → a falar → precisa de ti → terminou → ditado.
+  let ilhaEl = null
+  let ilhaChave = ''
+  let fimRecente = null // { id, ate }
+  const estadoIlhaAnt = {}
+  const posHorizontal = () => ['topo', 'escondida', 'fundo', 'flutuante'].includes((E && E.cfg.barraPosicao) || 'topo')
+  const ilhaLigada = () => !!E && posHorizontal() && modulosCompletos().some(m => m.id === 'ilha' && m.on)
+
+  /** Deteta conversas que acabaram agora (para o «terminou» na ilha durante 5 s). */
+  function detetarFins() {
+    for (const x of E.sessoes) {
+      const antes = estadoIlhaAnt[x.id]
+      estadoIlhaAnt[x.id] = x.estado
+      if (antes === 'trabalhar' && x.estado === 'terminou') {
+        fimRecente = { id: x.id, ate: Date.now() + 5000 }
+        setTimeout(render, 5100)
+      }
+    }
+  }
+
+  const ondaIlha = () =>
+    '<span class="i-onda">' + Array.from({ length: 12 }, (_, i) => `<b style="animation-delay:${-((i * 137) % 900)}ms;animation-duration:${700 + ((i * 53) % 400)}ms"></b>`).join('') + '</span>'
+  const chip = x => `<span class="i-chip" style="--c:${cor(x.id)}"><i></i><span>${esc(x.titulo)}</span></span>`
+
+  function estadoIlha() {
+    const S = E.sessoes
+    if (E.aOuvir) {
+      return { k: 'dit', cls: 'dit', clique: 'dit', html: `<span class="i-rec">${svg('micro')}</span><span>${t('ilha.aOuvir')}</span><span class="i-kbd">Ctrl Shift Alt V</span>` }
+    }
+    const p = (E.permissoes || [])[0]
+    if (p) {
+      const s = S.find(x => x.id === p.sessao)
+      return { k: 'perm:' + p.id, cls: 'perm', clique: 'perm:' + p.id, html: `<span class="i-esc">${svg('escudo')}</span><b>${esc(t('ilha.pede', { nome: s ? s.titulo : t('perm.conversa') }))}</b><span class="i-t2">${esc(p.ferramenta)}</span>` }
+    }
+    const at = S.find(x => x.estado === 'atencao')
+    if (at) return { k: 'at:' + at.id, cls: 'perm', clique: 'aviso:' + at.id, html: `<span class="i-esc">${svg('sino')}</span><b>${esc(t('ilha.precisa', { nome: at.titulo }))}</b>` }
+    if (E.falando) {
+      const s = S.find(x => x.id === E.falando.sessao)
+      return { k: 'fala', cls: 'fala', clique: 'saltar', titulo: t('ilha.saltar'), html: `${s ? chip(s) : ''}<span class="i-leg"><span>${esc(E.falando.texto)}</span></span>${ondaIlha()}` }
+    }
+    if (fimRecente && fimRecente.ate > Date.now()) {
+      const s = S.find(x => x.id === fimRecente.id)
+      if (s) return { k: 'fim:' + s.id, cls: 'fim', clique: 'conv:' + s.id, html: `<span class="i-ok"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span><b>${esc(t('ilha.terminou', { nome: s.titulo }))}</b>${s.inicio ? `<span class="i-t2 num">· ${duracao(s)}</span>` : ''}` }
+    }
+    const s = foco()
+    if (s && s.estado === 'trabalhar' && s.acao) {
+      return { k: 'acao', cls: 'acao', clique: 'conv:' + s.id, html: `${chip(s)}<span class="i-leg"><span>${esc(s.acao)}</span></span><span class="aescrever"><b></b><b></b><b></b></span>` }
+    }
+    return {
+      k: 'repouso',
+      cls: 'repouso',
+      clique: S.length ? 'conversas' : 'definicoes',
+      html: `${svg('estrela')}${S.length ? `<span class="i-pontos">${S.slice(0, 6).map(x => `<i class="${x.estado}" style="--c:${cor(x.id)}"></i>`).join('')}</span>` : ''}`,
+    }
+  }
+
+  // A ilha vive fora da barra (que é redesenhada a cada atualização) para as animações não recomeçarem.
+  function desenharIlha(lugar, flut) {
+    const st = estadoIlha()
+    if (!ilhaEl) {
+      ilhaEl = document.createElement('div')
+      ilhaEl.innerHTML = '<div class="ilha-c"></div>'
+      document.body.appendChild(ilhaEl)
+    }
+    ilhaEl.hidden = false
+    ilhaEl.className = `ilha clic ${st.cls}`
+    ilhaEl.dataset.ilha = st.clique
+    ilhaEl.title = st.titulo || ''
+    let c = ilhaEl.firstElementChild
+    if (st.k !== ilhaChave) {
+      // Estado novo: o conteúdo entra depois de a forma mudar.
+      const novo = document.createElement('div')
+      novo.className = 'ilha-c entra'
+      novo.addEventListener('animationend', ev => ev.target === novo && novo.classList.remove('entra'))
+      ilhaEl.replaceChild(novo, c)
+      c = novo
+      ilhaChave = st.k
+    }
+    if (c._html !== st.html) {
+      c.innerHTML = st.html
+      c._html = st.html
+    }
+    // Largura: a do conteúdo, até um máximo; acima disso a legenda corre.
+    c.classList.remove('aperta')
+    const max = Math.min(480, Math.max(220, innerWidth * 0.38))
+    const natural = Math.ceil(c.scrollWidth) + 2 // + a borda da cápsula
+    if (natural > max) c.classList.add('aperta')
+    const largura = Math.min(max, natural)
+    ilhaEl.style.width = largura + 'px'
+    // Posição: centrada na barra; na flutuante, no lugar reservado entre os módulos.
+    const barra = raiz.firstElementChild.getBoundingClientRect()
+    ilhaEl.style.top = Math.round(barra.top + barra.height / 2) + 'px'
+    if (flut) {
+      lugar.style.width = largura + 'px'
+      ilhaEl.style.left = Math.round(lugar.getBoundingClientRect().left + largura / 2) + 'px'
+    } else ilhaEl.style.left = Math.round(barra.left + barra.width / 2) + 'px'
+    const leg = c.querySelector('.i-leg')
+    if (leg) {
+      const desl = leg.firstElementChild.scrollWidth - leg.clientWidth
+      leg.classList.toggle('corre', desl > 4)
+      leg.style.setProperty('--desl', -Math.max(0, desl) + 'px')
+      leg.style.setProperty('--dur', Math.max(4, desl / 28) + 's')
+    }
   }
 
   function modulo(id, s, vertical, flut) {
@@ -202,12 +320,19 @@
     const vertical = pos === 'esquerda' || pos === 'direita'
     const flut = pos === 'flutuante'
     const s = foco()
-    const mods = modulosCompletos().filter(m => m.on).map(m => m.id)
+    detetarFins()
+    const mods = modulosCompletos().filter(m => m.on && m.id !== 'ilha').map(m => m.id)
     const esq = mods.filter(id => ESQUERDA.has(id)).map(id => modulo(id, s, vertical, flut))
     const dir = mods.filter(id => !ESQUERDA.has(id)).map(id => modulo(id, s, vertical, flut))
     const marca = `<div class="it marca clic" data-menu="definicoes" title="${t('barra.marca')}">${svg('estrela')}<b>Claude</b></div>`
     const classe = vertical ? 'barra v' : flut ? 'barra flut' : 'barra'
-    raiz.innerHTML = `<div class="${classe}">${marca}${esq.join('')}${flut ? '' : '<div class="espaco"></div>'}${dir.join('')}</div>`
+    const comIlha = ilhaLigada()
+    raiz.innerHTML = `<div class="${classe}">${marca}${esq.join('')}${comIlha ? '<i class="ilha-lugar"></i>' : ''}${flut ? '' : '<div class="espaco"></div>'}${dir.join('')}</div>`
+    if (comIlha) desenharIlha(raiz.querySelector('.ilha-lugar'), flut)
+    else {
+      ilhaChave = ''
+      if (ilhaEl) ilhaEl.hidden = true
+    }
 
     if (pos !== posicaoEnviada) {
       posicaoEnviada = pos
@@ -266,33 +391,56 @@
     return `<div class="rot"><span>${rotulo}</span><span class="num" data-valor="${chave}">${fmt(v)}</span></div><input type="range" ${grosso ? 'class="grosso"' : ''} data-chave="${chave}" min="${min}" max="${max}" step="${passo}" value="${v}">`
   }
 
+  let ccEq = false // equalizador aberto no Centro de Controlo
+
+  /** Centro de Controlo: mosaicos ao estilo macOS (voz, não incomodar, sliders, tokens, língua, aspeto, posição). */
   function menuSom() {
     const c = E.cfg
     const pre = Object.keys(PREDEF).find(k => Object.entries(PREDEF[k]).every(([kk, vv]) => Number(c[kk]) === vv))
     const sinal = v => (v > 0 ? '+' : '') + num(v, 0)
-    const interruptor = (chave, rot) =>
-      `<div class="lig" data-alternar="${chave}"><span>${rot}</span><span class="interruptor ${c[chave] ? 'on' : ''}"></span></div>`
+    const linha = (chave, ic, on, rot, sub, extra) =>
+      `<div class="cc-l clic" data-alternar="${chave}"><span class="cc-bola ${on ? 'on' : ''} ${extra || ''}">${svg(ic)}</span><div><b>${rot}</b><small>${sub}</small></div></div>`
+    const h = { ativo: false, inicio: '22:00', fim: '08:00', ...(c.silencioHorario || {}) }
+    const subSil = c.naoIncomodar ? t('cc.ligado') : h.ativo ? t('cc.ate', { h: esc(h.fim) }) : t('cc.desligado')
+    const u = E.uso
+    const dias = u ? u.dias.map(d => d.entrada + d.saida) : []
+    const maxDia = Math.max(1, ...dias)
+    const nomeLing = { auto: t('def.idiomaAuto'), pt: 'Português', en: 'English', es: 'Español' }[c.idioma || 'auto']
+    const L = temas()
+    const temaAtual = L.find(x => x[0] === (c.barraTema || 'sistema')) || L[0]
+    const temaProx = L[(L.indexOf(temaAtual) + 1) % L.length]
+    const semAcento = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '')
+    const padrao = (E.vozes && E.vozes.padrao) || ''
+    const instalada = ((E.vozes && E.vozes.instaladas) || []).find(v => semAcento(v.id) === semAcento(padrao))
+    const vozNome = String(instalada ? instalada.nome : padrao.split('-')[1] || '').replace(/^tugao$/, 'tugão') // o ficheiro não tem acento
+    const precisam = E.sessoes.filter(x => x.estado === 'atencao').length
+    const nConv = E.sessoes.length
+    const posAtual = c.barraPosicao || 'topo'
+    const resumoConv = nConv
+      ? (nConv === 1 ? t('cc.conversa1') : t('cc.conversas', { n: nConv })) + (precisam ? ` · <b>${precisam === 1 ? t('cc.precisa1') : t('cc.precisamN', { n: precisam })}</b>` : '')
+      : t('barra.semSessoes')
     return `<div class="cc">
-      <div class="bloco"><div class="bt"><button class="redondo ${c.ligado ? 'on' : ''}" data-alternar="ligado">${svg(c.ligado ? 'altifalante' : 'mudo')}</button><div>${t('som.voz')}<small>${c.ligado ? t('som.ligada') : t('som.desligada')}</small></div></div></div>
-      <div class="bloco"><div class="bt"><button class="redondo" data-acao="pausa" title="${E.pausado ? t('som.retomar') : t('som.pausar')}">${svg(E.pausado ? 'tocar' : 'pausa')}</button><button class="redondo" data-acao="saltar" title="${t('som.saltar')}">${svg('saltar')}</button><div>${t('som.fala')}<small>${E.pausado ? t('som.emPausa') : E.falando ? t('som.aFalar') : t('som.silencio')}</small></div></div></div>
-      <button class="bloco l2 testar" data-acao="testar">${svg('tocar')}<span>${t('som.testar')}<small>«${t('frase.teste').replace(/\.$/, '')}»</small></span></button>
-      <div class="bloco l2"><h6>${t('som.volume')}</h6>${deslizador('volume', '', 0, 2, 0.05, v => Math.round(v * 100) + '%', true)}</div>
-      <div class="bloco l2">${deslizador('velocidade', t('som.velocidade'), 0.6, 1.4, 0.02, v => num(v, 2))}${deslizador('altura', t('som.altura'), -6, 6, 1, sinal)}</div>
-      <div class="bloco l2"><h6>${t('som.eq')}</h6><div class="eq">
-        ${['graves', 'medios', 'agudos']
-          .map(
-            (k, i) =>
-              `<label><input type="range" data-chave="${k}" min="-12" max="12" step="1" value="${Number(c[k])}"><span>${[t('som.graves'), t('som.medios'), t('som.agudos')][i]} <span class="num" data-valor="${k}">${sinal(Number(c[k]))}</span></span></label>`,
-          )
-          .join('')}
-      </div></div>
-      <div class="bloco l2"><h6>${t('som.predef')}</h6><div class="pre">${Object.keys(PREDEF)
-        .map(k => `<button class="chip ${k === pre ? 'sel' : ''}" data-predef="${k}">${t('pre.' + k)}</button>`)
-        .join('')}</div></div>
-      <div class="bloco l2"><h6>${t('som.aspeto')}</h6><div class="segmentado">${temas().map(
-        ([v, ic, r]) => `<button class="${(c.barraTema || 'sistema') === v ? 'sel' : ''}" data-tema="${v}">${svg(ic)}${r}</button>`,
-      ).join('')}</div></div>
-      <div class="bloco l2">${interruptor('anunciarAcoes', t('som.anunciar'))}${interruptor('lerRespostas', t('som.ler'))}${interruptor('soSessaoAtiva', t('som.soAtiva'))}</div>
+      <div class="cc-t w2 h2">
+        ${linha('ligado', c.ligado ? 'altifalante' : 'mudo', c.ligado, t('som.voz'), c.ligado ? esc(vozNome || t('som.ligada')) : t('som.desligada'))}
+        ${linha('lerRespostas', 'balao', c.lerRespostas, t('cc.ler'), c.lerRespostas ? t('cc.ligado') : t('cc.desligado'))}
+        ${linha('anunciarAcoes', 'raio', c.anunciarAcoes, t('cc.anunciar'), c.anunciarAcoes ? t('cc.ligado') : t('cc.desligado'))}
+      </div>
+      <div class="cc-t w2">${linha('naoIncomodar', 'lua', c.naoIncomodar || E.silencio, t('cc.silencio'), subSil, 'roxo')}</div>
+      <div class="cc-t centro clic" data-acao="pausa"><span class="cc-bola">${svg(E.pausado ? 'tocar' : 'pausa')}</span>${E.pausado ? t('cc.retomar') : t('cc.pausar')}</div>
+      <div class="cc-t centro clic" data-acao="saltar"><span class="cc-bola">${svg('saltar')}</span>${t('cc.saltar')}</div>
+      <div class="cc-t w4">${deslizador('volume', t('cc.volume'), 0, 2, 0.05, v => Math.round(v * 100) + '%', true)}</div>
+      <div class="cc-t w4">${deslizador('velocidade', t('cc.velocidade'), 0.6, 1.4, 0.02, v => num(v, 2))}${deslizador('altura', t('cc.tom'), -6, 6, 1, sinal)}</div>
+      <div class="cc-t w2 clic" data-ir="uso"><div class="cc-rot">${t('cc.tokens')}</div><div class="cc-num num">${u ? mil(u.hoje.entrada + u.hoje.saida) : '—'}</div>
+        <div class="cc-spark">${dias.map((d, i) => `<i class="${i === dias.length - 1 ? 'hoje' : ''}" style="height:${Math.max(6, Math.round((d / maxDia) * 100))}%"></i>`).join('')}</div></div>
+      <div class="cc-t centro clic" data-ciclo-idioma="1"><span class="cc-bola">${svg('globo')}</span>${esc(nomeLing)}</div>
+      <div class="cc-t centro clic" data-ciclo-tema="${temaProx[0]}"><span class="cc-bola">${svg(temaAtual[1])}</span>${temaAtual[2]}</div>
+      <div class="cc-t w4"><div class="cc-rot">${t('cc.posicao')}<span>${(posicoes().find(p => p[0] === posAtual) || ['', ''])[1]}</span></div>
+        <div class="cc-pos">${posicoes().map(([v, r]) => `<div class="p-${v} ${posAtual === v ? 'on' : ''}" data-posicao="${v}" title="${esc(r)}"></div>`).join('')}</div></div>
+      <div class="cc-t w4"><div class="cc-rot clic" data-cc-eq="1">${t('cc.eq')}<span>${ccEq ? '▴' : '▾'}</span></div>
+        <div class="pre">${Object.keys(PREDEF).map(k => `<button class="chip ${k === pre ? 'sel' : ''}" data-predef="${k}">${t('pre.' + k)}</button>`).join('')}</div>
+        ${ccEq ? `<div class="eq">${['graves', 'medios', 'agudos'].map((k, i) => `<label><input type="range" data-chave="${k}" min="-12" max="12" step="1" value="${Number(c[k])}"><span>${[t('som.graves'), t('som.medios'), t('som.agudos')][i]} <span class="num" data-valor="${k}">${sinal(Number(c[k]))}</span></span></label>`).join('')}</div>` : ''}
+      </div>
+      <div class="cc-rod"><span>${resumoConv}</span><span><a class="clic" data-acao="testar">${t('som.testar')}</a> · <a class="clic" data-ir="definicoes">${t('cc.definicoes')}</a></span></div>
     </div>`
   }
 
@@ -370,26 +518,17 @@
     </div>`
   }
 
-  /** Menu do clique direito: o essencial à mão. */
+  /** Menu do clique direito: curto; o resto está no Centro de Controlo e nas Definições. */
   function menuDireito() {
     const c = E.cfg
     const chk = b => (b ? '✓' : '')
     return `<div class="menu">
-      <div class="op" data-ir="conversas"><span class="chk"></span>${t('dir.conversas')}</div>
-      <div class="op" data-ir="som"><span class="chk"></span>${t('dir.som')}</div>
+      <div class="op" data-ir="conversas"><span class="chk"></span>${t('dir.conversas')}<small>Ctrl+Shift+Alt+C</small></div>
+      <div class="op" data-ir="som"><span class="chk"></span>${t('dir.cc')}</div>
       <div class="op" data-ir="uso"><span class="chk"></span>${t('dir.tokens')}</div>
       <hr>
       <div class="op" data-alternar="naoIncomodar"><span class="chk">${chk(c.naoIncomodar)}</span>${t('dir.silencio')}<small>Ctrl+Shift+Alt+D</small></div>
       <div class="op" data-alternar="ligado"><span class="chk">${chk(c.ligado)}</span>${t('dir.vozLigada')}</div>
-      <hr>
-      <div class="tit">${t('dir.posicao')}</div>
-      ${posicoes().map(([v, r]) => `<div class="op" data-posicao="${v}"><span class="chk">${chk(c.barraPosicao === v)}</span>${r}</div>`).join('')}
-      <hr>
-      ${opcoesEcra(c)}
-      ${blocoIdioma(c)}
-      <hr>
-      <div class="tit">${t('dir.aspeto')}</div>
-      ${temas().map(([v, , r]) => `<div class="op" data-tema="${v}"><span class="chk">${chk((c.barraTema || 'sistema') === v)}</span>${r}</div>`).join('')}
       <hr>
       <div class="op" data-ir="definicoes"><span class="chk"></span>${t('dir.definicoes')}</div>
       <div class="op" data-sair="1"><span class="chk"></span>${t('dir.fechar')}</div>
@@ -484,9 +623,9 @@
   function cartaoPermissao(p, aviso) {
     const s = E.sessoes.find(x => x.id === p.sessao)
     return `<div class="cartao permissao" data-perm="${esc(p.id)}">
-      <div class="cab"><span class="av g atencao" style="--c:#fbbf24"><i>${svg('escudo')}</i></span><div class="tt"><b>${esc(s ? s.titulo : t('perm.conversa'))}</b><small>${t('perm.querUsar')} <b>${esc(p.ferramenta)}</b></small></div>${aviso ? `<button class="x" data-fechar="1" title="${t('perm.fecharDepois')}">✕</button>` : ''}</div>
+      <div class="cab"><span class="escudo">${svg('escudo')}</span><div class="tt"><b>${esc(t('ilha.pede', { nome: s ? s.titulo : t('perm.conversa') }))}</b><small>${esc(t('perm.sub', { f: p.ferramenta }))}</small></div>${aviso ? `<button class="x" data-fechar="1" title="${t('perm.fecharDepois')}">✕</button>` : ''}</div>
       ${p.descricao ? `<div class="ultima">${esc(p.descricao)}</div>` : ''}
-      <pre class="cmd">${esc(p.resumo)}</pre>
+      <pre class="cmd"><span class="pr">$</span> ${esc(p.resumo)}</pre>
       <div class="botoes"><button class="recusar" data-decidir="deny" data-id="${esc(p.id)}">${t('perm.recusar')}</button><button class="permitir" data-decidir="allow" data-id="${esc(p.id)}">${t('perm.permitir')}</button></div>
     </div>`
   }
@@ -534,7 +673,24 @@
     return ''
   }
 
-  function cartao(x, aviso) {
+  /** Linha temporal das últimas ações e uma linha com o contexto, os tokens e a voz. */
+  function detalheConversa(x) {
+    const h = x.historico || []
+    const hora = ms => new Date(ms).toLocaleTimeString(localeAtual(), { hour: '2-digit', minute: '2-digit' })
+    const linhas = h
+      .map((a, i) => {
+        const agora = i === h.length - 1 && x.estado === 'trabalhar'
+        return `<li class="${agora ? 'agora' : ''}"><span>${esc(a.acao)}</span><small class="num">${agora ? t('conv.agora') : hora(a.t)}</small></li>`
+      })
+      .join('')
+    const voz = x.voz && x.voz.manual && x.voz.voz ? x.voz.voz.split('-')[1] || x.voz.voz : null
+    const uso = x.uso
+      ? `<div class="uso-linha"><span>${t('conv.contexto')} <b class="num">${x.uso.pct}%</b></span><span><b class="num">${mil(x.uso.saidaPedido || 0)}</b> tokens</span>${voz ? `<span>${t('conv.voz')} <b>${esc(voz)}</b></span>` : ''}</div>`
+      : ''
+    return `${linhas ? `<div class="tl-tit">${t('conv.acoes')}</div><ul class="tl-acoes">${linhas}</ul>` : ''}${uso}`
+  }
+
+  function cartao(x, aviso, detalhe) {
     const linhaEstado =
       x.estado === 'trabalhar'
         ? `<span class="aescrever"><b></b><b></b><b></b></span>${esc(x.acao || t('conv.aTrabalhar'))}`
@@ -560,6 +716,7 @@
     cartoesVistos.add(chave)
     return `<div class="cartao ${x.estado}${entra ? ' entra' : ''}" data-cartao="${esc(x.id)}">
       <div class="cab">${avatar(x, true)}<div class="tt"><b>${esc(x.titulo)}</b><small>${linhaEstado}${x.inicio ? ` · <span class="num">${duracao(x)}</span>` : ''}</small></div>${aviso ? `<button class="x" data-fechar="1" title="${t('conv.fechar')}">✕</button>` : ''}</div>
+      ${detalhe ? detalheConversa(x) : ''}
       ${msg ? `<div class="ultima">${esc(msg)}</div>` : x.estado === 'trabalhar' ? '' : `<div class="ultima vazia">${t('conv.semResposta')}</div>`}
       ${x.pedido && !aviso ? `<div class="eu"><span>${t('conv.tu')}</span> ${esc(resumo(x.pedido, 140))}</div>` : ''}
       ${pedidos.map(p => cartaoPermissao(p, false)).join('')}
@@ -585,6 +742,12 @@
     return `<div class="painel aviso">${cartao(x, true)}</div>`
   }
 
+  function menuConversa(id) {
+    const x = E.sessoes.find(s => s.id === id)
+    if (!x) return `<div class="painel conversa"><div class="vazio">${t('conv.nenhuma')}</div></div>`
+    return `<div class="painel conversa">${cartao(x, false, true)}</div>`
+  }
+
   function menuPermissao(id) {
     const p = (E.permissoes || []).find(x => x.id === id)
     return `<div class="painel aviso">${p ? cartaoPermissao(p, true) : `<div class="vazio">${t('perm.jaRespondido')}</div>`}</div>`
@@ -600,6 +763,7 @@
     if (m && m.startsWith('aviso:')) return menuAviso(m.slice(6))
     if (m && m.startsWith('perm:')) return menuPermissao(m.slice(5))
     if (m && m.startsWith('ditado:')) return menuDitado(m.slice(7))
+    if (m && m.startsWith('conv:')) return menuConversa(m.slice(5))
     if (m === 'direito') return menuDireito()
     if (m === 'vozes') return menuVozes()
     if (m === 'uso') return menuUso()
@@ -627,11 +791,21 @@
     raiz.innerHTML = htmlMenu(menuAtual)
     restaurarRascunhos(raiz, focoSessao, cursor)
     const el = raiz.firstElementChild
+    marcarEntradaIlha(el, menuAtual)
     const t = `${Math.ceil(el.offsetWidth)}x${Math.ceil(el.offsetHeight)}`
     if (t !== tamanhoEnviado) {
       tamanhoEnviado = t
       enviarHost({ tipo: 'tamanho', w: Math.ceil(el.offsetWidth), h: Math.ceil(el.offsetHeight) })
     }
+  }
+
+  // Cartões que saem da ilha caem dela, só na primeira vez que aparecem.
+  let menuAnimado = null
+  function marcarEntradaIlha(el, menu) {
+    if (!el || !menu || !/^(aviso|perm|ditado|conv):/.test(menu) || !ilhaLigada()) return
+    if (menuAnimado === menu) return
+    menuAnimado = menu
+    el.classList.add('entra-ilha')
   }
 
   function restaurarRascunhos(caixa, focoSessao, cursor) {
@@ -672,7 +846,12 @@
     caixa.innerHTML = htmlMenu(menuEmLinha.menu)
     restaurarRascunhos(caixa, focoSessao, cursor)
     const el = caixa.firstElementChild
-    if (menuEmLinha.menu.startsWith('aviso:')) {
+    if (menuEmLinha.centro != null) marcarEntradaIlha(el, menuEmLinha.menu)
+    if (menuEmLinha.centro != null) {
+      el.style.left = Math.max(4, Math.min(menuEmLinha.centro - el.offsetWidth / 2, innerWidth - el.offsetWidth - 8)) + 'px'
+      el.style.right = 'auto'
+      el.style.top = '36px'
+    } else if (menuEmLinha.menu.startsWith('aviso:')) {
       el.style.left = 'auto'
       el.style.right = '8px'
     } else if (menuEmLinha.menu !== 'som') el.style.left = Math.max(4, Math.min(menuEmLinha.x, innerWidth - el.offsetWidth - 8)) + 'px'
@@ -711,11 +890,13 @@
 
   /** Abre um cartão no canto direito (aviso, permissão ou ditado). ativar = dar-lhe o foco do teclado. */
   function abrirMenuAviso(menu, ativar) {
+    // Com a ilha, o cartão sai dela (centrado por baixo); sem ela, encosta ao canto direito.
+    const ilha = ilhaEl && !ilhaEl.hidden ? ilhaEl.getBoundingClientRect() : null
     if (host) {
-      // Âncora: canto direito da barra (o anfitrião encosta o aviso à direita).
-      enviarHost({ tipo: 'abrir', menu, x: innerWidth - 4, y: 0, w: 0, h: innerHeight, ativar: !!ativar })
+      if (ilha) enviarHost({ tipo: 'abrir', menu, x: ilha.left, y: 0, w: ilha.width, h: innerHeight, ativar: !!ativar, centrar: true })
+      else enviarHost({ tipo: 'abrir', menu, x: innerWidth - 4, y: 0, w: 0, h: innerHeight, ativar: !!ativar })
     } else {
-      menuEmLinha = { menu, x: innerWidth }
+      menuEmLinha = { menu, x: innerWidth, centro: ilha ? ilha.left + ilha.width / 2 : null }
       renderMenuEmLinha()
       armarFechoDoAviso()
     }
@@ -812,7 +993,7 @@
     }
   }
 
-  function abrirMenu(menu, el) {
+  function abrirMenu(menu, el, centrar) {
     const r = el.getBoundingClientRect()
     if (host) {
       if (VISTA === 'menu') {
@@ -820,13 +1001,21 @@
         tamanhoEnviado = ''
         renderMenu()
       } else {
-        el.classList.add('aberto')
-        enviarHost({ tipo: 'abrir', menu, x: r.left, y: r.top, w: r.width, h: r.height })
+        if (!centrar) el.classList.add('aberto')
+        enviarHost({ tipo: 'abrir', menu, x: r.left, y: r.top, w: r.width, h: r.height, centrar: !!centrar })
       }
     } else {
-      menuEmLinha = { menu, x: r.left }
+      menuEmLinha = { menu, x: r.left, centro: centrar ? r.left + r.width / 2 : null }
       renderMenuEmLinha()
     }
+  }
+
+  /** Clique na ilha: decide pelo estado (autorizar, saltar a fala, parar o ditado, abrir a conversa). */
+  function clicarIlha(acao) {
+    if (acao === 'saltar') return controlo('saltar')
+    if (acao === 'dit') return alternarDitado(null)
+    if (acao.startsWith('perm:') || acao.startsWith('aviso:')) return abrirMenuAviso(acao, true)
+    return abrirMenu(acao, ilhaEl, true)
   }
 
   // ---------------- eventos da página ----------------
@@ -856,7 +1045,7 @@
     const alvo = ev.target.closest(
       '[data-menu],[data-acao],[data-foco],[data-ir],[data-posicao],[data-arranque],[data-tema],[data-ciclo-tema],[data-predef],[data-alternar],[data-sair],[data-mod],' +
         '[data-falar],[data-falar-sessao],[data-alternar-silencio],[data-decidir],[data-voz-baixar],[data-voz-padrao],[data-voz-remover],' +
-        '[data-voz-experimentar],[data-ecra],[data-horario-ativo],[data-alternar-por-conversa],[data-idioma]',
+        '[data-voz-experimentar],[data-ecra],[data-horario-ativo],[data-alternar-por-conversa],[data-idioma],[data-conv],[data-ilha],[data-ciclo-idioma],[data-cc-eq]',
     )
     if (!alvo) {
       if (!host && menuEmLinha && !ev.target.closest('#menu-em-linha')) {
@@ -866,6 +1055,16 @@
       return
     }
     const d = alvo.dataset
+    if (d.ilha) return clicarIlha(d.ilha)
+    if (d.conv) return abrirMenu('conv:' + d.conv, alvo)
+    if (d.cicloIdioma) {
+      const L = ['auto', 'pt', 'en', 'es']
+      return config({ idioma: L[(L.indexOf(E.cfg.idioma || 'auto') + 1) % L.length] })
+    }
+    if (d.ccEq) {
+      ccEq = !ccEq
+      return redesenharMenuAtual()
+    }
     if (d.menu) return abrirMenu(d.menu, alvo)
     if (d.ir) {
       if (d.ir === 'vozes') carregarCatalogo()
@@ -1026,12 +1225,14 @@
   })
 
   matchMedia('(prefers-color-scheme: dark)').addEventListener('change', render)
+  addEventListener('resize', () => VISTA === 'barra' && render())
 
   if (host) {
     host.addEventListener('message', ev => {
       const d = ev.data || {}
       if (d.tipo === 'menu') {
         menuAtual = d.menu
+        menuAnimado = null
         cartoesVistos.clear()
         graficoVisto = false
         tamanhoEnviado = ''
@@ -1043,6 +1244,7 @@
           if (ta) ta.focus()
         }
       } else if (d.tipo === 'menu-fechado') {
+        menuAnimado = null
         cartoesVistos.clear()
         graficoVisto = false
         document.querySelectorAll('.it.aberto').forEach(x => x.classList.remove('aberto'))
@@ -1074,6 +1276,7 @@
       document.documentElement.lang = { pt: 'pt-PT', en: 'en', es: 'es' }[IDIOMA] || 'pt-PT'
       // Pré-visualização (sem anfitrião): ?tema=claro|escuro e ?abrir=<menu> para capturas e testes.
       if (!host && q.get('tema')) E.cfg.barraTema = q.get('tema')
+      if (!host && q.get('falando') && !E.falando) E.falando = { texto: q.get('falando'), sessao: E.foco }
       render()
       if (primeira && !host && q.get('abrir')) {
         primeira = false

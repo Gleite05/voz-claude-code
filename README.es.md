@@ -20,6 +20,7 @@
 - 💬 **Conversaciones en la barra** — un avatar animado por conversación (girando = trabajando, latiendo = te necesita), el último mensaje de cada una y una caja para **responder directamente**.
 - 🛡️ **Aprobar permisos desde la barra** — la petición aparece en una tarjeta con el comando exacto: *Permitir* o *Rechazar*.
 - 🎤 **Hablar con Claude** — dicta tu respuesta; Whisper la transcribe en tu PC.
+- 🏝️ **Isla dinámica** — una cápsula de cristal en el centro de la barra muestra la acción, los subtítulos mientras habla, las peticiones de permiso y cuándo termina una conversación.
 - 🌐 **Interfaz en español, inglés y portugués** — la barra y los avisos siguen el idioma del sistema.
 - 🌍 **Voces en 11 idiomas** — instala más voces, elige voz y tono para cada conversación.
 - 🌙 **No molestar** — un botón (o un horario, p. ej. 22:00 → 08:00) sin voz ni avisos.

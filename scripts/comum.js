@@ -53,11 +53,12 @@ const PREDEFINICOES = {
   barraAvisos: true, // aviso no canto quando uma conversa termina ou precisa de ti
   respostasPelaBarra: true, // responder às conversas a partir da barra (gancho asyncRewake)
   barraModulos: [
+    { id: 'ilha', on: true },
     { id: 'sessao', on: true },
-    { id: 'acao', on: true },
+    { id: 'acao', on: false },
     { id: 'conversas', on: true },
-    { id: 'legenda', on: true },
-    { id: 'onda', on: true },
+    { id: 'legenda', on: false },
+    { id: 'onda', on: false },
     { id: 'sessoes', on: false },
     { id: 'contexto', on: true },
     { id: 'som', on: true },

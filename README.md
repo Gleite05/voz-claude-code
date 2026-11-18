@@ -14,6 +14,7 @@
 
 ## O que faz
 
+- 🏝️ **Ilha dinâmica** — uma cápsula de vidro no centro da barra mostra a ação, a legenda enquanto fala, os pedidos de autorização e quando uma conversa termina.
 - 🗣️ **Diz o que o Claude está a fazer** — «A editar config.ts», «A correr o npm», «A ligar a um servidor remoto» — e **lê as respostas enquanto aparecem**, sem código, tabelas nem links.
 - 💬 **Conversas na barra** — um avatar animado por conversa (a rodar = a trabalhar, a pulsar = precisa de ti), a última mensagem de cada uma e uma caixa para **responder diretamente**.
 - 🛡️ **Aprovar permissões pela barra** — o pedido aparece num cartão com o comando exato: *Permitir* ou *Recusar*.
