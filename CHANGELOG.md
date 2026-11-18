@@ -1,5 +1,11 @@
 # Histórico de versões
 
+## 1.2.1
+
+- Capturas novas no README (ilha dinâmica, cartão de conversa, Centro de Controlo, autorização e clique direito).
+- Corrigido «57 Mil tokens» no cartão de conversa (maiúscula a mais).
+- `?previa=1` força o modo de pré-visualização da barra dentro de um WebView2 (para capturas).
+
 ## 1.2.0
 
 - **Ilha dinâmica:** uma cápsula de vidro no centro da barra mostra o que se passa — a ação da conversa em foco, a legenda e a onda enquanto a voz fala, «X pede autorização» com halo âmbar, «X terminou» com um check animado e o ditado a ouvir-te. Cresce e encolhe com uma curva com mola; clicar nela autoriza, salta a fala ou abre a conversa.

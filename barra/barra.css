@@ -434,7 +434,7 @@ body:not(.anfitriao) .painel.aviso { top: 38px; }
 .tl-acoes li span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tl-acoes small { color: var(--txt2); font-size: 11px; flex: none; }
 .uso-linha { display: flex; gap: 14px; font-size: 11px; color: var(--txt2); font-weight: 400; }
-.uso-linha b { color: var(--txt); font-weight: 650; text-transform: capitalize; }
+.uso-linha b { color: var(--txt); font-weight: 650; }
 
 /* ---------------- cartões que saem da ilha ---------------- */
 .painel.entra-ilha > .cartao { animation: cai 0.42s cubic-bezier(0.32, 1.28, 0.5, 1) both; transform-origin: 50% 0; }

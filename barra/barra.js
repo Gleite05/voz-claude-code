@@ -6,7 +6,8 @@
   const q = new URLSearchParams(location.search)
   const TOKEN = q.get('t') || ''
   const VISTA = q.get('vista') || 'barra'
-  const host = window.chrome && window.chrome.webview ? window.chrome.webview : null
+  // ?previa=1: comporta-se como pré-visualização mesmo dentro de um WebView2 (para capturas).
+  const host = !q.get('previa') && window.chrome && window.chrome.webview ? window.chrome.webview : null
   const raiz = document.getElementById('raiz')
   document.body.classList.add('vista-' + VISTA)
   if (host) document.body.classList.add('anfitriao')

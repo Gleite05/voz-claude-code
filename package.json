@@ -1,6 +1,6 @@
 {
   "name": "voz-claude-code",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "private": true,
   "description": "Narra o Claude Code em voz alta, em português de Portugal",
   "license": "MIT",

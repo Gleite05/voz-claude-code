@@ -27,9 +27,11 @@
 - 📊 **Tokens del día** — gráfico de 7 días y las conversaciones que más consumieron.
 - 🎚️ **Sonido ajustable** — volumen, tono, ecualizador y preajustes.
 
-| Conversaciones | Permisos y tokens | Centro de Control |
+<p align="center"><img src="docs/imagens/ilha.png" width="640" alt="Isla dinámica: trabajando, hablando y pidiendo permiso"></p>
+
+| Conversación | Permisos y tokens | Centro de Control |
 | :-: | :-: | :-: |
-| <img src="docs/imagens/conversas-escuro.png" width="260" alt="Panel de conversaciones"> | <img src="docs/imagens/permissao.png" width="300" alt="Petición de permiso"><br><br><img src="docs/imagens/tokens.png" width="300" alt="Tokens del día"> | <img src="docs/imagens/centro-controlo.png" width="250" alt="Centro de Control del sonido"> |
+| <img src="docs/imagens/conversa-escuro.png" width="280" alt="Tarjeta de una conversación con las últimas acciones"> | <img src="docs/imagens/permissao.png" width="300" alt="Petición de permiso"><br><br><img src="docs/imagens/tokens.png" width="300" alt="Tokens del día"> | <img src="docs/imagens/centro-controlo.png" width="250" alt="Centro de Control del sonido"> |
 
 ## Instalar
 

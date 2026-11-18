@@ -27,13 +27,15 @@
 - 📊 **Tokens today** — a 7-day chart and the conversations that used the most.
 - 🎚️ **Tunable sound** — volume, pitch, equalizer and presets.
 
-| Conversations | Permission request and tokens | Control Center |
+<p align="center"><img src="docs/imagens/ilha.png" width="640" alt="Dynamic island: working, speaking and asking for permission"></p>
+
+| Conversation | Permission request and tokens | Control Center |
 | :-: | :-: | :-: |
-| <img src="docs/imagens/conversas-escuro.png" width="260" alt="Conversations panel"> | <img src="docs/imagens/permissao.png" width="300" alt="Permission request"><br><br><img src="docs/imagens/tokens.png" width="300" alt="Tokens today"> | <img src="docs/imagens/centro-controlo.png" width="250" alt="Sound Control Center"> |
+| <img src="docs/imagens/conversa-escuro.png" width="280" alt="Conversation card with recent actions"> | <img src="docs/imagens/permissao.png" width="300" alt="Permission request"><br><br><img src="docs/imagens/tokens.png" width="300" alt="Tokens today"> | <img src="docs/imagens/centro-controlo.png" width="250" alt="Sound Control Center"> |
 
 | Light mode | Right-click menu |
 | :-: | :-: |
-| <img src="docs/imagens/conversas-claro.png" width="280" alt="Light mode"> | <img src="docs/imagens/clique-direito.png" width="210" alt="Right-click menu"> |
+| <img src="docs/imagens/conversa-claro.png" width="280" alt="Conversation card in light mode"> | <img src="docs/imagens/clique-direito.png" width="210" alt="Right-click menu"> |
 
 ## Install
 

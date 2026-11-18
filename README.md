@@ -16,7 +16,7 @@
 
 - 🏝️ **Ilha dinâmica** — uma cápsula de vidro no centro da barra mostra a ação, a legenda enquanto fala, os pedidos de autorização e quando uma conversa termina.
 - 🗣️ **Diz o que o Claude está a fazer** — «A editar config.ts», «A correr o npm», «A ligar a um servidor remoto» — e **lê as respostas enquanto aparecem**, sem código, tabelas nem links.
-- 💬 **Conversas na barra** — um avatar animado por conversa (a rodar = a trabalhar, a pulsar = precisa de ti), a última mensagem de cada uma e uma caixa para **responder diretamente**.
+- 💬 **Conversas na barra** — um avatar com anel por conversa (o anel enche com o contexto, roda enquanto trabalha e pulsa quando precisa de ti); clica nele para veres as últimas ações e **responderes diretamente**.
 - 🛡️ **Aprovar permissões pela barra** — o pedido aparece num cartão com o comando exato: *Permitir* ou *Recusar*.
 - 🎤 **Falar com o Claude** — dita a resposta; o Whisper transcreve no teu PC.
 - 🌍 **Vozes de 11 idiomas** — instala mais vozes, escolhe uma voz e um tom para cada conversa, e as respostas noutro idioma usam a voz desse idioma.
@@ -25,15 +25,17 @@
 - 📊 **Tokens do dia** — gráfico dos últimos 7 dias e as conversas que mais gastaram.
 - 🎚️ **Som afinável** — volume, altura, equalizador e predefinições (natural, calma, clara, quente, rádio).
 
-| Conversas | Pedido de autorização e tokens | Centro de Controlo |
+<p align="center"><img src="docs/imagens/ilha.png" width="640" alt="Ilha dinâmica: a trabalhar, a falar e a pedir autorização"></p>
+
+| Conversa | Pedido de autorização e tokens | Centro de Controlo |
 | :-: | :-: | :-: |
-| <img src="docs/imagens/conversas-escuro.png" width="260" alt="Painel de conversas"> | <img src="docs/imagens/permissao.png" width="300" alt="Pedido de autorização"><br><br><img src="docs/imagens/tokens.png" width="300" alt="Tokens do dia"> | <img src="docs/imagens/centro-controlo.png" width="250" alt="Centro de Controlo do som"> |
+| <img src="docs/imagens/conversa-escuro.png" width="280" alt="Cartão de uma conversa com as últimas ações"> | <img src="docs/imagens/permissao.png" width="300" alt="Pedido de autorização"><br><br><img src="docs/imagens/tokens.png" width="300" alt="Tokens do dia"> | <img src="docs/imagens/centro-controlo.png" width="250" alt="Centro de Controlo do som"> |
 
 <p align="center"><img src="docs/imagens/barra-claro.png" alt="A barra em modo claro"></p>
 
 | Modo claro | Clique direito |
 | :-: | :-: |
-| <img src="docs/imagens/conversas-claro.png" width="280" alt="Conversas em modo claro"> | <img src="docs/imagens/clique-direito.png" width="210" alt="Menu do clique direito"> |
+| <img src="docs/imagens/conversa-claro.png" width="280" alt="Cartão de uma conversa em modo claro"> | <img src="docs/imagens/clique-direito.png" width="210" alt="Menu do clique direito"> |
 
 ## Instalar
 
