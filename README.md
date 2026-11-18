@@ -2,6 +2,8 @@
 
 <h1 align="center">Voz para o Claude Code</h1>
 
+<p align="center"><a href="https://github.com/Gleite05/voz-claude-code/actions/workflows/testes.yml"><img src="https://github.com/Gleite05/voz-claude-code/actions/workflows/testes.yml/badge.svg" alt="Testes"></a> <img src="https://img.shields.io/badge/licen%C3%A7a-MIT-blue" alt="MIT"></p>
+
 <p align="center">
   <b>Português</b> · <a href="README.en.md">English</a> · <a href="README.es.md">Español</a>
 </p>
