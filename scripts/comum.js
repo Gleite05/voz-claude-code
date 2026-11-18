@@ -31,11 +31,25 @@ const PREDEFINICOES = {
   velocidade: 0.88, // 0.5 a 2.0 (abaixo de 1 é mais calmo)
   ruido: 0.4, // Piper noise_scale: mais baixo = voz mais estável e menos "metálica"
   ruidoDuracao: 0.5, // Piper noise_w_scale: variação do ritmo entre sílabas
+  volume: 1.0, // 0 a 2
+  altura: 0, // tom em meios-tons, -6 a +6 (não muda a velocidade)
+  graves: 0, // equalizador, dB de -12 a +12
+  medios: 0,
+  agudos: 0,
   maxCaracteres: 1200, // por mensagem; o resto fica só no ecrã
   soSessaoAtiva: true, // só a sessão onde escreveste por último fala tudo
   avisarOutrasSessoes: true, // as outras só dizem quando terminam ou precisam de ti
   motor: 'auto', // auto | piper | sistema
   vozSistema: '', // parte do nome de uma voz do sistema (ex.: "Helia"), opcional
+}
+
+/** Predefinições de som: só mexem na velocidade, tom e equalizador. */
+const PREDEFINICOES_SOM = {
+  natural: { velocidade: 0.88, altura: 0, graves: 0, medios: 0, agudos: 0 },
+  calma: { velocidade: 0.82, altura: -1, graves: 3, medios: 0, agudos: -3 },
+  clara: { velocidade: 0.92, altura: 0, graves: -1, medios: 3, agudos: 2 },
+  quente: { velocidade: 0.86, altura: -2, graves: 4, medios: 1, agudos: -4 },
+  radio: { velocidade: 0.95, altura: 0, graves: -6, medios: 5, agudos: -2 },
 }
 
 function garantirPasta(p = PASTA) {
@@ -80,4 +94,4 @@ function piperInstalado() {
   return fs.existsSync(CAMINHOS.pythonExe) && fs.existsSync(CAMINHOS.modelo) && fs.existsSync(CAMINHOS.modelo + '.json')
 }
 
-module.exports = { CAMINHOS, PREDEFINICOES, WIN, garantirPasta, lerConfig, escreverConfig, log, piperInstalado }
+module.exports = { CAMINHOS, PREDEFINICOES, PREDEFINICOES_SOM, WIN, garantirPasta, lerConfig, escreverConfig, log, piperInstalado }

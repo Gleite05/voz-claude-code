@@ -128,7 +128,7 @@ if (-not $pick) { $pick = $v | Where-Object { $_.Culture.Name -like 'pt*' } | Se
 if ($pick) { $s.SelectVoice($pick.Name) }
 [Console]::Out.WriteLine('voz ' + $s.Voice.Name + ' ' + $s.Voice.Culture.Name); [Console]::Out.Flush()
 while ($null -ne ($l = [Console]::In.ReadLine())) {
-  try { $i = $l.IndexOf('|'); $s.Rate = [int]$l.Substring(0, $i); $s.Speak($l.Substring($i + 1)); [Console]::Out.WriteLine('ok') }
+  try { $p = $l.Split('|', 3); $s.Rate = [int]$p[0]; $s.Volume = [int]$p[1]; $s.Speak($p[2]); [Console]::Out.WriteLine('ok') }
   catch { [Console]::Out.WriteLine('erro ' + $_.Exception.Message) }
   [Console]::Out.Flush()
 }
@@ -214,8 +214,20 @@ function criarMotorPiper() {
     async preparar(texto, cfg) {
       const ficheiro = path.join(CAMINHOS.tmp, `v-${process.pid}-${++n}.wav`)
       const escala = 1 / Math.min(2, Math.max(0.5, Number(cfg.velocidade) || 1))
+      const n = (v, min, max, pad) => (Number.isFinite(Number(v)) ? Math.min(max, Math.max(min, Number(v))) : pad)
       const resposta = await sintetizador.enviar(
-        JSON.stringify({ texto, ficheiro, escala, ruido: Number(cfg.ruido), ruidoDuracao: Number(cfg.ruidoDuracao) }),
+        JSON.stringify({
+          texto,
+          ficheiro,
+          escala,
+          ruido: n(cfg.ruido, 0, 1.5, 0.4),
+          ruidoDuracao: n(cfg.ruidoDuracao, 0, 1.5, 0.5),
+          volume: n(cfg.volume, 0, 2, 1),
+          altura: n(cfg.altura, -6, 6, 0),
+          graves: n(cfg.graves, -12, 12, 0),
+          medios: n(cfg.medios, -12, 12, 0),
+          agudos: n(cfg.agudos, -12, 12, 0),
+        }),
       )
       let r
       try {
@@ -258,7 +270,11 @@ function vozPortuguesaMac() {
 
 function criarMotorSistema(cfg) {
   // O pedaço leva a velocidade do momento em que foi preparado.
-  const preparar = async (texto, c) => ({ texto, vel: Math.min(2, Math.max(0.5, Number(c.velocidade) || 1)) })
+  const preparar = async (texto, c) => ({
+    texto,
+    vel: Math.min(2, Math.max(0.5, Number(c.velocidade) || 1)),
+    vol: Math.round(Math.min(1, Math.max(0, Number.isFinite(Number(c.volume)) ? Number(c.volume) : 1)) * 100),
+  })
   if (WIN) {
     const sapi = new ProcessoDeLinhas('sapi', () => powershell(PS_SAPI, { VOZ_NOME: cfg.vozSistema || '' }), {
       saudacao: true,
@@ -267,7 +283,8 @@ function criarMotorSistema(cfg) {
       nome: 'sistema (Windows SAPI)',
       aquecer: () => sapi.iniciar(),
       preparar,
-      tocar: ({ texto, vel }) => sapi.enviar(`${Math.max(-10, Math.min(10, Math.round((vel - 1) * 10)))}|${texto}`),
+      tocar: ({ texto, vel, vol }) =>
+        sapi.enviar(`${Math.max(-10, Math.min(10, Math.round((vel - 1) * 10)))}|${vol}|${texto}`),
       descartar: () => {},
       parar: () => sapi.matar(),
       fechar: () => sapi.matar(),

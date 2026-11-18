@@ -113,6 +113,53 @@ async function instalar() {
   await enviar({ controlo: 'testar', texto: 'Olá! A voz em português de Portugal está instalada e pronta.' }, { resposta: true })
 }
 
+// ---------- som ----------
+
+const AJUSTES_SOM = {
+  volume: { min: 0, max: 2, desc: 'volume (0 a 2, 1 = normal)' },
+  altura: { min: -6, max: 6, desc: 'tom em meios-tons (-6 a +6)' },
+  graves: { min: -12, max: 12, desc: 'graves em dB (-12 a +12)' },
+  medios: { min: -12, max: 12, desc: 'médios em dB (-12 a +12)' },
+  agudos: { min: -12, max: 12, desc: 'agudos em dB (-12 a +12)' },
+}
+
+function descreverSom(c) {
+  return `volume ${c.volume} · altura ${c.altura} · graves ${c.graves} · médios ${c.medios} · agudos ${c.agudos} · velocidade ${c.velocidade}`
+}
+
+async function som(args) {
+  const [chave = '', valor = ''] = args.map(a => String(a).toLowerCase())
+  const { PREDEFINICOES_SOM } = require('./comum')
+  const nomeSemAcento = chave.normalize('NFD').replace(/[̀-ͯ]/g, '')
+
+  if (!chave) {
+    dizer(`Som: ${descreverSom(lerConfig())}`)
+    dizer(`Ajustes: ${Object.entries(AJUSTES_SOM).map(([k, a]) => `${k} — ${a.desc}`).join('; ')}`)
+    dizer(`Predefinições: ${Object.keys(PREDEFINICOES_SOM).join(', ')} (ex.: som calma)`)
+    return
+  }
+  if (PREDEFINICOES_SOM[nomeSemAcento] || nomeSemAcento === 'predefinicao') {
+    const nome = PREDEFINICOES_SOM[nomeSemAcento] ? nomeSemAcento : valor.normalize('NFD').replace(/[̀-ͯ]/g, '')
+    if (!PREDEFINICOES_SOM[nome]) {
+      dizer(`Predefinições: ${Object.keys(PREDEFINICOES_SOM).join(', ')}`)
+      return
+    }
+    const c = escreverConfig(PREDEFINICOES_SOM[nome])
+    dizer(`Predefinição «${nome}»: ${descreverSom(c)}`)
+    await enviar({ controlo: 'testar', texto: 'Assim soa esta predefinição.' }, { resposta: true })
+    return
+  }
+  const ajuste = AJUSTES_SOM[nomeSemAcento]
+  const v = Number(valor.replace(',', '.'))
+  if (!ajuste || !Number.isFinite(v) || v < ajuste.min || v > ajuste.max) {
+    dizer(ajuste ? `Usa um valor para ${ajuste.desc}.` : `Ajustes: ${Object.keys(AJUSTES_SOM).join(', ')}; predefinições: ${Object.keys(PREDEFINICOES_SOM).join(', ')}`)
+    return
+  }
+  const c = escreverConfig({ [nomeSemAcento]: v })
+  dizer(`Som: ${descreverSom(c)}`)
+  await enviar({ controlo: 'testar', texto: 'Assim está melhor?' }, { resposta: true })
+}
+
 // ---------- comandos ----------
 
 async function principal(argv) {
@@ -191,6 +238,9 @@ async function principal(argv) {
       dizer(`Motor: ${a} → ${motorPrevisto(lerConfig())}.`)
       return
     }
+
+    case 'som':
+      return som(resto)
 
     case 'instalar':
       return instalar()
