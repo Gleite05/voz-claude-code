@@ -135,7 +135,8 @@ body:not(.anfitriao) .barra.v { width: 40px; height: 100vh; }
 .barra.v .contexto { flex-direction: column; gap: 2px; height: auto; font-size: 10.5px; }
 
 /* ---------------- flutuante ---------------- */
-.barra.flut { padding: 0 10px; }
+/* max-content: a largura medida é a do conteúdo, não a da janela (senão a janela crescia sem parar) */
+.barra.flut { padding: 0 10px; width: max-content; }
 
 /* ---------------- menus ---------------- */
 .menu { padding: 5px; font-size: 13px; display: inline-block; min-width: 250px; max-width: 460px; white-space: nowrap; }

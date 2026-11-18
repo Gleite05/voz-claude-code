@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 1.2.3
+
+- **Barra flutuante corrigida:** esticava sem parar (chegava a ficar mais larga do que o ecrã). A largura medida passou a ser a do conteúdo, não a da janela, e a ilha tem um lugar fixo nesta posição, para a barra não mudar de tamanho a cada frase.
+
 ## 1.2.2
 
 - **Ícone na área de notificação:** a barra tem agora um ícone laranja ao pé do relógio. «Esconder a barra» (clique direito) tira-a do ecrã mas deixa o ícone; um clique nele mostra-a outra vez. No menu do ícone: mostrar/esconder, não incomodar e sair. Da primeira vez que a escondes, o Windows avisa onde ela ficou.

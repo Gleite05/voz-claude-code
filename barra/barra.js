@@ -209,6 +209,7 @@
     }
   }
 
+  const ILHA_FLUTUANTE = 260 // px: lugar fixo da ilha na barra flutuante
   // A ilha vive fora da barra (que é redesenhada a cada atualização) para as animações não recomeçarem.
   function desenharIlha(lugar, flut) {
     const st = estadoIlha()
@@ -237,17 +238,19 @@
     }
     // Largura: a do conteúdo, até um máximo; acima disso a legenda corre.
     c.classList.remove('aperta')
-    const max = Math.min(480, Math.max(220, innerWidth * 0.38))
+    // Na flutuante, a janela tem a largura da barra: o máximo não pode depender de innerWidth (a ilha
+    // alargava a janela, que alargava a ilha…) e o lugar é fixo, para a barra não mudar de tamanho.
+    const max = flut ? ILHA_FLUTUANTE : Math.min(480, Math.max(220, innerWidth * 0.38))
     const natural = Math.ceil(c.scrollWidth) + 2 // + a borda da cápsula
     if (natural > max) c.classList.add('aperta')
     const largura = Math.min(max, natural)
     ilhaEl.style.width = largura + 'px'
-    // Posição: centrada na barra; na flutuante, no lugar reservado entre os módulos.
+    // Posição: centrada na barra; na flutuante, no centro do lugar reservado entre os módulos.
     const barra = raiz.firstElementChild.getBoundingClientRect()
     ilhaEl.style.top = Math.round(barra.top + barra.height / 2) + 'px'
     if (flut) {
-      lugar.style.width = largura + 'px'
-      ilhaEl.style.left = Math.round(lugar.getBoundingClientRect().left + largura / 2) + 'px'
+      lugar.style.width = ILHA_FLUTUANTE + 'px'
+      ilhaEl.style.left = Math.round(lugar.getBoundingClientRect().left + ILHA_FLUTUANTE / 2) + 'px'
     } else ilhaEl.style.left = Math.round(barra.left + barra.width / 2) + 'px'
     const leg = c.querySelector('.i-leg')
     if (leg) {
