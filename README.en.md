@@ -12,7 +12,7 @@
 
 <p align="center"><img src="docs/imagens/barra-escuro.png" alt="The bar at the top of the screen"></p>
 
-> The interface is in Portuguese (Portugal). Voices for English, Spanish, French, German, Italian and more can be installed from the catalog, and replies in another language automatically use a voice for that language.
+> The bar and the spoken announcements come in **English, Spanish and Portuguese** and follow your Windows language (or pick one from the right-click menu). The bundled voice is Portuguese: for English, install `en_US-lessac-medium` with one click from the bar (or `/voz:vozes instalar en_US-lessac-medium`). Voices for French, German, Italian and more are in the catalog.
 
 ## What it does
 
@@ -20,6 +20,7 @@
 - 💬 **Conversations in the bar** — an animated avatar per conversation (spinning = working, pulsing = needs you), the last message of each one and a box to **reply directly**.
 - 🛡️ **Approve permissions from the bar** — the request shows up as a card with the exact command: *Allow* or *Deny*.
 - 🎤 **Talk to Claude** — dictate your reply; Whisper transcribes it on your PC.
+- 🌐 **English, Spanish and Portuguese interface** — the bar and the announcements follow your system language.
 - 🌍 **Voices in 11 languages** — install more voices, pick a voice and pitch per conversation; replies in another language use that language's voice.
 - 🌙 **Do not disturb** — a button (or a schedule, e.g. 22:00 → 08:00) with no voice and no pop-ups.
 - 📊 **Tokens today** — a 7-day chart and the conversations that used the most.
@@ -61,7 +62,7 @@ This installs the **voice** (Piper + "tugão", pt-PT), **dictation** (Whisper) a
 
 **Global shortcuts:** `Ctrl+Shift+Alt` + `V` talk · `P` pause · `N` skip · `C` conversations · `D` do not disturb.
 
-**Commands:** `/voz:estado`, `/voz:ligar`, `/voz:desligar`, `/voz:parar`, `/voz:silencio`, `/voz:som`, `/voz:vozes`, `/voz:modo`, `/voz:barra`, `/voz:testar`. Options live in `~/.claude/voz/config.json`.
+**Commands:** `/voz:estado`, `/voz:ligar`, `/voz:desligar`, `/voz:parar`, `/voz:silencio`, `/voz:som`, `/voz:vozes`, `/voz:modo`, `/voz:barra`, `/voz:testar`. Options live in `~/.claude/voz/config.json` (e.g. `"idioma": "en"` — `auto`, `pt`, `en` or `es`).
 
 ## How it works
 

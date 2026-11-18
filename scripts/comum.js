@@ -45,6 +45,7 @@ const PREDEFINICOES = {
   motor: 'auto', // auto | piper | sistema
   vozSistema: '', // parte do nome de uma voz do sistema (ex.: "Helia"), opcional
   pronuncias: { Claude: 'Cláude' }, // como dizer certas palavras (só no áudio)
+  idioma: 'auto', // língua da barra e das frases faladas: auto (a do sistema) | pt | en | es
   // Barra (Windows)
   barraPosicao: 'topo', // topo | escondida | flutuante | esquerda | direita | fundo
   barraArranque: 'windows', // windows | claude | mao
@@ -74,7 +75,7 @@ const PREDEFINICOES = {
   // Permissões e ditado
   aprovarPelaBarra: true, // pedidos de autorização na barra (app do Claude)
   aprovarPelaBarraNoTerminal: false, // no terminal o gancho atrasaria o diálogo: desligado
-  ditadoIdioma: 'pt',
+  ditadoIdioma: 'auto', // auto = a língua da interface
   ditadoModelo: 'small', // tiny | base | small | medium (Whisper)
 }
 
@@ -125,6 +126,17 @@ function log(...partes) {
   } catch {}
 }
 
+/** Língua efetiva: a escolhida, ou a do sistema (pt, es; o resto em inglês). */
+function idiomaEfetivo(cfg) {
+  if (cfg && ['pt', 'en', 'es'].includes(cfg.idioma)) return cfg.idioma
+  let loc = ''
+  try {
+    loc = Intl.DateTimeFormat().resolvedOptions().locale || ''
+  } catch {}
+  loc = (process.env.VOZ_LOCALE || loc || process.env.LANG || '').toLowerCase()
+  return loc.startsWith('pt') ? 'pt' : loc.startsWith('es') ? 'es' : 'en'
+}
+
 /** Não incomodar: o botão manual ou o horário de silêncio (ex.: 22:00 → 08:00, atravessa a meia-noite). */
 function emSilencio(cfg, data = new Date()) {
   if (cfg.naoIncomodar) return true
@@ -145,4 +157,4 @@ function piperInstalado() {
   return fs.existsSync(CAMINHOS.pythonExe) && fs.existsSync(CAMINHOS.modelo) && fs.existsSync(CAMINHOS.modelo + '.json')
 }
 
-module.exports = { emSilencio, CAMINHOS, PREDEFINICOES, PREDEFINICOES_SOM, WIN, garantirPasta, lerConfig, escreverConfig, log, piperInstalado }
+module.exports = { idiomaEfetivo, emSilencio, CAMINHOS, PREDEFINICOES, PREDEFINICOES_SOM, WIN, garantirPasta, lerConfig, escreverConfig, log, piperInstalado }

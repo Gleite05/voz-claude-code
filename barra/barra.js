@@ -43,29 +43,24 @@
     escudo: '<path fill="currentColor" d="M12 2.5l7.5 3v6c0 4.6-3.2 8.7-7.5 10-4.3-1.3-7.5-5.4-7.5-10v-6z"/>',
     grafico: '<path fill="currentColor" d="M4 20h16v-1.6H4zM5.5 17h2.6V10H5.5zm5.2 0h2.6V5h-2.6zm5.2 0h2.6v-5h-2.6z"/>',
   }
-  const TEMAS = [
-    ['sistema', 'auto', 'Automático'],
-    ['claro', 'sol', 'Claro'],
-    ['escuro', 'lua', 'Escuro'],
-  ]
+  // Temas: [valor, ícone, nome na língua atual]
+  const temas = () => [['sistema', 'auto'], ['claro', 'sol'], ['escuro', 'lua']].map(([v, ic]) => [v, ic, t('tema.' + v)])
   const svg = n => `<svg class="i" viewBox="0 0 24 24">${ICONES[n]}</svg>`
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c])
   const mil = n =>
     n >= 1e6
-      ? (n / 1e6).toLocaleString('pt-PT', { maximumFractionDigits: n >= 1e8 ? 0 : 1 }) + ' M'
+      ? (n / 1e6).toLocaleString(localeAtual(), { maximumFractionDigits: n >= 1e8 ? 0 : 1 }) + ' M'
       : n >= 1000
-        ? (n / 1000).toLocaleString('pt-PT', { maximumFractionDigits: n >= 100000 ? 0 : 1 }) + ' mil'
+        ? (n / 1000).toLocaleString(localeAtual(), { maximumFractionDigits: n >= 100000 ? 0 : 1 }) + (IDIOMA === 'en' ? 'k' : ' mil')
         : String(n)
-  const num = (v, d) => Number(v).toLocaleString('pt-PT', { minimumFractionDigits: d, maximumFractionDigits: d })
-  const ESTADOS = { trabalhar: 'a trabalhar', atencao: 'precisa de ti', terminou: 'terminou', parada: 'parada' }
-  const POSICOES = [
-    ['topo', 'Topo'], ['escondida', 'Escondida no topo'], ['flutuante', 'Flutuante'],
-    ['esquerda', 'Esquerda'], ['direita', 'Direita'], ['fundo', 'Fundo (sobre a barra do Windows)'],
-  ]
+  const num = (v, d) => Number(v).toLocaleString(localeAtual(), { minimumFractionDigits: d, maximumFractionDigits: d })
+  // ESTADOS[x] devolve o nome do estado na língua atual.
+  const ESTADOS = new Proxy({}, { get: (_, k) => t('estado.' + String(k)) })
+  const posicoes = () => ['topo', 'escondida', 'flutuante', 'esquerda', 'direita', 'fundo'].map(v => [v, t('pos.' + v)])
+  // Módulos: id -> chave do nome (o nome vem de t()).
   const MODULOS = {
-    sessao: 'Sessão', acao: 'O que está a fazer', legenda: 'Legenda do que diz', onda: 'Onda da voz',
-    conversas: 'Conversas ativas', sessoes: 'Pontos das sessões', contexto: 'Contexto e tokens', microfone: 'Microfone (falar com o Claude)',
-    silencio: 'Não incomodar', tema: 'Botão claro/escuro', som: 'Centro de Controlo', tempo: 'Tempo do pedido',
+    sessao: 'mod.sessao', acao: 'mod.acao', legenda: 'mod.legenda', onda: 'mod.onda', conversas: 'mod.conversas', sessoes: 'mod.sessoes',
+    contexto: 'mod.contexto', microfone: 'mod.microfone', silencio: 'mod.silencio', tema: 'mod.tema', som: 'mod.som', tempo: 'mod.tempo',
   }
   const ESQUERDA = new Set(['sessao', 'acao', 'legenda'])
   const PREDEF = {
@@ -149,7 +144,7 @@
       case 'sessao':
         return s
           ? `<div class="it sessao clic" data-menu="sessao" title="${esc(s.pasta)}"><span>${esc(s.pasta)}</span></div>`
-          : `<div class="it fraco clic" data-menu="sessao"><span>Sem sessões</span></div>`
+          : `<div class="it fraco clic" data-menu="sessao"><span>${t('barra.semSessoes')}</span></div>`
       case 'acao':
         if (!s || !s.acao) return ''
         return `<div class="it ${s.estado === 'atencao' ? 'alerta' : 'fraco'}" title="${esc(s.acao)}">${s.estado === 'atencao' ? '●' : ''}<span class="acao-txt">${esc(s.acao)}</span></div>`
@@ -157,9 +152,9 @@
         if (vertical || flut || !E.falando) return ''
         return `<div class="it legenda"><span>«${esc(E.falando.texto)}»</span></div>`
       case 'onda':
-        if (E.pausado) return `<div class="it clic" data-acao="pausa" title="Em pausa — clica para retomar">${svg('pausa')}</div>`
+        if (E.pausado) return `<div class="it clic" data-acao="pausa" title="${t('barra.pausa')}">${svg('pausa')}</div>`
         if (!E.falando) return ''
-        return `<div class="it clic" data-acao="saltar" title="A falar — clica para saltar a frase"><span class="onda viva"><b></b><b></b><b></b><b></b><b></b></span></div>`
+        return `<div class="it clic" data-acao="saltar" title="${t('barra.aFalar')}"><span class="onda viva"><b></b><b></b><b></b><b></b><b></b></span></div>`
       case 'conversas': {
         if (!E.sessoes.length) return ''
         const titulo = E.sessoes.map(x => `${x.titulo}: ${ESTADOS[x.estado] || x.estado}`).join('\n')
@@ -180,21 +175,23 @@
       }
       case 'contexto':
         if (!s || !s.uso) return ''
-        return `<div class="it contexto clic" data-menu="uso" title="${esc(`${s.uso.modelo} · contexto ${mil(s.uso.usados)} de ${mil(s.uso.limite)} tokens · ${mil(s.uso.saidaPedido)} gerados neste pedido`)}"><span class="anel" style="--p:${s.uso.pct}%"></span><span class="num">${s.uso.pct}%</span></div>`
+        return `<div class="it contexto clic" data-menu="uso" title="${esc(t('barra.contexto', { modelo: s.uso.modelo, usados: mil(s.uso.usados), limite: mil(s.uso.limite), saida: mil(s.uso.saidaPedido) }))}"><span class="anel" style="--p:${s.uso.pct}%"></span><span class="num">${s.uso.pct}%</span></div>`
       case 'microfone':
-        return `<div class="it clic ${E.aOuvir ? 'a-ouvir' : ''}" data-falar="1" title="${E.aOuvir ? 'A ouvir — clica para terminar e transcrever' : 'Falar com o Claude (Ctrl+Shift+Alt+V)'}">${svg('micro')}${E.aOuvir ? '<span class="ponto-rec"></span>' : ''}</div>`
+        return `<div class="it clic ${E.aOuvir ? 'a-ouvir' : ''}" data-falar="1" title="${E.aOuvir ? t('barra.aOuvir') : t('barra.falar')}">${svg('micro')}${E.aOuvir ? '<span class="ponto-rec"></span>' : ''}</div>`
       case 'silencio':
-        return `<div class="it clic ${E.silencio ? 'silencio-on' : ''}" data-alternar-silencio="1" title="${E.silencio ? (E.cfg.naoIncomodar ? 'Não incomodar ligado — clica para desligar' : 'Horário de silêncio em curso') : 'Não incomodar: sem voz nem avisos (Ctrl+Shift+Alt+D)'}">${svg(E.silencio ? 'lua2' : 'sino')}</div>`
+        return `<div class="it clic ${E.silencio ? 'silencio-on' : ''}" data-alternar-silencio="1" title="${E.silencio ? (E.cfg.naoIncomodar ? t('barra.silencioOn') : t('barra.silencioHorario')) : t('barra.silencioOff')}">${svg(E.silencio ? 'lua2' : 'sino')}</div>`
       case 'tema': {
-        const t = TEMAS.find(x => x[0] === (E.cfg.barraTema || 'sistema')) || TEMAS[0]
-        const prox = TEMAS[(TEMAS.indexOf(t) + 1) % TEMAS.length]
-        return `<div class="it clic" data-ciclo-tema="${prox[0]}" title="Aspeto: ${t[2]}${t[0] === 'sistema' ? ' (segue o Windows)' : ''} — clica para ${prox[2].toLowerCase()}">${svg(t[1])}</div>`
+        const L = temas()
+        const atual = L.find(x => x[0] === (E.cfg.barraTema || 'sistema')) || L[0]
+        const prox = L[(L.indexOf(atual) + 1) % L.length]
+        const dica = t('barra.tema', { atual: atual[2], sistema: atual[0] === 'sistema' ? t('barra.segueWindows') : '', prox: prox[2].toLowerCase() })
+        return `<div class="it clic" data-ciclo-tema="${prox[0]}" title="${esc(dica)}">${svg(atual[1])}</div>`
       }
       case 'som':
-        return `<div class="it clic" data-menu="som" title="Centro de Controlo da voz">${svg(E.cfg.ligado ? 'sliders' : 'mudo')}</div>`
+        return `<div class="it clic" data-menu="som" title="${t('barra.som')}">${svg(E.cfg.ligado ? 'sliders' : 'mudo')}</div>`
       case 'tempo': {
         const d = duracao(s)
-        return d ? `<div class="it tempo num" title="Tempo deste pedido">${d}</div>` : ''
+        return d ? `<div class="it tempo num" title="${t('barra.tempo')}">${d}</div>` : ''
       }
     }
     return ''
@@ -208,7 +205,7 @@
     const mods = modulosCompletos().filter(m => m.on).map(m => m.id)
     const esq = mods.filter(id => ESQUERDA.has(id)).map(id => modulo(id, s, vertical, flut))
     const dir = mods.filter(id => !ESQUERDA.has(id)).map(id => modulo(id, s, vertical, flut))
-    const marca = `<div class="it marca clic" data-menu="definicoes" title="Voz para o Claude Code">${svg('estrela')}<b>Claude</b></div>`
+    const marca = `<div class="it marca clic" data-menu="definicoes" title="${t('barra.marca')}">${svg('estrela')}<b>Claude</b></div>`
     const classe = vertical ? 'barra v' : flut ? 'barra flut' : 'barra'
     raiz.innerHTML = `<div class="${classe}">${marca}${esq.join('')}${flut ? '' : '<div class="espaco"></div>'}${dir.join('')}</div>`
 
@@ -235,30 +232,30 @@
   // ---------------- menus ----------------
   function menuSessao() {
     const s = foco()
-    const linhas = ['<div class="menu">', '<div class="tit">Sessões</div>']
-    if (!E.sessoes.length) linhas.push('<div class="op inativo"><span class="chk"></span>Nenhuma sessão do Claude Code aberta</div>')
+    const linhas = ['<div class="menu">', `<div class="tit">${t('sessao.titulo')}</div>`]
+    if (!E.sessoes.length) linhas.push(`<div class="op inativo"><span class="chk"></span>${t('sessao.nenhuma')}</div>`)
     for (const x of E.sessoes) {
       linhas.push(
         `<div class="op" data-foco="${esc(x.id)}"><span class="chk">${s && x.id === s.id ? '✓' : ''}</span><span class="ponto ${x.estado}"></span><span>${esc(x.pasta)}</span><small>${esc(x.estado === 'trabalhar' && x.acao ? x.acao : ESTADOS[x.estado] || '')}</small></div>`,
       )
     }
     if (E.falando) {
-      linhas.push('<hr><div class="tit">A dizer agora</div>', `<div class="leg">«${esc(E.falando.texto)}»</div>`)
+      linhas.push(`<hr><div class="tit">${t('sessao.aDizer')}</div>`, `<div class="leg">«${esc(E.falando.texto)}»</div>`)
     }
     if (s && s.uso) {
       linhas.push(
         '<hr>',
-        `<div class="op inativo"><span class="chk"></span><span>${esc(s.uso.modelo)} · ${mil(s.uso.saidaPedido)} tokens</span><small>contexto ${s.uso.pct}%</small></div>`,
+        `<div class="op inativo"><span class="chk"></span><span>${esc(s.uso.modelo)} · ${mil(s.uso.saidaPedido)} tokens</span><small>${t('sessao.contexto', { pct: s.uso.pct })}</small></div>`,
       )
     }
     linhas.push(
       '<hr>',
-      `<div class="op" data-acao="pausa"><span class="chk"></span>${E.pausado ? 'Retomar a voz' : 'Pausar a voz'}</div>`,
-      '<div class="op" data-acao="saltar"><span class="chk"></span>Saltar a frase</div>',
-      '<div class="op" data-acao="parar"><span class="chk"></span>Calar tudo agora</div>',
+      `<div class="op" data-acao="pausa"><span class="chk"></span>${E.pausado ? t('sessao.retomar') : t('sessao.pausar')}</div>`,
+      `<div class="op" data-acao="saltar"><span class="chk"></span>${t('sessao.saltar')}</div>`,
+      `<div class="op" data-acao="parar"><span class="chk"></span>${t('sessao.calar')}</div>`,
       '<hr>',
-      '<div class="op" data-ir="som"><span class="chk"></span>Som…</div>',
-      '<div class="op" data-ir="definicoes"><span class="chk"></span>Definições da Voz…</div>',
+      `<div class="op" data-ir="som"><span class="chk"></span>${t('menu.som')}</div>`,
+      `<div class="op" data-ir="definicoes"><span class="chk"></span>${t('menu.definicoesVoz')}</div>`,
       '</div>',
     )
     return linhas.join('')
@@ -276,26 +273,26 @@
     const interruptor = (chave, rot) =>
       `<div class="lig" data-alternar="${chave}"><span>${rot}</span><span class="interruptor ${c[chave] ? 'on' : ''}"></span></div>`
     return `<div class="cc">
-      <div class="bloco"><div class="bt"><button class="redondo ${c.ligado ? 'on' : ''}" data-alternar="ligado">${svg(c.ligado ? 'altifalante' : 'mudo')}</button><div>Voz<small>${c.ligado ? 'Ligada' : 'Desligada'}</small></div></div></div>
-      <div class="bloco"><div class="bt"><button class="redondo" data-acao="pausa" title="${E.pausado ? 'Retomar' : 'Pausar'}">${svg(E.pausado ? 'tocar' : 'pausa')}</button><button class="redondo" data-acao="saltar" title="Saltar a frase">${svg('saltar')}</button><div>Fala<small>${E.pausado ? 'Em pausa' : E.falando ? 'A falar' : 'Em silêncio'}</small></div></div></div>
-      <button class="bloco l2 testar" data-acao="testar">${svg('tocar')}<span>Testar a voz<small>«Olá, eu sou o Claude Code»</small></span></button>
-      <div class="bloco l2"><h6>Volume</h6>${deslizador('volume', '', 0, 2, 0.05, v => Math.round(v * 100) + '%', true)}</div>
-      <div class="bloco l2">${deslizador('velocidade', 'Velocidade', 0.6, 1.4, 0.02, v => num(v, 2))}${deslizador('altura', 'Altura', -6, 6, 1, sinal)}</div>
-      <div class="bloco l2"><h6>Equalizador</h6><div class="eq">
+      <div class="bloco"><div class="bt"><button class="redondo ${c.ligado ? 'on' : ''}" data-alternar="ligado">${svg(c.ligado ? 'altifalante' : 'mudo')}</button><div>${t('som.voz')}<small>${c.ligado ? t('som.ligada') : t('som.desligada')}</small></div></div></div>
+      <div class="bloco"><div class="bt"><button class="redondo" data-acao="pausa" title="${E.pausado ? t('som.retomar') : t('som.pausar')}">${svg(E.pausado ? 'tocar' : 'pausa')}</button><button class="redondo" data-acao="saltar" title="${t('som.saltar')}">${svg('saltar')}</button><div>${t('som.fala')}<small>${E.pausado ? t('som.emPausa') : E.falando ? t('som.aFalar') : t('som.silencio')}</small></div></div></div>
+      <button class="bloco l2 testar" data-acao="testar">${svg('tocar')}<span>${t('som.testar')}<small>«${t('frase.teste').replace(/\.$/, '')}»</small></span></button>
+      <div class="bloco l2"><h6>${t('som.volume')}</h6>${deslizador('volume', '', 0, 2, 0.05, v => Math.round(v * 100) + '%', true)}</div>
+      <div class="bloco l2">${deslizador('velocidade', t('som.velocidade'), 0.6, 1.4, 0.02, v => num(v, 2))}${deslizador('altura', t('som.altura'), -6, 6, 1, sinal)}</div>
+      <div class="bloco l2"><h6>${t('som.eq')}</h6><div class="eq">
         ${['graves', 'medios', 'agudos']
           .map(
             (k, i) =>
-              `<label><input type="range" data-chave="${k}" min="-12" max="12" step="1" value="${Number(c[k])}"><span>${['Graves', 'Médios', 'Agudos'][i]} <span class="num" data-valor="${k}">${sinal(Number(c[k]))}</span></span></label>`,
+              `<label><input type="range" data-chave="${k}" min="-12" max="12" step="1" value="${Number(c[k])}"><span>${[t('som.graves'), t('som.medios'), t('som.agudos')][i]} <span class="num" data-valor="${k}">${sinal(Number(c[k]))}</span></span></label>`,
           )
           .join('')}
       </div></div>
-      <div class="bloco l2"><h6>Predefinição</h6><div class="pre">${Object.keys(PREDEF)
-        .map(k => `<button class="chip ${k === pre ? 'sel' : ''}" data-predef="${k}">${k === 'radio' ? 'Rádio' : k[0].toUpperCase() + k.slice(1)}</button>`)
+      <div class="bloco l2"><h6>${t('som.predef')}</h6><div class="pre">${Object.keys(PREDEF)
+        .map(k => `<button class="chip ${k === pre ? 'sel' : ''}" data-predef="${k}">${t('pre.' + k)}</button>`)
         .join('')}</div></div>
-      <div class="bloco l2"><h6>Aspeto</h6><div class="segmentado">${TEMAS.map(
+      <div class="bloco l2"><h6>${t('som.aspeto')}</h6><div class="segmentado">${temas().map(
         ([v, ic, r]) => `<button class="${(c.barraTema || 'sistema') === v ? 'sel' : ''}" data-tema="${v}">${svg(ic)}${r}</button>`,
       ).join('')}</div></div>
-      <div class="bloco l2">${interruptor('anunciarAcoes', 'Diz o que está a fazer')}${interruptor('lerRespostas', 'Lê as respostas')}${interruptor('soSessaoAtiva', 'Só a sessão ativa fala tudo')}</div>
+      <div class="bloco l2">${interruptor('anunciarAcoes', t('som.anunciar'))}${interruptor('lerRespostas', t('som.ler'))}${interruptor('soSessaoAtiva', t('som.soAtiva'))}</div>
     </div>`
   }
 
@@ -305,50 +302,71 @@
   function opcoesEcra(c) {
     if (ecras.length < 2) return ''
     const atual = Number.isInteger(c.barraEcra) ? c.barraEcra : -1
-    return `<div class="tit">Ecrã</div>
-      <div class="op" data-ecra="-1"><span class="chk">${atual === -1 ? '✓' : ''}</span>Ecrã principal</div>
-      ${ecras.map((e, i) => `<div class="op" data-ecra="${i}"><span class="chk">${atual === i ? '✓' : ''}</span>Ecrã ${i + 1}${e.principal ? ' (principal)' : ''}<small>${esc(e.largura)}×${esc(e.altura)}</small></div>`).join('')}
+    return `<div class="tit">${t('ecra.titulo')}</div>
+      <div class="op" data-ecra="-1"><span class="chk">${atual === -1 ? '✓' : ''}</span>${t('ecra.principal')}</div>
+      ${ecras.map((e, i) => `<div class="op" data-ecra="${i}"><span class="chk">${atual === i ? '✓' : ''}</span>${t('ecra.n', { n: i + 1 })}${e.principal ? t('ecra.ePrincipal') : ''}<small>${esc(e.largura)}×${esc(e.altura)}</small></div>`).join('')}
       <hr>`
+  }
+
+  // Voz recomendada para cada língua da interface (para o botão «descarregar»).
+  const VOZ_RECOMENDADA = { pt: ['pt_PT-tugão-medium', 'tugão'], en: ['en_US-lessac-medium', 'lessac'], es: ['es_ES-davefx-medium', 'davefx'] }
+
+  function blocoIdioma(c) {
+    const atual = c.idioma || 'auto'
+    const opcoes = [['auto', t('def.idiomaAuto')], ['pt', 'Português'], ['en', 'English'], ['es', 'Español']]
+    const temVoz = ((E.vozes && E.vozes.instaladas) || []).some(v => v.lingua.startsWith(IDIOMA))
+    const rec = VOZ_RECOMENDADA[IDIOMA]
+    const p = rec && progressoVoz[rec[0]]
+    const aviso = temVoz || !rec
+      ? ''
+      : `<div class="aviso-voz">${t('def.semVozIdioma')} ${
+          p ? `<span class="barra-prog"><i style="width:${p.pct || 0}%"></i></span>` : `<button class="chip azul" data-voz-baixar="${esc(rec[0])}">${t('def.baixarVoz', { nome: esc(rec[1]) })}</button>`
+        }</div>`
+    return `<div class="tit">${t('def.idioma')}</div>
+      ${opcoes.map(([v, r]) => `<div class="op" data-idioma="${v}"><span class="chk">${atual === v ? '✓' : ''}</span>${r}</div>`).join('')}
+      ${aviso}`
   }
 
   function blocoSilencio(c) {
     const h = { ativo: false, inicio: '22:00', fim: '08:00', ...(c.silencioHorario || {}) }
-    return `<div class="tit">Não incomodar</div>
-      <div class="op" data-alternar="naoIncomodar"><span class="chk">${c.naoIncomodar ? '✓' : ''}</span>Ligado agora (sem voz nem avisos)</div>
-      <div class="op" data-horario-ativo="1"><span class="chk">${h.ativo ? '✓' : ''}</span>Horário de silêncio</div>
-      <div class="linha-horas ${h.ativo ? '' : 'inativo'}">das <input type="time" data-hora="inicio" value="${esc(h.inicio)}"> às <input type="time" data-hora="fim" value="${esc(h.fim)}"></div>`
+    return `<div class="tit">${t('sil.titulo')}</div>
+      <div class="op" data-alternar="naoIncomodar"><span class="chk">${c.naoIncomodar ? '✓' : ''}</span>${t('sil.agora')}</div>
+      <div class="op" data-horario-ativo="1"><span class="chk">${h.ativo ? '✓' : ''}</span>${t('sil.horario')}</div>
+      <div class="linha-horas ${h.ativo ? '' : 'inativo'}">${t('sil.das')} <input type="time" data-hora="inicio" value="${esc(h.inicio)}"> ${t('sil.as')} <input type="time" data-hora="fim" value="${esc(h.fim)}"></div>`
   }
 
   function menuDefinicoes() {
     const c = E.cfg
     const chk = b => (b ? '✓' : '')
     return `<div class="menu">
-      <div class="tit">Posição da barra</div>
-      ${POSICOES.map(([v, r]) => `<div class="op" data-posicao="${v}"><span class="chk">${chk(c.barraPosicao === v)}</span>${r}</div>`).join('')}
+      <div class="tit">${t('def.posicao')}</div>
+      ${posicoes().map(([v, r]) => `<div class="op" data-posicao="${v}"><span class="chk">${chk(c.barraPosicao === v)}</span>${r}</div>`).join('')}
       <hr>
       ${opcoesEcra(c)}
-      <div class="op" data-ir="modulos"><span class="chk"></span>Módulos visíveis…<small>›</small></div>
-      <div class="op" data-ir="vozes"><span class="chk"></span>Vozes e idiomas…<small>›</small></div>
+      <div class="op" data-ir="modulos"><span class="chk"></span>${t('def.modulos')}<small>›</small></div>
+      <div class="op" data-ir="vozes"><span class="chk"></span>${t('def.vozes')}<small>›</small></div>
+      <hr>
+      ${blocoIdioma(c)}
       <hr>
       ${blocoSilencio(c)}
       <hr>
-      <div class="tit">Conversas</div>
-      <div class="op" data-alternar="barraAvisos"><span class="chk">${chk(c.barraAvisos !== false)}</span>Avisar quando uma conversa termina</div>
-      <div class="op" data-alternar="respostasPelaBarra"><span class="chk">${chk(c.respostasPelaBarra !== false)}</span>Responder às conversas pela barra</div>
-      <div class="op" data-alternar="aprovarPelaBarra"><span class="chk">${chk(c.aprovarPelaBarra !== false)}</span>Aprovar permissões pela barra</div>
+      <div class="tit">${t('def.conversas')}</div>
+      <div class="op" data-alternar="barraAvisos"><span class="chk">${chk(c.barraAvisos !== false)}</span>${t('def.avisos')}</div>
+      <div class="op" data-alternar="respostasPelaBarra"><span class="chk">${chk(c.respostasPelaBarra !== false)}</span>${t('def.responder')}</div>
+      <div class="op" data-alternar="aprovarPelaBarra"><span class="chk">${chk(c.aprovarPelaBarra !== false)}</span>${t('def.aprovar')}</div>
       <hr>
-      <div class="tit">Arranque</div>
-      <div class="op" data-arranque="windows"><span class="chk">${chk(c.barraArranque === 'windows')}</span>Arrancar com o Windows</div>
-      <div class="op" data-arranque="claude"><span class="chk">${chk(c.barraArranque === 'claude')}</span>Só com o Claude Code aberto</div>
-      <div class="op" data-arranque="mao"><span class="chk">${chk(c.barraArranque === 'mao')}</span>Só à mão</div>
+      <div class="tit">${t('def.arranque')}</div>
+      <div class="op" data-arranque="windows"><span class="chk">${chk(c.barraArranque === 'windows')}</span>${t('def.comWindows')}</div>
+      <div class="op" data-arranque="claude"><span class="chk">${chk(c.barraArranque === 'claude')}</span>${t('def.comClaude')}</div>
+      <div class="op" data-arranque="mao"><span class="chk">${chk(c.barraArranque === 'mao')}</span>${t('def.aMao')}</div>
       <hr>
-      <div class="tit">Aspeto</div>
-      <div class="op" data-tema="sistema"><span class="chk">${chk(c.barraTema === 'sistema')}</span>Seguir o tema do Windows</div>
-      <div class="op" data-tema="escuro"><span class="chk">${chk(c.barraTema === 'escuro')}</span>Escuro</div>
-      <div class="op" data-tema="claro"><span class="chk">${chk(c.barraTema === 'claro')}</span>Claro</div>
+      <div class="tit">${t('def.aspeto')}</div>
+      <div class="op" data-tema="sistema"><span class="chk">${chk(c.barraTema === 'sistema')}</span>${t('def.seguirWindows')}</div>
+      <div class="op" data-tema="escuro"><span class="chk">${chk(c.barraTema === 'escuro')}</span>${t('tema.escuro')}</div>
+      <div class="op" data-tema="claro"><span class="chk">${chk(c.barraTema === 'claro')}</span>${t('tema.claro')}</div>
       <hr>
-      <div class="op" data-acao="testar"><span class="chk"></span>Testar a voz</div>
-      <div class="op" data-sair="1"><span class="chk"></span>Sair da barra</div>
+      <div class="op" data-acao="testar"><span class="chk"></span>${t('def.testar')}</div>
+      <div class="op" data-sair="1"><span class="chk"></span>${t('def.sair')}</div>
     </div>`
   }
 
@@ -357,22 +375,24 @@
     const c = E.cfg
     const chk = b => (b ? '✓' : '')
     return `<div class="menu">
-      <div class="op" data-ir="conversas"><span class="chk"></span>Conversas…</div>
-      <div class="op" data-ir="som"><span class="chk"></span>Som…</div>
-      <div class="op" data-ir="uso"><span class="chk"></span>Tokens de hoje…</div>
+      <div class="op" data-ir="conversas"><span class="chk"></span>${t('dir.conversas')}</div>
+      <div class="op" data-ir="som"><span class="chk"></span>${t('dir.som')}</div>
+      <div class="op" data-ir="uso"><span class="chk"></span>${t('dir.tokens')}</div>
       <hr>
-      <div class="op" data-alternar="naoIncomodar"><span class="chk">${chk(c.naoIncomodar)}</span>Não incomodar<small>Ctrl+Shift+Alt+D</small></div>
-      <div class="op" data-alternar="ligado"><span class="chk">${chk(c.ligado)}</span>Voz ligada</div>
+      <div class="op" data-alternar="naoIncomodar"><span class="chk">${chk(c.naoIncomodar)}</span>${t('dir.silencio')}<small>Ctrl+Shift+Alt+D</small></div>
+      <div class="op" data-alternar="ligado"><span class="chk">${chk(c.ligado)}</span>${t('dir.vozLigada')}</div>
       <hr>
-      <div class="tit">Posição</div>
-      ${POSICOES.map(([v, r]) => `<div class="op" data-posicao="${v}"><span class="chk">${chk(c.barraPosicao === v)}</span>${r}</div>`).join('')}
+      <div class="tit">${t('dir.posicao')}</div>
+      ${posicoes().map(([v, r]) => `<div class="op" data-posicao="${v}"><span class="chk">${chk(c.barraPosicao === v)}</span>${r}</div>`).join('')}
       <hr>
       ${opcoesEcra(c)}
-      <div class="tit">Aspeto</div>
-      ${TEMAS.map(([v, , r]) => `<div class="op" data-tema="${v}"><span class="chk">${chk((c.barraTema || 'sistema') === v)}</span>${r}</div>`).join('')}
+      ${blocoIdioma(c)}
       <hr>
-      <div class="op" data-ir="definicoes"><span class="chk"></span>Definições…</div>
-      <div class="op" data-sair="1"><span class="chk"></span>Fechar a barra</div>
+      <div class="tit">${t('dir.aspeto')}</div>
+      ${temas().map(([v, , r]) => `<div class="op" data-tema="${v}"><span class="chk">${chk((c.barraTema || 'sistema') === v)}</span>${r}</div>`).join('')}
+      <hr>
+      <div class="op" data-ir="definicoes"><span class="chk"></span>${t('dir.definicoes')}</div>
+      <div class="op" data-sair="1"><span class="chk"></span>${t('dir.fechar')}</div>
     </div>`
   }
 
@@ -388,36 +408,36 @@
     const linguas = catalogoVozes ? [...new Map(catalogoVozes.map(x => [x.lingua, x.linguaNome])).entries()] : []
     const lista = (catalogoVozes || []).filter(x => x.lingua === filtroLingua)
     return `<div class="painel vozes">
-      <div class="tit">Vozes instaladas</div>
+      <div class="tit">${t('vozes.instaladas')}</div>
       ${v.instaladas
         .map(
-          x => `<div class="voz ${ePadrao(x.id) ? 'principal' : ''}"><div><b>${esc(x.nome)}</b><small>${esc(x.linguaNome)} · ${esc(x.qualidade)}${ePadrao(x.id) ? ' · principal' : ''}</small></div>
-            <button class="chip" data-voz-experimentar="${esc(x.id)}" title="Ouvir">▶</button>
-            ${ePadrao(x.id) ? '' : `<button class="chip" data-voz-padrao="${esc(x.id)}">Principal</button><button class="chip" data-voz-remover="${esc(x.id)}" title="Apagar">✕</button>`}</div>`,
+          x => `<div class="voz ${ePadrao(x.id) ? 'principal' : ''}"><div><b>${esc(x.nome)}</b><small>${esc(nomeLingua(x.lingua))} · ${esc(x.qualidade)}${ePadrao(x.id) ? ' · ' + t('vozes.principal') : ''}</small></div>
+            <button class="chip" data-voz-experimentar="${esc(x.id)}" title="${t('vozes.ouvir')}">▶</button>
+            ${ePadrao(x.id) ? '' : `<button class="chip" data-voz-padrao="${esc(x.id)}">${t('vozes.tornarPrincipal')}</button><button class="chip" data-voz-remover="${esc(x.id)}" title="${t('vozes.apagar')}">✕</button>`}</div>`,
         )
         .join('')}
-      <div class="lig" data-alternar="idiomaAuto"><span>Resposta noutro idioma usa a voz desse idioma</span><span class="interruptor ${E.cfg.idiomaAuto !== false ? 'on' : ''}"></span></div>
-      <div class="lig" data-alternar-por-conversa="1"><span>Um tom diferente para cada conversa</span><span class="interruptor ${E.cfg.vozPorConversa !== 'igual' ? 'on' : ''}"></span></div>
-      <div class="tit" style="margin-top:6px">Descarregar mais vozes</div>
+      <div class="lig" data-alternar="idiomaAuto"><span>${t('vozes.idiomaAuto')}</span><span class="interruptor ${E.cfg.idiomaAuto !== false ? 'on' : ''}"></span></div>
+      <div class="lig" data-alternar-por-conversa="1"><span>${t('vozes.tomConversa')}</span><span class="interruptor ${E.cfg.vozPorConversa !== 'igual' ? 'on' : ''}"></span></div>
+      <div class="tit" style="margin-top:6px">${t('vozes.mais')}</div>
       ${
         catalogoVozes
-          ? `<select data-filtro-lingua="1">${linguas.map(([l, n]) => `<option value="${esc(l)}" ${l === filtroLingua ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select>
+          ? `<select data-filtro-lingua="1">${linguas.map(([l]) => `<option value="${esc(l)}" ${l === filtroLingua ? 'selected' : ''}>${esc(nomeLingua(l))}</option>`).join('')}</select>
              <div class="catalogo">${lista
                .map(x => {
                  const p = progressoVoz[x.id]
                  const estadoBt = x.instalada
-                   ? '<span class="ok-txt">✓ instalada</span>'
+                   ? `<span class="ok-txt">${t('vozes.instalada')}</span>`
                    : p && p.erro
                      ? `<span class="erro-txt">${esc(p.erro)}</span>`
                      : p
                        ? `<span class="barra-prog"><i style="width:${p.pct || 0}%"></i></span>`
-                       : `<button class="chip azul" data-voz-baixar="${esc(x.id)}">Descarregar · ${x.mb} MB</button>`
-                 return `<div class="voz"><div><b>${esc(x.nome)}</b><small>${esc(x.qualidade)}${x.oradores > 1 ? ` · ${x.oradores} vozes` : ''}</small></div>${estadoBt}</div>`
+                       : `<button class="chip azul" data-voz-baixar="${esc(x.id)}">${t('vozes.descarregar', { mb: x.mb })}</button>`
+                 return `<div class="voz"><div><b>${esc(x.nome)}</b><small>${esc(x.qualidade)}${x.oradores > 1 ? ' · ' + t('vozes.oradores', { n: x.oradores }) : ''}</small></div>${estadoBt}</div>`
                })
                .join('')}</div>`
-          : '<div class="vazio">A carregar o catálogo…</div>'
+          : `<div class="vazio">${t('vozes.aCarregar')}</div>`
       }
-      <div class="op" data-ir="definicoes"><span class="chk">‹</span>Voltar</div>
+      <div class="op" data-ir="definicoes"><span class="chk">‹</span>${t('menu.voltar')}</div>
     </div>`
   }
 
@@ -432,31 +452,31 @@
   function menuUso() {
     const u = E.uso
     setTimeout(() => (graficoVisto = true), 700)
-    if (!u) return '<div class="painel"><div class="vazio">Sem dados ainda.</div></div>'
+    if (!u) return `<div class="painel"><div class="vazio">${t('uso.semDados')}</div></div>`
     const total = d => d.entrada + d.saida
     const max = Math.max(1, ...u.dias.map(total))
-    const nomeDia = k => ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'][new Date(k + 'T12:00:00').getDay()]
+    const nomeDia = k => t('uso.dias').split(',')[new Date(k + 'T12:00:00').getDay()]
     const s = foco()
     return `<div class="painel uso">
-      <div class="tit">Tokens — últimos 7 dias</div>
+      <div class="tit">${t('uso.titulo')}</div>
       <div class="grafico${graficoVisto ? '' : ' entra'}">${u.dias
         .map(
-          d => `<div class="col" title="${esc(d.dia)}: ${mil(d.entrada)} de entrada · ${mil(d.saida)} gerados · ${mil(d.cache)} da cache"><div class="b" style="height:${Math.round((total(d) / max) * 100)}%"><i style="height:${total(d) ? Math.round((d.saida / total(d)) * 100) : 0}%"></i></div><small>${nomeDia(d.dia)}</small></div>`,
+          d => `<div class="col" title="${esc(t('uso.dica', { dia: d.dia, entrada: mil(d.entrada), saida: mil(d.saida), cache: mil(d.cache) }))}"><div class="b" style="height:${Math.round((total(d) / max) * 100)}%"><i style="height:${total(d) ? Math.round((d.saida / total(d)) * 100) : 0}%"></i></div><small>${nomeDia(d.dia)}</small></div>`,
         )
         .join('')}</div>
       <div class="kpis">
-        <div><b class="num">${mil(u.hoje.entrada)}</b><small>entrada hoje</small></div>
-        <div><b class="num">${mil(u.hoje.saida)}</b><small>gerados hoje</small></div>
-        <div><b class="num">${mil(u.hoje.cache)}</b><small>lidos da cache</small></div>
+        <div><b class="num">${mil(u.hoje.entrada)}</b><small>${t('uso.entrada')}</small></div>
+        <div><b class="num">${mil(u.hoje.saida)}</b><small>${t('uso.gerados')}</small></div>
+        <div><b class="num">${mil(u.hoje.cache)}</b><small>${t('uso.cache')}</small></div>
       </div>
       ${
         u.topo.length
-          ? `<div class="tit">Conversas de hoje</div>${u.topo
-              .map(t => `<div class="linha-uso"><span>${esc(t.titulo || t.id.slice(0, 8))}</span><small class="num">${mil(t.saida)} gerados</small></div>`)
+          ? `<div class="tit">${t('uso.conversas')}</div>${u.topo
+              .map(x => `<div class="linha-uso"><span>${esc(x.titulo || x.id.slice(0, 8))}</span><small class="num">${t('uso.geradosN', { n: mil(x.saida) })}</small></div>`)
               .join('')}`
           : ''
       }
-      ${s && s.uso ? `<div class="tit">Esta conversa</div><div class="linha-uso"><span>${esc(s.uso.modelo)} · contexto</span><small class="num">${mil(s.uso.usados)} / ${mil(s.uso.limite)} (${s.uso.pct}%)</small></div>` : ''}
+      ${s && s.uso ? `<div class="tit">${t('uso.esta')}</div><div class="linha-uso"><span>${esc(s.uso.modelo)} · ${t('uso.contexto')}</span><small class="num">${mil(s.uso.usados)} / ${mil(s.uso.limite)} (${s.uso.pct}%)</small></div>` : ''}
     </div>`
   }
 
@@ -464,32 +484,32 @@
   function cartaoPermissao(p, aviso) {
     const s = E.sessoes.find(x => x.id === p.sessao)
     return `<div class="cartao permissao" data-perm="${esc(p.id)}">
-      <div class="cab"><span class="av g atencao" style="--c:#fbbf24"><i>${svg('escudo')}</i></span><div class="tt"><b>${esc(s ? s.titulo : 'Conversa')}</b><small>quer usar <b>${esc(p.ferramenta)}</b></small></div>${aviso ? '<button class="x" data-fechar="1" title="Fechar (decides depois)">✕</button>' : ''}</div>
+      <div class="cab"><span class="av g atencao" style="--c:#fbbf24"><i>${svg('escudo')}</i></span><div class="tt"><b>${esc(s ? s.titulo : t('perm.conversa'))}</b><small>${t('perm.querUsar')} <b>${esc(p.ferramenta)}</b></small></div>${aviso ? `<button class="x" data-fechar="1" title="${t('perm.fecharDepois')}">✕</button>` : ''}</div>
       ${p.descricao ? `<div class="ultima">${esc(p.descricao)}</div>` : ''}
       <pre class="cmd">${esc(p.resumo)}</pre>
-      <div class="botoes"><button class="recusar" data-decidir="deny" data-id="${esc(p.id)}">Recusar</button><button class="permitir" data-decidir="allow" data-id="${esc(p.id)}">Permitir</button></div>
+      <div class="botoes"><button class="recusar" data-decidir="deny" data-id="${esc(p.id)}">${t('perm.recusar')}</button><button class="permitir" data-decidir="allow" data-id="${esc(p.id)}">${t('perm.permitir')}</button></div>
     </div>`
   }
 
   function menuModulos() {
     const mods = modulosCompletos()
     return `<div class="menu mods">
-      <div class="tit">Módulos visíveis — arrasta para ordenar</div>
+      <div class="tit">${t('mods.titulo')}</div>
       ${mods
         .map(
           (m, i) =>
-            `<div class="op" draggable="true" data-mod="${i}"><span class="chk">⋮⋮</span><span>${MODULOS[m.id]}</span><small><span class="interruptor ${m.on ? 'on' : ''}"></span></small></div>`,
+            `<div class="op" draggable="true" data-mod="${i}"><span class="chk">⋮⋮</span><span>${t(MODULOS[m.id])}</span><small><span class="interruptor ${m.on ? 'on' : ''}"></span></small></div>`,
         )
         .join('')}
-      <hr><div class="op" data-ir="definicoes"><span class="chk">‹</span>Voltar</div>
+      <hr><div class="op" data-ir="definicoes"><span class="chk">‹</span>${t('menu.voltar')}</div>
     </div>`
   }
 
   // ---------------- conversas ----------------
   /** Texto curto e limpo (sem markdown) para pré-visualizar uma mensagem. */
-  function resumo(t, max) {
-    const s = String(t || '')
-      .replace(/```[\s\S]*?```/g, ' [código] ')
+  function resumo(txt, max) {
+    const s = String(txt || '')
+      .replace(/```[\s\S]*?```/g, ' ' + t('conv.codigo') + ' ')
       .replace(/`([^`]*)`/g, '$1')
       .replace(/!\[[^\]]*\]\([^)]*\)/g, '')
       .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
@@ -508,18 +528,18 @@
   function estadoEnvio(x) {
     const e = envios[x.id]
     if (e && Date.now() - e.t < 15000) {
-      return `<div class="envio ok">${e.entregue ? '✓ Enviado — o Claude vai responder.' : '⏳ Em fila — chega quando a conversa acabar o passo atual.'}</div>`
+      return `<div class="envio ok">${e.entregue ? t('conv.enviado') : t('conv.emFila')}</div>`
     }
-    if (x.pendentes) return `<div class="envio">⏳ ${x.pendentes} resposta${x.pendentes > 1 ? 's' : ''} em fila</div>`
+    if (x.pendentes) return `<div class="envio">${x.pendentes > 1 ? t('conv.nFila', { n: x.pendentes }) : t('conv.nFila1')}</div>`
     return ''
   }
 
   function cartao(x, aviso) {
     const linhaEstado =
       x.estado === 'trabalhar'
-        ? `<span class="aescrever"><b></b><b></b><b></b></span>${esc(x.acao || 'A trabalhar')}`
+        ? `<span class="aescrever"><b></b><b></b><b></b></span>${esc(x.acao || t('conv.aTrabalhar'))}`
         : x.estado === 'atencao'
-          ? `<span class="alerta">● ${esc(x.acao || 'Precisa de ti')}</span>`
+          ? `<span class="alerta">● ${esc(x.acao || t('conv.precisaDeTi'))}</span>`
           : esc(ESTADOS[x.estado] || '')
     const msg = x.resposta ? resumo(x.resposta, aviso ? 260 : 340) : ''
     const podeResponder = E.cfg.respostasPelaBarra !== false
@@ -529,34 +549,34 @@
     const tomAtual = x.voz && x.voz.manual ? Number(x.voz.altura) || 0 : 0
     const escolhaVoz = aviso
       ? ''
-      : `<div class="linha-voz"><label>Voz <select data-voz-sessao="${esc(x.id)}"><option value="">Automática</option>${instaladas
+      : `<div class="linha-voz"><label>${t('conv.voz')} <select data-voz-sessao="${esc(x.id)}"><option value="">${t('conv.automatica')}</option>${instaladas
           .map(v => `<option value="${esc(v.id)}" ${v.id === vozAtual ? 'selected' : ''}>${esc(v.nome)} · ${esc(v.lingua.replace('_', '-'))}</option>`)
-          .join('')}</select></label><label>Tom <select data-tom-sessao="${esc(x.id)}">${[-4, -3, -2, -1, 0, 1, 2, 3, 4]
+          .join('')}</select></label><label>${t('conv.tom')} <select data-tom-sessao="${esc(x.id)}">${[-4, -3, -2, -1, 0, 1, 2, 3, 4]
           .map(t => `<option value="${t}" ${t === tomAtual ? 'selected' : ''}>${t > 0 ? '+' : ''}${t}</option>`)
           .join('')}</select></label></div>`
-    const micro = `<button type="button" class="mic ${E.aOuvir && ditadoSessao === x.id ? 'a-ouvir' : ''}" data-falar-sessao="${esc(x.id)}" title="Ditar a resposta">${svg('micro')}</button>`
+    const micro = `<button type="button" class="mic ${E.aOuvir && ditadoSessao === x.id ? 'a-ouvir' : ''}" data-falar-sessao="${esc(x.id)}" title="${t('conv.ditar')}">${svg('micro')}</button>`
     const chave = (aviso ? 'a:' : 'p:') + x.id
     const entra = !cartoesVistos.has(chave)
     cartoesVistos.add(chave)
     return `<div class="cartao ${x.estado}${entra ? ' entra' : ''}" data-cartao="${esc(x.id)}">
-      <div class="cab">${avatar(x, true)}<div class="tt"><b>${esc(x.titulo)}</b><small>${linhaEstado}${x.inicio ? ` · <span class="num">${duracao(x)}</span>` : ''}</small></div>${aviso ? '<button class="x" data-fechar="1" title="Fechar">✕</button>' : ''}</div>
-      ${msg ? `<div class="ultima">${esc(msg)}</div>` : x.estado === 'trabalhar' ? '' : '<div class="ultima vazia">Ainda sem resposta nesta sessão.</div>'}
-      ${x.pedido && !aviso ? `<div class="eu"><span>Tu:</span> ${esc(resumo(x.pedido, 140))}</div>` : ''}
+      <div class="cab">${avatar(x, true)}<div class="tt"><b>${esc(x.titulo)}</b><small>${linhaEstado}${x.inicio ? ` · <span class="num">${duracao(x)}</span>` : ''}</small></div>${aviso ? `<button class="x" data-fechar="1" title="${t('conv.fechar')}">✕</button>` : ''}</div>
+      ${msg ? `<div class="ultima">${esc(msg)}</div>` : x.estado === 'trabalhar' ? '' : `<div class="ultima vazia">${t('conv.semResposta')}</div>`}
+      ${x.pedido && !aviso ? `<div class="eu"><span>${t('conv.tu')}</span> ${esc(resumo(x.pedido, 140))}</div>` : ''}
       ${pedidos.map(p => cartaoPermissao(p, false)).join('')}
       ${escolhaVoz}
       ${
         podeResponder
-          ? `<form class="resp" data-sessao="${esc(x.id)}"><textarea rows="1" placeholder="${E.aOuvir && ditadoSessao === x.id ? 'A ouvir… fala agora' : 'Responder a esta conversa…'}" data-sessao="${esc(x.id)}"></textarea>${micro}<button type="submit" title="Enviar (Enter)">↑</button></form>${estadoEnvio(x)}`
+          ? `<form class="resp" data-sessao="${esc(x.id)}"><textarea rows="1" placeholder="${E.aOuvir && ditadoSessao === x.id ? t('conv.aOuvir') : t('conv.responder')}" data-sessao="${esc(x.id)}"></textarea>${micro}<button type="submit" title="${t('conv.enviar')}">↑</button></form>${estadoEnvio(x)}`
           : ''
       }
     </div>`
   }
 
   function menuConversas() {
-    if (!E.sessoes.length) return '<div class="painel"><div class="tit">Conversas</div><div class="vazio">Nenhuma conversa do Claude Code aberta.</div></div>'
+    if (!E.sessoes.length) return `<div class="painel"><div class="tit">${t('conv.titulo')}</div><div class="vazio">${t('conv.nenhuma')}</div></div>`
     const ordem = { atencao: 0, trabalhar: 1, terminou: 2, parada: 3 }
     const lista = [...E.sessoes].sort((a, b) => (ordem[a.estado] ?? 9) - (ordem[b.estado] ?? 9))
-    return `<div class="painel"><div class="tit">Conversas <span class="num">${E.sessoes.length}</span></div>${lista.map(x => cartao(x, false)).join('')}</div>`
+    return `<div class="painel"><div class="tit">${t('conv.titulo')} <span class="num">${E.sessoes.length}</span></div>${lista.map(x => cartao(x, false)).join('')}</div>`
   }
 
   function menuAviso(id) {
@@ -567,12 +587,12 @@
 
   function menuPermissao(id) {
     const p = (E.permissoes || []).find(x => x.id === id)
-    return `<div class="painel aviso">${p ? cartaoPermissao(p, true) : '<div class="vazio">Este pedido já foi respondido.</div>'}</div>`
+    return `<div class="painel aviso">${p ? cartaoPermissao(p, true) : `<div class="vazio">${t('perm.jaRespondido')}</div>`}</div>`
   }
 
   function menuDitado(sessao) {
     const x = E.sessoes.find(s => s.id === sessao) || foco()
-    if (!x) return '<div class="painel aviso"><div class="vazio">Não há conversas abertas para onde enviar.</div></div>'
+    if (!x) return `<div class="painel aviso"><div class="vazio">${t('conv.semDestino')}</div></div>`
     return `<div class="painel aviso ditado">${cartao(x, true)}</div>`
   }
 
@@ -708,7 +728,7 @@
     }
     ditadoSessao = sessao || (foco() && foco().id) || null
     const r = await api({ acao: 'ouvir', ordem: 'iniciar', sessao: ditadoSessao })
-    if (r && !r.ok) mostrarErro(r.erro || 'Não foi possível usar o microfone.')
+    if (r && !r.ok) mostrarErro(r.erro || t('erro.microfone'))
   }
 
   function mostrarErro(texto) {
@@ -771,7 +791,7 @@
     } else {
       const aviso = form.parentElement.querySelector('.envio') || form.insertAdjacentElement('afterend', document.createElement('div'))
       aviso.className = 'envio erro'
-      aviso.textContent = 'Não foi possível enviar.'
+      aviso.textContent = t('erro.enviar')
     }
   }
 
@@ -833,23 +853,23 @@
 
   document.addEventListener('click', ev => {
     if (ev.target.closest('[data-fechar]')) return fecharMenu()
-    const t = ev.target.closest(
+    const alvo = ev.target.closest(
       '[data-menu],[data-acao],[data-foco],[data-ir],[data-posicao],[data-arranque],[data-tema],[data-ciclo-tema],[data-predef],[data-alternar],[data-sair],[data-mod],' +
         '[data-falar],[data-falar-sessao],[data-alternar-silencio],[data-decidir],[data-voz-baixar],[data-voz-padrao],[data-voz-remover],' +
-        '[data-voz-experimentar],[data-ecra],[data-horario-ativo],[data-alternar-por-conversa]',
+        '[data-voz-experimentar],[data-ecra],[data-horario-ativo],[data-alternar-por-conversa],[data-idioma]',
     )
-    if (!t) {
+    if (!alvo) {
       if (!host && menuEmLinha && !ev.target.closest('#menu-em-linha')) {
         menuEmLinha = null
         renderMenuEmLinha()
       }
       return
     }
-    const d = t.dataset
-    if (d.menu) return abrirMenu(d.menu, t)
+    const d = alvo.dataset
+    if (d.menu) return abrirMenu(d.menu, alvo)
     if (d.ir) {
       if (d.ir === 'vozes') carregarCatalogo()
-      if (host && VISTA === 'menu') return abrirMenu(d.ir, t)
+      if (host && VISTA === 'menu') return abrirMenu(d.ir, alvo)
       menuEmLinha = { menu: d.ir, x: menuEmLinha ? menuEmLinha.x : 8 }
       return renderMenuEmLinha()
     }
@@ -876,13 +896,14 @@
     if (d.vozRemover) return api({ acao: 'vozes', op: 'remover', id: d.vozRemover }).then(carregarCatalogo)
     if (d.vozExperimentar) return api({ acao: 'vozes', op: 'experimentar', id: d.vozExperimentar })
     if (d.ecra !== undefined) return config({ barraEcra: Number(d.ecra) })
+    if (d.idioma) return config({ idioma: d.idioma })
     if (d.horarioAtivo) {
       const h = { ativo: false, inicio: '22:00', fim: '08:00', ...(E.cfg.silencioHorario || {}) }
       return config({ silencioHorario: { ...h, ativo: !h.ativo } }).then(redesenharMenuAtual)
     }
     if (d.alternarPorConversa) return config({ vozPorConversa: E.cfg.vozPorConversa === 'igual' ? 'auto' : 'igual' }).then(redesenharMenuAtual)
     if (d.acao) {
-      if (d.acao === 'testar') api({ acao: 'controlo', controlo: 'testar', texto: 'Olá, eu sou o Claude Code.' })
+      if (d.acao === 'testar') api({ acao: 'controlo', controlo: 'testar', texto: t('frase.teste') })
       else controlo(d.acao)
       return
     }
@@ -1049,6 +1070,8 @@
     es.addEventListener('estado', ev => {
       falhasDesde = null
       E = JSON.parse(ev.data)
+      window.IDIOMA = (!host && q.get('lingua')) || E.idioma || 'pt'
+      document.documentElement.lang = { pt: 'pt-PT', en: 'en', es: 'es' }[IDIOMA] || 'pt-PT'
       // Pré-visualização (sem anfitrião): ?tema=claro|escuro e ?abrir=<menu> para capturas e testes.
       if (!host && q.get('tema')) E.cfg.barraTema = q.get('tema')
       render()

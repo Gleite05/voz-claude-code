@@ -19,6 +19,7 @@
 - 🛡️ **Aprovar permissões pela barra** — o pedido aparece num cartão com o comando exato: *Permitir* ou *Recusar*.
 - 🎤 **Falar com o Claude** — dita a resposta; o Whisper transcreve no teu PC.
 - 🌍 **Vozes de 11 idiomas** — instala mais vozes, escolhe uma voz e um tom para cada conversa, e as respostas noutro idioma usam a voz desse idioma.
+- 🌐 **Interface em português, inglês e espanhol** — a barra e as frases faladas seguem a língua do Windows (ou a que escolheres no clique direito).
 - 🌙 **Não incomodar** — um botão (ou um horário, ex.: 22:00 → 08:00) sem voz nem avisos.
 - 📊 **Tokens do dia** — gráfico dos últimos 7 dias e as conversas que mais gastaram.
 - 🎚️ **Som afinável** — volume, altura, equalizador e predefinições (natural, calma, clara, quente, rádio).
@@ -74,7 +75,7 @@ Isto instala a **voz portuguesa** (Piper + «tugão»), o **ditado** (Whisper) e
 | `/voz:barra ligar\|desligar\|posicao …\|arranque …` | A barra |
 | `/voz:testar [texto]` | Frase de teste |
 
-As opções ficam em `~/.claude/voz/config.json` (ex.: `pronuncias` para corrigir a pronúncia de palavras — «Claude» lê-se «Cláude»).
+As opções ficam em `~/.claude/voz/config.json` (ex.: `idioma` — `auto`, `pt`, `en` ou `es`; `pronuncias` para corrigir a pronúncia de palavras — «Claude» lê-se «Cláude»).
 
 ## Como funciona
 

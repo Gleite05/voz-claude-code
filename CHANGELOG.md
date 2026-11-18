@@ -1,5 +1,11 @@
 # Histórico de versões
 
+## 1.1.0
+
+- **Interface em inglês e espanhol:** a barra (menus, definições, conversas, tokens, permissões) e as frases faladas («A ler config.ts», «Preciso da tua autorização»…) existem em português, inglês e espanhol.
+- **Língua automática:** segue a língua do Windows (`idioma: "auto"`); muda-se no clique direito ou nas definições. Se não houver voz instalada para a língua escolhida, a barra oferece o download da voz recomendada (tugão, lessac, davefx).
+- Os anúncios usam uma voz instalada na língua da interface, e o ditado transcreve nessa língua por omissão (`ditadoIdioma: "auto"`).
+
 ## 1.0.0
 
 Primeira versão estável, pronta para quem a quiser instalar.

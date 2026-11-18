@@ -141,14 +141,14 @@ function registar(msg) {
       break
     case 'UserPromptSubmit':
       s.estado = 'trabalhar'
-      s.acao = 'A pensar'
+      s.acao = texto.frase(msg.idioma, 'aPensar')
       if (msg.pedido) s.pedido = msg.pedido
       s.inicio = Date.now()
       s.fim = null
       atualizarUso(s, true)
       break
     case 'PreToolUse': {
-      const frase = texto.anunciarFerramenta(msg.ferramenta, msg.entrada)
+      const frase = texto.anunciarFerramenta(msg.ferramenta, msg.entrada, msg.idioma)
       s.estado = 'trabalhar'
       if (!s.inicio) s.inicio = Date.now()
       if (frase) s.acao = frase.replace(/\.$/, '')
@@ -158,16 +158,16 @@ function registar(msg) {
     case 'MessageDisplay':
       if (s.estado !== 'atencao') {
         s.estado = 'trabalhar'
-        s.acao = 'A escrever'
+        s.acao = texto.frase(msg.idioma, 'aEscrever')
       }
       break
     case 'Notification':
       s.estado = 'atencao'
-      s.acao = texto.frasesNotificacao(msg.mensagem).replace(/\.$/, '')
+      s.acao = texto.frasesNotificacao(msg.mensagem, msg.idioma).replace(/\.$/, '')
       break
     case 'Stop':
       s.estado = 'terminou'
-      s.acao = 'Terminou'
+      s.acao = texto.frase(msg.idioma, 'terminou')
       s.fim = Date.now()
       if (msg.ultima) {
         s.resposta = msg.ultima

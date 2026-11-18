@@ -5,7 +5,7 @@
 const fs = require('node:fs')
 const path = require('node:path')
 const crypto = require('node:crypto')
-const { CAMINHOS, garantirPasta, log } = require('./comum')
+const { CAMINHOS, garantirPasta, log, idiomaEfetivo } = require('./comum')
 
 const BASE = 'https://huggingface.co/rhasspy/piper-voices/resolve/main/'
 const CATALOGO_URL = BASE + 'voices.json'
@@ -246,7 +246,14 @@ function detetarIdioma(frase) {
  * cfg.vozPadrao, cfg.vozPorConversa ('auto' | 'igual'), cfg.idiomaAuto (bool).
  */
 function escolher(cfg, sessao, frase, tipo, ordemSessoes) {
-  const padrao = caminhoModelo(cfg.vozPadrao) || CAMINHOS.modelo
+  let padrao = caminhoModelo(cfg.vozPadrao) || CAMINHOS.modelo
+  // A língua da interface manda nos anúncios: se a voz principal for de outra língua e houver uma voz
+  // instalada na língua da interface, os anúncios (e o resto, por omissão) usam essa.
+  const idiomaUi = idiomaEfetivo(cfg)
+  if (linguaDe(path.basename(padrao, '.onnx')).slice(0, 2) !== idiomaUi) {
+    const daLingua = instaladas().find(v => v.lingua.startsWith(idiomaUi))
+    if (daLingua) padrao = daLingua.modelo
+  }
   let modelo = padrao
   let altura = 0
   if (sessao) {

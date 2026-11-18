@@ -41,7 +41,7 @@ const permissoes = new Map() // id -> { socket, sessao, ferramenta, resumo, desc
 const ordemSessoes = [] // pela ordem em que apareceram (para dar um tom diferente a cada conversa)
 let aOuvir = false
 
-const { emSilencio } = require('./comum')
+const { emSilencio, idiomaEfetivo } = require('./comum')
 
 function publicar() {
   if (web) web.publicar()
@@ -166,8 +166,8 @@ function emFoco(sessao, cfg) {
   return sessao === sessaoFoco
 }
 
-function nomePasta(cwd) {
-  return cwd ? texto.base(cwd) : 'outra pasta'
+function nomePasta(cwd, idioma) {
+  return cwd ? texto.base(cwd) : texto.frase(idioma, 'outraPasta')
 }
 
 function textoDeMensagem(msg, cfg) {
@@ -175,7 +175,7 @@ function textoDeMensagem(msg, cfg) {
   const id = msg.message_id || `${msg.sessao}-sem-id`
   let m = mensagens.get(id)
   if (!m) {
-    m = { estado: texto.novoEstado(cfg.maxCaracteres), proximo: 0, pendentes: new Map(), sessao: msg.sessao, t: Date.now() }
+    m = { estado: texto.novoEstado(cfg.maxCaracteres, idiomaEfetivo(cfg)), proximo: 0, pendentes: new Map(), sessao: msg.sessao, t: Date.now() }
     mensagens.set(id, m)
   }
   m.t = Date.now()
@@ -213,7 +213,7 @@ function avisarInstalacao() {
     garantirPasta()
     fs.writeFileSync(CAMINHOS.avisoMostrado, new Date().toISOString())
   } catch {}
-  enfileirar('aviso', 'Para a voz em português de Portugal, escreve barra voz, dois pontos, instalar.', null)
+  enfileirar('aviso', texto.frase(idiomaEfetivo(lerConfig()), 'instalar'), null)
 }
 
 const DEPURAR = Boolean(process.env.VOZ_DEBUG)
@@ -221,6 +221,8 @@ const DEPURAR = Boolean(process.env.VOZ_DEBUG)
 function tratarEvento(msg) {
   const cfg = lerConfig()
   if (DEPURAR) log(`evento ${msg.evento} sessão=${String(msg.sessao).slice(0, 8)}${msg.ferramenta ? ' ' + msg.ferramenta : ''}${msg.delta !== undefined ? ` #${msg.index}${msg.final ? ' final' : ''} ${JSON.stringify(String(msg.delta).slice(0, 60))}` : ''}`)
+  const idioma = idiomaEfetivo(cfg)
+  msg.idioma = idioma
   estado.registar(msg) // a barra vê tudo, mesmo com a voz desligada
   if (msg.sessao && !msg.agente && !ordemSessoes.includes(msg.sessao)) ordemSessoes.push(msg.sessao)
   if (msg.evento === 'UserPromptSubmit' && !msg.agente) {
@@ -253,7 +255,7 @@ function tratarEvento(msg) {
 
     case 'PreToolUse':
       if (!cfg.anunciarAcoes || !emFoco(s, cfg)) return
-      enfileirar('acao', texto.anunciarFerramenta(msg.ferramenta, msg.entrada), s)
+      enfileirar('acao', texto.anunciarFerramenta(msg.ferramenta, msg.entrada, idioma), s)
       return
 
     case 'MessageDisplay':
@@ -263,9 +265,9 @@ function tratarEvento(msg) {
       return
 
     case 'Notification': {
-      const frase = texto.frasesNotificacao(msg.mensagem)
+      const frase = texto.frasesNotificacao(msg.mensagem, idioma)
       if (emFoco(s, cfg)) enfileirar('aviso', frase, s)
-      else if (cfg.avisarOutrasSessoes) enfileirar('aviso', `Na sessão de ${nomePasta(msg.cwd)}: ${frase}`, s)
+      else if (cfg.avisarOutrasSessoes) enfileirar('aviso', texto.frase(idioma, 'naSessao', nomePasta(msg.cwd, idioma), frase), s)
       return
     }
 
@@ -273,11 +275,11 @@ function tratarEvento(msg) {
       if (emFoco(s, cfg)) {
         // Versões sem MessageDisplay: lê a resposta final de uma vez.
         if (!turnoComTexto.has(s) && cfg.lerRespostas && msg.ultima) {
-          const estado = texto.novoEstado(cfg.maxCaracteres)
+          const estado = texto.novoEstado(cfg.maxCaracteres, idioma)
           for (const frase of texto.processarDelta(estado, msg.ultima)) enfileirar('fala', frase, s)
         }
       } else if (cfg.avisarOutrasSessoes) {
-        enfileirar('aviso', `A sessão de ${nomePasta(msg.cwd)} terminou.`, s)
+        enfileirar('aviso', texto.frase(idioma, 'sessaoTerminou', nomePasta(msg.cwd, idioma)), s)
       }
       turnoComTexto.delete(s)
       return
@@ -312,7 +314,8 @@ function tratarControlo(msg, responder) {
       return responder({ ok: true, barras: web ? web.clientes() : 0 })
     case 'testar':
       pararTudo()
-      for (const frase of texto.processarDelta(texto.novoEstado(4000), msg.texto || 'Olá! A voz está a funcionar.')) {
+      const idiomaTeste = idiomaEfetivo(lerConfig())
+      for (const frase of texto.processarDelta(texto.novoEstado(4000, idiomaTeste), msg.texto || texto.frase(idiomaTeste, 'testar'))) {
         enfileirar('fala', frase, null)
       }
       return responder({ ok: true })
@@ -410,7 +413,7 @@ function registarPermissao(p, socket) {
 
 function decidirPermissao(id, decisao) {
   const p = permissoes.get(id)
-  if (!p) return { ok: false, erro: 'este pedido já foi respondido' }
+  if (!p) return { ok: false, erro: texto.frase(idiomaEfetivo(lerConfig()), 'jaRespondido') }
   if (decisao !== 'allow' && decisao !== 'deny') return { ok: false, erro: 'decisão inválida' }
   permissoes.delete(id)
   try {
@@ -425,7 +428,7 @@ function decidirPermissao(id, decisao) {
 
 async function ouvir(ordem, sessao) {
   const cfg = lerConfig()
-  if (!ouvido.instalado()) return { ok: false, erro: 'O ditado não está instalado: corre /voz:instalar ouvir.' }
+  if (!ouvido.instalado()) return { ok: false, erro: texto.frase(idiomaEfetivo(cfg), 'ditadoNaoInstalado') }
   if (ordem === 'iniciar') {
     pararTudo() // não grava a própria voz
     aOuvir = true
@@ -444,7 +447,7 @@ async function ouvir(ordem, sessao) {
   }
   // parar: transcreve e entrega o texto à barra (que o mostra para confirmares).
   if (web) web.emitir('ditado', { aTranscrever: true, sessao: sessao || sessaoFoco })
-  const r = await ouvido.parar(cfg.ditadoIdioma || 'pt', cfg.ditadoModelo)
+  const r = await ouvido.parar(cfg.ditadoIdioma && cfg.ditadoIdioma !== 'auto' ? cfg.ditadoIdioma : idiomaEfetivo(cfg), cfg.ditadoModelo)
   aOuvir = false
   publicar()
   if (web) web.emitir('ditado', { texto: (r && r.texto) || '', erro: r && !r.ok ? r.erro : null, sessao: sessao || sessaoFoco })
@@ -498,7 +501,7 @@ const CHAVES_BARRA = new Set([
   'ligado', 'anunciarAcoes', 'lerRespostas', 'velocidade', 'volume', 'altura', 'graves', 'medios', 'agudos',
   'soSessaoAtiva', 'avisarOutrasSessoes', 'barraPosicao', 'barraModulos', 'barraArranque', 'barraTema',
   'barraAvisos', 'respostasPelaBarra', 'naoIncomodar', 'silencioHorario', 'vozPorConversa', 'idiomaAuto',
-  'vozPadrao', 'aprovarPelaBarra', 'barraEcra', 'ditadoIdioma', 'ditadoModelo',
+  'vozPadrao', 'aprovarPelaBarra', 'barraEcra', 'ditadoIdioma', 'ditadoModelo', 'idioma',
 ])
 
 function estadoParaBarra() {
@@ -511,6 +514,7 @@ function estadoParaBarra() {
   return {
     versao: versao(),
     agora: Date.now(),
+    idioma: idiomaEfetivo(c),
     cfg,
     motor: motor ? motor.nome : null,
     sessoes: sessoes.map(s => ({ ...s, voz: vozes.vozDaSessao(s.id) })),

@@ -12,7 +12,7 @@
 
 <p align="center"><img src="docs/imagens/barra-escuro.png" alt="La barra en la parte superior de la pantalla"></p>
 
-> La interfaz está en portugués (Portugal). Desde el catálogo se pueden instalar voces en español, inglés, francés, alemán, italiano y más, y las respuestas en otro idioma usan automáticamente una voz de ese idioma.
+> La barra y los avisos hablados están en **español, inglés y portugués** y siguen el idioma de Windows (o elige uno en el menú del clic derecho). La voz incluida es portuguesa: para español, instala `es_ES-davefx-medium` con un clic desde la barra (o `/voz:vozes instalar es_ES-davefx-medium`). En el catálogo hay voces en francés, alemán, italiano y más.
 
 ## Qué hace
 
@@ -20,6 +20,7 @@
 - 💬 **Conversaciones en la barra** — un avatar animado por conversación (girando = trabajando, latiendo = te necesita), el último mensaje de cada una y una caja para **responder directamente**.
 - 🛡️ **Aprobar permisos desde la barra** — la petición aparece en una tarjeta con el comando exacto: *Permitir* o *Rechazar*.
 - 🎤 **Hablar con Claude** — dicta tu respuesta; Whisper la transcribe en tu PC.
+- 🌐 **Interfaz en español, inglés y portugués** — la barra y los avisos siguen el idioma del sistema.
 - 🌍 **Voces en 11 idiomas** — instala más voces, elige voz y tono para cada conversación.
 - 🌙 **No molestar** — un botón (o un horario, p. ej. 22:00 → 08:00) sin voz ni avisos.
 - 📊 **Tokens del día** — gráfico de 7 días y las conversaciones que más consumieron.
