@@ -185,7 +185,11 @@ namespace VozBarra
             get { try { return Nativo.GetDpiForWindow(Handle) / 96.0; } catch { return 1.0; } }
         }
 
-        public void TemaEscuro(bool escuro) { Nativo.ModoEscuro(Handle, escuro); }
+        public void TemaEscuro(bool escuro)
+        {
+            Nativo.ModoEscuro(Handle, escuro);
+            if (!Programa.SemVidro) Nativo.Acrilico(Handle, escuro); // a tinta do vidro acompanha o tema
+        }
 
         protected async void Iniciar(string url)
         {
@@ -678,7 +682,8 @@ namespace VozBarra
                 var ap = new ACCENTPOLICY();
                 ap.estado = 4;
                 ap.flags = 2;
-                ap.cor = escuro ? unchecked((int)0x701A1A1E) : unchecked((int)0x70F4F4F6);
+                // AABBGGRR: escuro = grafite translúcido; claro = branco leitoso (como a barra do macOS)
+                ap.cor = escuro ? unchecked((int)0x881C1A1A) : unchecked((int)0xB8F7F5F5);
                 int n = Marshal.SizeOf(ap);
                 IntPtr p = Marshal.AllocHGlobal(n);
                 Marshal.StructureToPtr(ap, p, false);

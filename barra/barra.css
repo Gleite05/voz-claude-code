@@ -18,21 +18,48 @@
   --estrela: #ff9b73;
   color-scheme: dark;
 }
+/* Modo claro ao estilo macOS: vidro leitoso, texto quase preto, blocos brancos com sombra suave. */
 .claro {
   --txt: #1d1d1f;
-  --txt2: rgba(0, 0, 0, 0.55);
-  --hover: rgba(0, 0, 0, 0.09);
-  --sep: rgba(0, 0, 0, 0.1);
-  --vidro-barra: rgba(255, 255, 255, 0.5);
-  --vidro-menu: rgba(246, 246, 248, 0.72);
-  --bloco: rgba(255, 255, 255, 0.66);
-  --trilho: rgba(0, 0, 0, 0.09);
-  --ok: #10b981;
+  --txt2: rgba(29, 29, 31, 0.56);
+  --hover: rgba(0, 0, 0, 0.065);
+  --sep: rgba(0, 0, 0, 0.085);
+  --vidro-barra: rgba(255, 255, 255, 0.28);
+  --vidro-menu: rgba(252, 252, 253, 0.6);
+  --bloco: rgba(255, 255, 255, 0.82);
+  --trilho: rgba(120, 120, 128, 0.16);
+  --azul: #007aff;
+  --sel: #007aff;
+  --ok: #16a34a;
   --alerta: #d97706;
-  --parada: rgba(0, 0, 0, 0.3);
+  --parada: rgba(60, 60, 67, 0.32);
   --estrela: #d9622b;
+  --sombra-bloco: 0 0.5px 0 rgba(0, 0, 0, 0.04), 0 1px 3px rgba(0, 0, 0, 0.07);
   color-scheme: light;
 }
+body { transition: background-color 0.25s ease, color 0.25s ease; }
+.claro .bloco, .claro .cartao { box-shadow: var(--sombra-bloco); }
+.claro .barra .it.clic:hover, .claro .barra .it.aberto { background: rgba(0, 0, 0, 0.07); }
+.claro .menu .op:hover small { color: rgba(255, 255, 255, 0.85); }
+.claro input[type=range]::-webkit-slider-thumb { box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.12), 0 1px 4px rgba(0, 0, 0, 0.22); }
+.claro .interruptor { background: rgba(120, 120, 128, 0.28); }
+.claro .interruptor.on { background: #34c759; }
+.claro .redondo { background: rgba(120, 120, 128, 0.14); }
+.claro .redondo.on { background: var(--azul); }
+.claro .chip { background: rgba(120, 120, 128, 0.12); }
+.claro .chip.sel { background: var(--azul); }
+.claro .resp { background: rgba(120, 120, 128, 0.1); }
+.claro .it.marca svg { filter: drop-shadow(0 0 0.5px rgba(0, 0, 0, 0.25)); }
+.claro .av { box-shadow: 0 0 0 1.5px #fff, 0 1px 2px rgba(0, 0, 0, 0.15); }
+.claro .cartao.atencao { box-shadow: var(--sombra-bloco), inset 0 0 0 1.5px rgba(217, 119, 6, 0.55); }
+.claro .painel > .tit, .claro .menu .tit { color: rgba(29, 29, 31, 0.5); }
+
+/* Escolha do aspeto (Centro de Controlo) */
+.segmentado { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px; padding: 3px; border-radius: 10px; background: var(--trilho); }
+.segmentado button { border: 0; background: transparent; color: inherit; font: inherit; font-size: 12px; padding: 5px 0; border-radius: 7px; display: flex; align-items: center; justify-content: center; gap: 5px; }
+.segmentado button svg { width: 13px; height: 13px; }
+.segmentado button.sel { background: var(--bloco); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18); }
+.claro .segmentado button.sel { background: #fff; }
 
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; overflow: hidden; background: transparent; }

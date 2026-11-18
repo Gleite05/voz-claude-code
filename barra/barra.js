@@ -32,7 +32,15 @@
     pausa: '<path fill="currentColor" d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z"/>',
     tocar: '<path fill="currentColor" d="M7 4.5v15l12-7.5z"/>',
     saltar: '<path fill="currentColor" d="M5 6l8 6-8 6zM13 6l6 6-6 6zM19 6h2v12h-2z"/>',
+    sol: '<circle cx="12" cy="12" r="4.2" fill="currentColor"/><g stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6"/></g>',
+    lua: '<path fill="currentColor" d="M20.5 14.6A8.6 8.6 0 0 1 9.4 3.5a8.6 8.6 0 1 0 11.1 11.1z"/>',
+    auto: '<circle cx="12" cy="12" r="8.4" fill="none" stroke="currentColor" stroke-width="2"/><path fill="currentColor" d="M12 3.6a8.4 8.4 0 0 1 0 16.8z"/>',
   }
+  const TEMAS = [
+    ['sistema', 'auto', 'Automático'],
+    ['claro', 'sol', 'Claro'],
+    ['escuro', 'lua', 'Escuro'],
+  ]
   const svg = n => `<svg class="i" viewBox="0 0 24 24">${ICONES[n]}</svg>`
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c])
   const mil = n => (n >= 1000 ? (n / 1000).toLocaleString('pt-PT', { maximumFractionDigits: n >= 100000 ? 0 : 1 }) + ' mil' : String(n))
@@ -44,7 +52,7 @@
   ]
   const MODULOS = {
     sessao: 'Sessão', acao: 'O que está a fazer', legenda: 'Legenda do que diz', onda: 'Onda da voz',
-    conversas: 'Conversas ativas', sessoes: 'Pontos das sessões', contexto: 'Contexto e tokens', som: 'Centro de Controlo', tempo: 'Tempo do pedido',
+    conversas: 'Conversas ativas', sessoes: 'Pontos das sessões', contexto: 'Contexto e tokens', tema: 'Botão claro/escuro', som: 'Centro de Controlo', tempo: 'Tempo do pedido',
   }
   const ESQUERDA = new Set(['sessao', 'acao', 'legenda'])
   const PREDEF = {
@@ -102,6 +110,11 @@
         mods.splice(i, 0, { id: 'conversas', on: true })
       }
     }
+    // O botão do aspeto entra logo antes do Centro de Controlo.
+    if (!mods.some(m => m.id === 'tema')) {
+      const i = mods.findIndex(m => m.id === 'som')
+      mods.splice(i >= 0 ? i : mods.length, 0, { id: 'tema', on: true })
+    }
     for (const id of Object.keys(MODULOS)) if (!mods.some(m => m.id === id)) mods.push({ id, on: id === 'conversas' })
     return mods
   }
@@ -153,6 +166,11 @@
       case 'contexto':
         if (!s || !s.uso) return ''
         return `<div class="it contexto" title="${esc(`${s.uso.modelo} · contexto ${mil(s.uso.usados)} de ${mil(s.uso.limite)} tokens · ${mil(s.uso.saidaPedido)} gerados neste pedido`)}"><span class="anel" style="--p:${s.uso.pct}%"></span><span class="num">${s.uso.pct}%</span></div>`
+      case 'tema': {
+        const t = TEMAS.find(x => x[0] === (E.cfg.barraTema || 'sistema')) || TEMAS[0]
+        const prox = TEMAS[(TEMAS.indexOf(t) + 1) % TEMAS.length]
+        return `<div class="it clic" data-ciclo-tema="${prox[0]}" title="Aspeto: ${t[2]}${t[0] === 'sistema' ? ' (segue o Windows)' : ''} — clica para ${prox[2].toLowerCase()}">${svg(t[1])}</div>`
+      }
       case 'som':
         return `<div class="it clic" data-menu="som" title="Centro de Controlo da voz">${svg(E.cfg.ligado ? 'sliders' : 'mudo')}</div>`
       case 'tempo': {
@@ -250,6 +268,9 @@
       <div class="bloco l2"><h6>Predefinição</h6><div class="pre">${Object.keys(PREDEF)
         .map(k => `<button class="chip ${k === pre ? 'sel' : ''}" data-predef="${k}">${k === 'radio' ? 'Rádio' : k[0].toUpperCase() + k.slice(1)}</button>`)
         .join('')}</div></div>
+      <div class="bloco l2"><h6>Aspeto</h6><div class="segmentado">${TEMAS.map(
+        ([v, ic, r]) => `<button class="${(c.barraTema || 'sistema') === v ? 'sel' : ''}" data-tema="${v}">${svg(ic)}${r}</button>`,
+      ).join('')}</div></div>
       <div class="bloco l2">${interruptor('anunciarAcoes', 'Diz o que está a fazer')}${interruptor('lerRespostas', 'Lê as respostas')}${interruptor('soSessaoAtiva', 'Só a sessão ativa fala tudo')}</div>
     </div>`
   }
@@ -556,7 +577,7 @@
 
   document.addEventListener('click', ev => {
     if (ev.target.closest('[data-fechar]')) return fecharMenu()
-    const t = ev.target.closest('[data-menu],[data-acao],[data-foco],[data-ir],[data-posicao],[data-arranque],[data-tema],[data-predef],[data-alternar],[data-sair],[data-mod]')
+    const t = ev.target.closest('[data-menu],[data-acao],[data-foco],[data-ir],[data-posicao],[data-arranque],[data-tema],[data-ciclo-tema],[data-predef],[data-alternar],[data-sair],[data-mod]')
     if (!t) {
       if (!host && menuEmLinha && !ev.target.closest('#menu-em-linha')) {
         menuEmLinha = null
@@ -579,7 +600,11 @@
     if (d.foco) return api({ acao: 'foco', sessao: d.foco })
     if (d.posicao) return config({ barraPosicao: d.posicao }).then(fecharMenu)
     if (d.arranque) return config({ barraArranque: d.arranque })
-    if (d.tema) return config({ barraTema: d.tema })
+    if (d.tema || d.cicloTema) {
+      const p = config({ barraTema: d.tema || d.cicloTema })
+      render() // muda já, sem esperar pelo servidor
+      return p
+    }
     if (d.predef) return config(PREDEF[d.predef])
     if (d.alternar) return config({ [d.alternar]: !E.cfg[d.alternar] })
     if (d.sair) return enviarHost({ tipo: 'sair' })

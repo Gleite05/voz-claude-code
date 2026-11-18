@@ -102,6 +102,7 @@ Uma barra fina e translúcida, ao estilo da barra de menus do macOS:
 
 - **À esquerda:** ✻ **Claude** · a sessão (clica para ver todas, a legenda e os tokens) · o que está a fazer agora · a legenda do que está a dizer.
 - **À direita:** a onda (quando fala; clica para saltar a frase) · pontos das outras sessões (verde a trabalhar, amarelo precisa de ti, cinza parada) · anel do contexto usado · ⚟ Centro de Controlo do som · tempo do pedido.
+- **Aspeto:** o botão ◐/☀/☾ na barra alterna entre Automático (segue o Windows), Claro e Escuro; também está no Centro de Controlo. O vidro muda de tinta com o tema.
 - **Clicar na estrela:** posição (topo, escondida, flutuante, esquerda, direita, fundo por cima da barra do Windows), módulos visíveis (liga, desliga e arrasta para ordenar), arranque e tema (segue o Windows, escuro ou claro).
 
 Como é feita: um anfitrião pequeno em C# (`barra/anfitriao/VozBarra.cs`) compilado no teu PC pelo `csc.exe` que já vem com o .NET Framework 4.8, com a WebView2 do Windows 11 a desenhar a interface (`barra/`). Encaixa no ecrã como a barra de tarefas (as janelas maximizadas não a tapam) e usa o desfoque acrílico do Windows. O instalador só descarrega o kit WebView2 do NuGet da Microsoft (~9 MB, SHA-512 verificado). Se o vidro der problemas, cria o ficheiro vazio `~/.claude/voz/barra/sem-vidro` para um fundo opaco.
