@@ -71,6 +71,14 @@ test('parecePortugues', () => {
   assert.equal(t.parecePortugues('Install project dependencies'), false)
 })
 
+test('pronunciar: troca palavras inteiras, sem mexer noutras', () => {
+  const d = { Claude: 'Cláude' }
+  assert.equal(t.pronunciar('Olá, eu sou o Claude Code.', d), 'Olá, eu sou o Cláude Code.')
+  assert.equal(t.pronunciar('claude, CLAUDE e Claude!', d), 'Cláude, Cláude e Cláude!')
+  assert.equal(t.pronunciar('ClaudeX e MeuClaude ficam', d), 'ClaudeX e MeuClaude ficam')
+  assert.equal(t.pronunciar('sem dicionário', undefined), 'sem dicionário')
+})
+
 test('frasesNotificacao', () => {
   assert.equal(t.frasesNotificacao('Claude needs your permission to use Bash'), 'Preciso da tua autorização.')
   assert.equal(t.frasesNotificacao('Claude is waiting for your input'), 'Estou à tua espera.')

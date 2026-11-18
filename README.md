@@ -84,11 +84,12 @@ As opções ficam em `~/.claude/voz/config.json`:
   "soSessaoAtiva": true,
   "avisarOutrasSessoes": true,
   "motor": "auto",
-  "vozSistema": ""
+  "vozSistema": "",
+  "pronuncias": { "Claude": "Cláude" }
 }
 ```
 
-`ruido` e `ruidoDuracao` afinam o Piper (valores mais baixos = voz mais estável e menos metálica). `maxCaracteres` é o máximo lido por mensagem (o resto fica só no ecrã). `vozSistema` escolhe uma voz do sistema pelo nome (por exemplo `"Helia"`).
+`ruido` e `ruidoDuracao` afinam o Piper (valores mais baixos = voz mais estável e menos metálica). `maxCaracteres` é o máximo lido por mensagem (o resto fica só no ecrã). `vozSistema` escolhe uma voz do sistema pelo nome (por exemplo `"Helia"`). `pronuncias` diz como ler certas palavras (só no áudio; a legenda mantém o original) — por omissão «Claude» lê-se «Cláude».
 
 ## A barra (Windows)
 

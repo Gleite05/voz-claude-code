@@ -243,6 +243,22 @@ function anunciarFerramenta(nome, entrada = {}) {
   return null
 }
 
+// ---------- pronúncia ----------
+
+/**
+ * Troca palavras pela forma como devem soar (só no áudio; a legenda mantém o original).
+ * dicionario: { "Claude": "Cláude" } — palavra inteira, sem distinguir maiúsculas.
+ */
+function pronunciar(frase, dicionario) {
+  let t = String(frase || '')
+  for (const [palavra, som] of Object.entries(dicionario || {})) {
+    if (!palavra || typeof som !== 'string') continue
+    const re = new RegExp(`(^|[^\\p{L}\\p{N}])${palavra.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?=$|[^\\p{L}\\p{N}])`, 'giu')
+    t = t.replace(re, (_, antes) => antes + som)
+  }
+  return t
+}
+
 // ---------- notificações ----------
 
 function frasesNotificacao(mensagem) {
@@ -261,4 +277,5 @@ module.exports = {
   anunciarFerramenta,
   primeiroPrograma,
   frasesNotificacao,
+  pronunciar,
 }

@@ -41,6 +41,7 @@ const PREDEFINICOES = {
   avisarOutrasSessoes: true, // as outras só dizem quando terminam ou precisam de ti
   motor: 'auto', // auto | piper | sistema
   vozSistema: '', // parte do nome de uma voz do sistema (ex.: "Helia"), opcional
+  pronuncias: { Claude: 'Cláude' }, // como dizer certas palavras (só no áudio)
   // Barra (Windows)
   barraPosicao: 'topo', // topo | escondida | flutuante | esquerda | direita | fundo
   barraArranque: 'windows', // windows | claude | mao

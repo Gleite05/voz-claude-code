@@ -1,7 +1,7 @@
 {
   "name": "voz",
   "displayName": "Voz",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "Narra em voz alta, em português de Portugal, o que o Claude Code está a fazer e o que escreve, em tempo real, com uma barra ao estilo macOS no Windows. Gratuito e 100% local.",
   "author": { "name": "Gleite05", "url": "https://github.com/Gleite05" },
   "homepage": "https://github.com/Gleite05/voz-claude-code",

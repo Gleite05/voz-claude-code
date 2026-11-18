@@ -94,7 +94,10 @@ async function bombear() {
     aFalar = false
     return
   }
-  const preparar = item => m.preparar(item.texto, lerConfig()).catch(erro => (log(`preparar: ${erro.message}`), null))
+  const preparar = item => {
+    const cfg = lerConfig()
+    return m.preparar(texto.pronunciar(item.texto, cfg.pronuncias), cfg).catch(erro => (log(`preparar: ${erro.message}`), null))
+  }
   try {
     let atual = tirarProximo()
     let prep = atual && preparar(atual)
