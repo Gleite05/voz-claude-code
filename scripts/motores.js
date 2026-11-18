@@ -214,19 +214,19 @@ function criarMotorPiper() {
     async preparar(texto, cfg) {
       const ficheiro = path.join(CAMINHOS.tmp, `v-${process.pid}-${++n}.wav`)
       const escala = 1 / Math.min(2, Math.max(0.5, Number(cfg.velocidade) || 1))
-      const n = (v, min, max, pad) => (Number.isFinite(Number(v)) ? Math.min(max, Math.max(min, Number(v))) : pad)
+      const lim = (v, min, max, pad) => (Number.isFinite(Number(v)) ? Math.min(max, Math.max(min, Number(v))) : pad)
       const resposta = await sintetizador.enviar(
         JSON.stringify({
           texto,
           ficheiro,
           escala,
-          ruido: n(cfg.ruido, 0, 1.5, 0.4),
-          ruidoDuracao: n(cfg.ruidoDuracao, 0, 1.5, 0.5),
-          volume: n(cfg.volume, 0, 2, 1),
-          altura: n(cfg.altura, -6, 6, 0),
-          graves: n(cfg.graves, -12, 12, 0),
-          medios: n(cfg.medios, -12, 12, 0),
-          agudos: n(cfg.agudos, -12, 12, 0),
+          ruido: lim(cfg.ruido, 0, 1.5, 0.4),
+          ruidoDuracao: lim(cfg.ruidoDuracao, 0, 1.5, 0.5),
+          volume: lim(cfg.volume, 0, 2, 1),
+          altura: lim(cfg.altura, -6, 6, 0),
+          graves: lim(cfg.graves, -12, 12, 0),
+          medios: lim(cfg.medios, -12, 12, 0),
+          agudos: lim(cfg.agudos, -12, 12, 0),
         }),
       )
       let r

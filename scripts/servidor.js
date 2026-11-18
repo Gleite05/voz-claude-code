@@ -5,9 +5,12 @@
 const fs = require('node:fs')
 const net = require('node:net')
 const path = require('node:path')
-const { CAMINHOS, WIN, garantirPasta, lerConfig, log, piperInstalado } = require('./comum')
+const { spawn } = require('node:child_process')
+const { CAMINHOS, WIN, garantirPasta, lerConfig, escreverConfig, log, piperInstalado } = require('./comum')
 const texto = require('./texto')
+const estado = require('./estado')
 const { criarMotor } = require('./motores')
+const { arrancarWeb, PASTA_BARRA, versao } = require('./web')
 
 const OCIOSO_MS = 10 * 60 * 1000
 const ACAO_VELHA_MS = 8000 // um anúncio que esperou mais do que isto já não interessa
@@ -24,6 +27,23 @@ let ultimaAcao = { texto: '', t: 0 }
 let ultimaAtividade = Date.now()
 const mensagens = new Map() // message_id -> { estado, proximo, pendentes: Map(index -> lote), sessao, t }
 const turnoComTexto = new Set() // sessões em que já lemos texto neste turno
+let falando = null // { texto, sessao } enquanto uma frase toca
+let pausado = false
+let aoRetomar = []
+let web = null
+
+function publicar() {
+  if (web) web.publicar()
+}
+
+function esperarRetoma() {
+  return new Promise(r => aoRetomar.push(r))
+}
+
+function retomar() {
+  pausado = false
+  for (const r of aoRetomar.splice(0)) r()
+}
 
 // ---------- motor ----------
 
@@ -88,7 +108,16 @@ async function bombear() {
         if (prepSeguinte) prepSeguinte.then(p => p && m.descartar(p))
         break
       }
-      if (pedaco) await m.tocar(pedaco).catch(erro => log(`tocar: ${erro.message}`))
+      while (pausado && g === geracao) await esperarRetoma()
+      if (pedaco && g === geracao) {
+        falando = { texto: atual.texto, sessao: atual.sessao, tipo: atual.tipo }
+        publicar()
+        await m.tocar(pedaco).catch(erro => log(`tocar: ${erro.message}`))
+        falando = null
+        publicar()
+      } else if (pedaco) {
+        m.descartar(pedaco)
+      }
       atual = seguinte
       prep = prepSeguinte
       if (!atual && g === geracao) {
@@ -107,7 +136,10 @@ async function bombear() {
 function pararTudo() {
   geracao++
   fila.length = 0
+  for (const r of aoRetomar.splice(0)) r() // solta um ciclo em pausa (a pausa mantém-se)
   if (motor) motor.parar()
+  falando = null
+  publicar()
 }
 
 // ---------- eventos ----------
@@ -173,6 +205,9 @@ const DEPURAR = Boolean(process.env.VOZ_DEBUG)
 function tratarEvento(msg) {
   const cfg = lerConfig()
   if (DEPURAR) log(`evento ${msg.evento} sessão=${String(msg.sessao).slice(0, 8)}${msg.ferramenta ? ' ' + msg.ferramenta : ''}${msg.delta !== undefined ? ` #${msg.index}${msg.final ? ' final' : ''} ${JSON.stringify(String(msg.delta).slice(0, 60))}` : ''}`)
+  estado.registar(msg) // a barra vê tudo, mesmo com a voz desligada
+  if (msg.evento === 'UserPromptSubmit' && !msg.agente) sessaoFoco = msg.sessao
+  if (msg.evento === 'SessionStart') talvezAbrirBarra(cfg)
   if (!cfg.ligado) return
   if (msg.agente) return // subagentes ficam calados
   const s = msg.sessao
@@ -234,6 +269,20 @@ function tratarControlo(msg, responder) {
     case 'parar':
       pararTudo()
       return responder({ ok: true })
+    case 'saltar':
+      if (motor) motor.parar() // corta só a frase atual; a fila continua
+      return responder({ ok: true })
+    case 'pausa':
+      if (pausado) retomar()
+      else {
+        pausado = true
+        if (motor) motor.parar()
+      }
+      publicar()
+      return responder({ ok: true, pausado })
+    case 'barra-sair':
+      if (web) web.emitir('sair', {})
+      return responder({ ok: true, barras: web ? web.clientes() : 0 })
     case 'testar':
       pararTudo()
       for (const frase of texto.processarDelta(texto.novoEstado(4000), msg.texto || 'Olá! A voz está a funcionar.')) {
@@ -259,6 +308,79 @@ function tratarControlo(msg, responder) {
       return sair()
   }
   responder({ ok: false, erro: 'controlo desconhecido' })
+}
+
+// ---------- barra ----------
+
+const CHAVES_BARRA = new Set([
+  'ligado', 'anunciarAcoes', 'lerRespostas', 'velocidade', 'volume', 'altura', 'graves', 'medios', 'agudos',
+  'soSessaoAtiva', 'avisarOutrasSessoes', 'barraPosicao', 'barraModulos', 'barraArranque', 'barraTema',
+])
+
+function estadoParaBarra() {
+  const c = lerConfig()
+  const cfg = {}
+  for (const k of CHAVES_BARRA) cfg[k] = c[k]
+  return {
+    versao: versao(),
+    agora: Date.now(),
+    cfg,
+    motor: motor ? motor.nome : null,
+    sessoes: estado.lista(),
+    foco: sessaoFoco,
+    falando,
+    pausado,
+    naFila: fila.length,
+  }
+}
+
+function pedidoDaBarra(p) {
+  if (p.acao === 'config' && p.valores && typeof p.valores === 'object') {
+    const v = {}
+    for (const [k, val] of Object.entries(p.valores)) if (CHAVES_BARRA.has(k)) v[k] = val
+    const antes = lerConfig()
+    escreverConfig(v)
+    if (v.ligado === false) pararTudo()
+    if (v.barraArranque && v.barraArranque !== antes.barraArranque) aplicarArranque(v.barraArranque)
+    publicar()
+    return { ok: true }
+  }
+  if (p.acao === 'controlo') {
+    let r = { ok: true }
+    tratarControlo({ controlo: p.controlo, texto: p.texto }, x => (r = x))
+    return r
+  }
+  if (p.acao === 'foco' && p.sessao) {
+    sessaoFoco = p.sessao
+    publicar()
+    return { ok: true }
+  }
+  return { ok: false, erro: 'pedido desconhecido' }
+}
+
+const EXE_BARRA = path.join(PASTA_BARRA, 'VozBarra.exe')
+
+/** Com o arranque «só com o Claude Code», abre a barra quando começa uma sessão. */
+function talvezAbrirBarra(cfg) {
+  if (!WIN || cfg.barraArranque !== 'claude' || !fs.existsSync(EXE_BARRA)) return
+  if (web && web.clientes() > 0) return
+  try {
+    spawn(EXE_BARRA, [], { detached: true, stdio: 'ignore', windowsHide: false }).unref()
+  } catch (erro) {
+    log(`abrir barra: ${erro.message}`)
+  }
+}
+
+/** «Com o Windows» = entrada em HKCU\…\Run (não precisa de administrador). */
+function aplicarArranque(modo) {
+  if (!WIN) return
+  const chave = 'HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run'
+  const args =
+    modo === 'windows' && fs.existsSync(EXE_BARRA)
+      ? ['add', chave, '/v', 'VozBarra', '/t', 'REG_SZ', '/d', `"${EXE_BARRA}"`, '/f']
+      : ['delete', chave, '/v', 'VozBarra', '/f']
+  const p = spawn('reg.exe', args, { windowsHide: true, stdio: 'ignore' })
+  p.on('error', () => {})
 }
 
 // ---------- canal ----------
@@ -333,12 +455,25 @@ function arrancar() {
     process.exit(1)
   })
 
-  servidor.listen(CAMINHOS.canal, () => log(`servidor a ouvir (pid ${process.pid})`))
+  servidor.listen(CAMINHOS.canal, () => {
+    log(`servidor a ouvir (pid ${process.pid})`)
+    web = arrancarWeb(
+      {
+        estado: estadoParaBarra,
+        aoReceber: pedidoDaBarra,
+        aoMudarClientes: () => (ultimaAtividade = Date.now()),
+      },
+      lerConfig(),
+    )
+    estado.aoMudar(publicar)
+  })
 
   setInterval(() => {
     limparTemporarios()
+    estado.limparVelhas()
     for (const [id, m] of mensagens) if (Date.now() - m.t > 5 * 60 * 1000) mensagens.delete(id)
-    if (!aFalar && !fila.length && Date.now() - ultimaAtividade > OCIOSO_MS) {
+    const barraLigada = web && web.clientes() > 0
+    if (!barraLigada && !aFalar && !fila.length && Date.now() - ultimaAtividade > OCIOSO_MS) {
       log('parado há 10 minutos: a sair')
       servidor.close()
       sair()

@@ -2,7 +2,9 @@
 // O gancho que o Claude Code corre em cada evento. Tem de ser rápido e nunca falhar:
 // lê o JSON do stdin, fica só com o que interessa e passa-o ao servidor da voz.
 
-const { lerConfig } = require('./comum')
+const fs = require('node:fs')
+const path = require('node:path')
+const { lerConfig, CAMINHOS } = require('./comum')
 
 const LIMITE_LEITURA_MS = 2000
 
@@ -52,14 +54,18 @@ async function principal() {
     return
   }
   const evento = e.hook_event_name
-  // Desligado: não arranca nada. (Ao escrever um prompt, manda parar na mesma, se o servidor existir.)
-  if (!lerConfig().ligado && evento !== 'UserPromptSubmit') return
+  // Com a voz desligada, os eventos continuam a ir para o servidor (a barra mostra-os),
+  // mas só arrancam o servidor se a barra estiver instalada.
+  const cfg = lerConfig()
+  const barraInstalada = fs.existsSync(path.join(CAMINHOS.pasta, 'barra', 'VozBarra.exe'))
+  if (!cfg.ligado && !barraInstalada && evento !== 'UserPromptSubmit') return
 
   const msg = {
     evento,
     sessao: e.session_id,
     cwd: e.cwd,
     agente: e.agent_id,
+    transcript: e.transcript_path,
   }
   switch (evento) {
     case 'PreToolUse':

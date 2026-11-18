@@ -41,6 +41,21 @@ const PREDEFINICOES = {
   avisarOutrasSessoes: true, // as outras só dizem quando terminam ou precisam de ti
   motor: 'auto', // auto | piper | sistema
   vozSistema: '', // parte do nome de uma voz do sistema (ex.: "Helia"), opcional
+  // Barra (Windows)
+  barraPosicao: 'topo', // topo | escondida | flutuante | esquerda | direita | fundo
+  barraArranque: 'windows', // windows | claude | mao
+  barraTema: 'sistema', // sistema | escuro | claro
+  barraModulos: [
+    { id: 'sessao', on: true },
+    { id: 'acao', on: true },
+    { id: 'legenda', on: true },
+    { id: 'onda', on: true },
+    { id: 'sessoes', on: true },
+    { id: 'contexto', on: true },
+    { id: 'som', on: true },
+    { id: 'tempo', on: true },
+  ],
+  porta: 47821, // servidor web local da barra (só 127.0.0.1)
 }
 
 /** Predefinições de som: só mexem na velocidade, tom e equalizador. */
