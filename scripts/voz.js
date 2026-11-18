@@ -214,7 +214,7 @@ async function instalarBarra() {
   await enviar({ controlo: 'estado' }, { resposta: true }) // garante o servidor (e o barra.json)
   definirArranque(lerConfig().barraArranque || 'windows')
   abrirBarra()
-  dizer(`Pronto! A barra está no ecrã (WebView2 ${wv}). Clique direito na barra para fechar, mudar a posição e os ajustes.`)
+  dizer(`Pronto! A barra está no ecrã (WebView2 ${wv}). Clique direito na barra para a esconder, mudar a posição e os ajustes; escondida, fica um ícone ao pé do relógio.`)
 }
 
 async function barra(args) {

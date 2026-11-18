@@ -1,5 +1,11 @@
 # Histórico de versões
 
+## 1.2.2
+
+- **Ícone na área de notificação:** a barra tem agora um ícone laranja ao pé do relógio. «Esconder a barra» (clique direito) tira-a do ecrã mas deixa o ícone; um clique nele mostra-a outra vez. No menu do ícone: mostrar/esconder, não incomodar e sair. Da primeira vez que a escondes, o Windows avisa onde ela ficou.
+- Voltar a abrir a barra (`/voz:barra abrir`, o arranque com o Windows ou o próprio .exe) com ela escondida mostra a que já está a correr, em vez de não fazer nada.
+- A barra e os menus já não ficam minimizados e perdidos (Win+M, «mostrar o ambiente de trabalho»): voltam logo ao sítio.
+
 ## 1.2.1
 
 - Capturas novas no README (ilha dinâmica, cartão de conversa, Centro de Controlo, autorização e clique direito).

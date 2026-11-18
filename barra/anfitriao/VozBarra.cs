@@ -29,13 +29,20 @@ namespace VozBarra
         /// Sem vidro: fundo opaco (para Windows sem acrílico, ou se o vidro der problemas).
         public static readonly bool SemVidro = Environment.GetEnvironmentVariable("VOZ_SEM_VIDRO") == "1" || File.Exists(Path.Combine(PastaBarra, "sem-vidro"));
 
+        const string NomeMostrar = "Local\\VozBarra-ClaudeCode-Mostrar";
+
         [STAThread]
         static void Main()
         {
             bool novo;
             using (var mutex = new Mutex(true, "Local\\VozBarra-ClaudeCode", out novo))
             {
-                if (!novo) return;
+                if (!novo)
+                {
+                    // Já há uma barra (talvez escondida na área de notificação): pede-lhe que se mostre.
+                    try { EventWaitHandle.OpenExisting(NomeMostrar).Set(); } catch { }
+                    return;
+                }
                 try { Nativo.SetProcessDpiAwarenessContext(new IntPtr(-4)); } catch { }
                 Application.EnableVisualStyles();
                 Application.SetCompatibleTextRenderingDefault(false);
@@ -43,7 +50,16 @@ namespace VozBarra
                 var dados = DadosBarra.Ler();
                 if (dados == null) { Registo.Escrever("sem barra.json — corre /voz:barra instalar"); return; }
                 if (!Servidor.Garantir(dados)) { Registo.Escrever("o servidor da voz não arrancou"); }
-                Application.Run(new Barra(dados));
+                var barra = new Barra(dados);
+                var mostrar = new EventWaitHandle(false, EventResetMode.AutoReset, NomeMostrar);
+                var vigia = new Thread(delegate()
+                {
+                    while (mostrar.WaitOne())
+                        try { barra.BeginInvoke((Action)barra.Mostrar); } catch { }
+                });
+                vigia.IsBackground = true;
+                vigia.Start();
+                Application.Run(barra);
             }
         }
     }
@@ -182,6 +198,17 @@ namespace VozBarra
             else Nativo.AplicarVidro(Handle, redonda);
         }
 
+        // Sem botão na barra de tarefas, uma janela minimizada (Win+M, «mostrar o ambiente de trabalho»…)
+        // ficava perdida: estas nunca ficam minimizadas.
+        protected override void OnResize(EventArgs e)
+        {
+            base.OnResize(e);
+            if (WindowState == FormWindowState.Minimized)
+                BeginInvoke((Action)delegate { WindowState = FormWindowState.Normal; AoRestaurar(); });
+        }
+
+        protected virtual void AoRestaurar() { }
+
         public double Escala
         {
             get { try { return Nativo.GetDpiForWindow(Handle) / 96.0; } catch { return 1.0; } }
@@ -291,6 +318,11 @@ namespace VozBarra
             Enviar(new Dictionary<string, object> { { "tipo", "menu" }, { "menu", m } });
         }
 
+        protected override void AoRestaurar()
+        {
+            if (!Aberto) Estacionar();
+        }
+
         public void Estacionar()
         {
             Location = new Point(-32000, -32000);
@@ -320,6 +352,7 @@ namespace VozBarra
             }
             else if (tipo == "fechar-menu") Esconder();
             else if (tipo == "sair") barra.Sair();
+            else if (tipo == "esconder") { Esconder(); barra.Esconder(); }
         }
 
         void Posicionar(int w, int h)
@@ -360,9 +393,30 @@ namespace VozBarra
         DateTime ratoSaiuEm = DateTime.MinValue;
         DateTime mostrarAte = DateTime.MinValue;
         bool aSair;
+        // Ícone na área de notificação: está sempre lá e é por onde se volta a abrir a barra escondida.
+        readonly NotifyIcon bandeja = new NotifyIcon();
+        readonly ContextMenuStrip menuBandeja = new ContextMenuStrip();
+        readonly ToolStripMenuItem opMostrar, opSilencio, opSair;
+        public bool NaBandeja;
+        bool avisouBandeja;
+        Dictionary<string, object> textos = new Dictionary<string, object>
+        {
+            { "mostrar", "Mostrar a barra" }, { "esconder", "Esconder a barra" }, { "silencio", "Não incomodar" },
+            { "sair", "Sair da barra" }, { "dica", "Voz · clica para mostrar ou esconder a barra" },
+            { "aviso", "A barra está escondida aqui. Clica no ícone para a voltar a mostrar." }
+        };
 
         public Barra(DadosBarra dados) : base(dados, false)
         {
+            opMostrar = new ToolStripMenuItem("", null, delegate { AlternarBandeja(); });
+            opMostrar.Font = new Font(opMostrar.Font, FontStyle.Bold);
+            opSilencio = new ToolStripMenuItem("", null, delegate { Enviar(new Dictionary<string, object> { { "tipo", "atalho" }, { "qual", "silencio" } }); });
+            opSair = new ToolStripMenuItem("", null, delegate { Sair(); });
+            menuBandeja.Items.AddRange(new ToolStripItem[] { opMostrar, opSilencio, new ToolStripSeparator(), opSair });
+            menuBandeja.Opening += delegate { AtualizarBandeja(); };
+            bandeja.ContextMenuStrip = menuBandeja;
+            bandeja.MouseClick += delegate(object o, MouseEventArgs a) { if (a.Button == MouseButtons.Left) AlternarBandeja(); };
+            AtualizarBandeja();
             mensagemAppBar = Nativo.RegisterWindowMessage("VozBarraAppBar");
             Posicao = DadosBarra.PosicaoGuardada();
             Text = "Voz";
@@ -380,6 +434,61 @@ namespace VozBarra
             AplicarPosicao(Posicao);
             RegistarAtalhos();
             relogio.Start();
+            bandeja.Icon = Nativo.IconeVoz((int)Math.Round(16 * Escala));
+            bandeja.Visible = true;
+        }
+
+        string T(string k) { object v; return textos.TryGetValue(k, out v) && v != null ? Convert.ToString(v) : k; }
+
+        void AtualizarBandeja()
+        {
+            opMostrar.Text = T(NaBandeja ? "mostrar" : "esconder");
+            opSilencio.Text = T("silencio");
+            opSair.Text = T("sair");
+            var dica = T("dica");
+            bandeja.Text = dica.Length > 63 ? dica.Substring(0, 63) : dica;
+        }
+
+        void AlternarBandeja()
+        {
+            if (NaBandeja) Mostrar(); else Esconder();
+        }
+
+        /// «Fechar» a barra: sai do ecrã mas fica na área de notificação (a voz e os atalhos continuam).
+        public void Esconder()
+        {
+            if (NaBandeja || aSair) return;
+            NaBandeja = true;
+            menu.Esconder();
+            RemoverAppBar();
+            Hide();
+            AtualizarBandeja();
+            Registo.Escrever("barra escondida na área de notificação");
+            if (!avisouBandeja)
+            {
+                avisouBandeja = true;
+                try { bandeja.ShowBalloonTip(5000, "Voz", T("aviso"), ToolTipIcon.None); } catch { }
+            }
+        }
+
+        protected override void AoRestaurar()
+        {
+            if (!NaBandeja) AplicarPosicao(Posicao);
+        }
+
+        public void Mostrar()
+        {
+            if (aSair) return;
+            if (!NaBandeja)
+            {
+                if (Posicao == "escondida") mostrarAte = DateTime.Now.AddSeconds(3);
+                AplicarPosicao(Posicao); // volta ao sítio e para cima de tudo
+                return;
+            }
+            NaBandeja = false;
+            Show();
+            AplicarPosicao(Posicao);
+            AtualizarBandeja();
         }
 
         int Espessura(bool vertical)
@@ -544,7 +653,7 @@ namespace VozBarra
         // ---------- escondida / flutuante ----------
         void Vigiar()
         {
-            if (Posicao != "escondida") return;
+            if (Posicao != "escondida" || NaBandeja) return;
             var rato = Cursor.Position;
             var e = Ecra;
             bool sobre = Bounds.Contains(rato) || (rato.Y <= e.Top + 1 && rato.X >= e.Left && rato.X < e.Right);
@@ -637,6 +746,16 @@ namespace VozBarra
                 case "sair":
                     Sair();
                     break;
+                case "esconder":
+                    Esconder();
+                    break;
+                case "bandeja":
+                    object tx;
+                    if (msg.TryGetValue("textos", out tx) && tx is Dictionary<string, object>) textos = (Dictionary<string, object>)tx;
+                    object sil;
+                    opSilencio.Checked = msg.TryGetValue("silencio", out sil) && sil is bool && (bool)sil;
+                    AtualizarBandeja();
+                    break;
             }
         }
 
@@ -649,6 +768,8 @@ namespace VozBarra
         void AbrirMenu(string qual, double x, double y, double w, double h, bool ativar, bool centrado)
         {
             bool aviso = EAviso(qual);
+            // Escondida na área de notificação: nada salta para o ecrã (o ditado, pedido por atalho, sim).
+            if (NaBandeja && !qual.StartsWith("ditado:")) return;
             // Um aviso nunca tapa um menu que abriste à mão.
             if (aviso && menu.Aberto && !EAviso(menu.Atual)) return;
             if (!aviso && menu.Aberto && menu.Atual == qual) { menu.Esconder(); return; }
@@ -668,6 +789,7 @@ namespace VozBarra
         {
             if (aSair) return;
             aSair = true;
+            bandeja.Visible = false;
             RemoverAppBar();
             Application.Exit();
         }
@@ -681,6 +803,8 @@ namespace VozBarra
         {
             RemoverAtalhos();
             RemoverAppBar();
+            bandeja.Visible = false;
+            bandeja.Dispose();
             base.OnFormClosing(e);
         }
     }
@@ -767,6 +891,49 @@ namespace VozBarra
                 Marshal.FreeHGlobal(p);
             }
             catch { }
+        }
+
+        [DllImport("user32.dll")] static extern bool DestroyIcon(IntPtr h);
+
+        /// Ícone da área de notificação, desenhado aqui: quadrado laranja arredondado com uma onda de voz.
+        public static Icon IconeVoz(int lado)
+        {
+            lado = Math.Max(16, lado);
+            using (var bmp = new Bitmap(lado, lado, System.Drawing.Imaging.PixelFormat.Format32bppArgb))
+            {
+                using (var g = Graphics.FromImage(bmp))
+                {
+                    g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+                    g.Clear(Color.Transparent);
+                    float m = lado * 0.03f, l = lado - 2 * m, r = lado * 0.28f;
+                    using (var fundo = new System.Drawing.Drawing2D.GraphicsPath())
+                    {
+                        fundo.AddArc(m, m, 2 * r, 2 * r, 180, 90);
+                        fundo.AddArc(m + l - 2 * r, m, 2 * r, 2 * r, 270, 90);
+                        fundo.AddArc(m + l - 2 * r, m + l - 2 * r, 2 * r, 2 * r, 0, 90);
+                        fundo.AddArc(m, m + l - 2 * r, 2 * r, 2 * r, 90, 90);
+                        fundo.CloseFigure();
+                        using (var pincel = new SolidBrush(Color.FromArgb(255, 229, 121, 79))) g.FillPath(pincel, fundo);
+                    }
+                    float[] alturas = { 0.30f, 0.62f, 0.86f, 0.52f, 0.30f };
+                    float passo = lado * 0.15f, esp = lado * 0.095f, x0 = (lado - passo * 4 - esp) / 2f;
+                    using (var caneta = new Pen(Color.White, esp))
+                    {
+                        caneta.StartCap = System.Drawing.Drawing2D.LineCap.Round;
+                        caneta.EndCap = System.Drawing.Drawing2D.LineCap.Round;
+                        for (int i = 0; i < alturas.Length; i++)
+                        {
+                            float meia = Math.Max(0.5f, (alturas[i] * lado * 0.62f - esp) / 2f);
+                            float cx = x0 + esp / 2f + i * passo, cy = lado / 2f;
+                            g.DrawLine(caneta, cx, cy - meia, cx, cy + meia);
+                        }
+                    }
+                }
+                var h = bmp.GetHicon();
+                var ic = (Icon)Icon.FromHandle(h).Clone();
+                DestroyIcon(h);
+                return ic;
+            }
         }
 
         public static void CantosRedondos(IntPtr h, bool redonda)

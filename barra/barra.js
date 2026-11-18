@@ -532,7 +532,7 @@
       <div class="op" data-alternar="ligado"><span class="chk">${chk(c.ligado)}</span>${t('dir.vozLigada')}</div>
       <hr>
       <div class="op" data-ir="definicoes"><span class="chk"></span>${t('dir.definicoes')}</div>
-      <div class="op" data-sair="1"><span class="chk"></span>${t('dir.fechar')}</div>
+      <div class="op" data-esconder="1"><span class="chk"></span>${t('dir.fechar')}</div>
     </div>`
   }
 
@@ -1044,7 +1044,7 @@
   document.addEventListener('click', ev => {
     if (ev.target.closest('[data-fechar]')) return fecharMenu()
     const alvo = ev.target.closest(
-      '[data-menu],[data-acao],[data-foco],[data-ir],[data-posicao],[data-arranque],[data-tema],[data-ciclo-tema],[data-predef],[data-alternar],[data-sair],[data-mod],' +
+      '[data-menu],[data-acao],[data-foco],[data-ir],[data-posicao],[data-arranque],[data-tema],[data-ciclo-tema],[data-predef],[data-alternar],[data-sair],[data-esconder],[data-mod],' +
         '[data-falar],[data-falar-sessao],[data-alternar-silencio],[data-decidir],[data-voz-baixar],[data-voz-padrao],[data-voz-remover],' +
         '[data-voz-experimentar],[data-ecra],[data-horario-ativo],[data-alternar-por-conversa],[data-idioma],[data-conv],[data-ilha],[data-ciclo-idioma],[data-cc-eq]',
     )
@@ -1118,6 +1118,7 @@
     if (d.predef) return config(PREDEF[d.predef])
     if (d.alternar) return config({ [d.alternar]: !E.cfg[d.alternar] })
     if (d.sair) return enviarHost({ tipo: 'sair' })
+    if (d.esconder) return enviarHost({ tipo: 'esconder' })
     if (d.mod !== undefined) {
       const mods = modulosCompletos()
       mods[Number(d.mod)].on = !mods[Number(d.mod)].on
@@ -1265,6 +1266,19 @@
     })
   }
 
+  // Textos (na língua da interface) e estado do «não incomodar» para o ícone da área de notificação.
+  let bandejaEnviada = ''
+  function enviarBandeja() {
+    if (!host || VISTA !== 'barra' || !E) return
+    const textos = {}
+    for (const k of ['mostrar', 'esconder', 'silencio', 'sair', 'dica', 'aviso']) textos[k] = t('bandeja.' + k)
+    const msg = { tipo: 'bandeja', textos, silencio: !!(E.cfg.naoIncomodar || E.silencio) }
+    const json = JSON.stringify(msg)
+    if (json === bandejaEnviada) return
+    bandejaEnviada = json
+    enviarHost(msg)
+  }
+
   // ---------------- ligação ao servidor ----------------
   let falhasDesde = null
   function ligar() {
@@ -1279,6 +1293,7 @@
       if (!host && q.get('tema')) E.cfg.barraTema = q.get('tema')
       if (!host && q.get('falando') && !E.falando) E.falando = { texto: q.get('falando'), sessao: E.foco }
       render()
+      enviarBandeja()
       if (primeira && !host && q.get('abrir')) {
         primeira = false
         const m = q.get('abrir')

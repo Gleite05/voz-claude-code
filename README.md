@@ -61,7 +61,7 @@ Isto instala a **voz portuguesa** (Piper + «tugão»), o **ditado** (Whisper) e
 
 ## Usar
 
-**Na barra:** clica no nome da conversa, nos avatares, no anel do contexto (tokens) ou no ⚟ (som). **Clique direito** em qualquer ponto: conversas, som, tokens, não incomodar, **posição** (topo, escondida, flutuante, esquerda, direita, fundo), **ecrã**, aspeto, definições e fechar. Na estrela: definições completas (módulos visíveis e ordem, vozes, horário de silêncio, arranque com o Windows / só com o Claude Code / à mão).
+**Na barra:** clica no nome da conversa, nos avatares, no anel do contexto (tokens) ou no ⚟ (som). **Clique direito** em qualquer ponto: conversas, som, tokens, não incomodar, **posição** (topo, escondida, flutuante, esquerda, direita, fundo), **ecrã**, aspeto, definições e esconder. **Escondida, a barra fica com um ícone laranja na área de notificação** (ao pé do relógio; no Windows 11 pode estar dentro da seta ˄ — arrasta-o para a barra de tarefas para ficar sempre à vista): um clique mostra-a outra vez, o clique direito tem «Não incomodar» e «Sair da barra». Na estrela: definições completas (módulos visíveis e ordem, vozes, horário de silêncio, arranque com o Windows / só com o Claude Code / à mão).
 
 **Atalhos** (em qualquer lado): `Ctrl+Shift+Alt` + `V` falar · `P` pausar · `N` saltar · `C` conversas · `D` não incomodar.
 

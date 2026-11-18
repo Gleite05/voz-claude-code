@@ -1,7 +1,7 @@
 {
   "name": "voz",
   "displayName": "Voz",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "description": "O Claude Code a falar contigo em português de Portugal, em tempo real, e uma barra ao estilo macOS no Windows: conversas, respostas e permissões pela barra, ditado, vozes de 11 idiomas, não incomodar e tokens do dia. Gratuito e 100% local.",
   "author": { "name": "Gleite05", "url": "https://github.com/Gleite05" },
   "homepage": "https://github.com/Gleite05/voz-claude-code",

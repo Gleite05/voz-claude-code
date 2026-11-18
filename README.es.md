@@ -57,7 +57,7 @@ Instala la **voz** (Piper), el **dictado** (Whisper) y, en Windows, la **barra**
 
 ## Uso
 
-**En la barra:** haz clic en el nombre de la conversación, en los avatares, en el anillo de contexto (tokens) o en ⚟ (sonido). **Clic derecho** en cualquier punto: conversaciones, sonido, tokens, no molestar, **posición** (arriba, oculta, flotante, izquierda, derecha, abajo), **pantalla**, tema, ajustes y cerrar.
+**En la barra:** haz clic en el nombre de la conversación, en los avatares, en el anillo de contexto (tokens) o en ⚟ (sonido). **Clic derecho** en cualquier punto: conversaciones, sonido, tokens, no molestar, **posición** (arriba, oculta, flotante, izquierda, derecha, abajo), **pantalla**, tema, ajustes y ocultar. **Oculta, la barra deja un icono naranja en el área de notificación** (junto al reloj; en Windows 11 puede estar dentro de la flecha ˄ — arrástralo a la barra de tareas para tenerlo siempre a la vista): un clic la vuelve a mostrar; con el clic derecho tienes «No molestar» y «Salir de la barra».
 
 **Atajos globales:** `Ctrl+Shift+Alt` + `V` hablar · `P` pausar · `N` saltar · `C` conversaciones · `D` no molestar.
 

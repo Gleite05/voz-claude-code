@@ -61,7 +61,7 @@ This installs the **voice** (Piper + "tugão", pt-PT), **dictation** (Whisper) a
 
 ## Use
 
-**In the bar:** click the conversation name, the avatars, the context ring (tokens) or ⚟ (sound). **Right-click** anywhere: conversations, sound, tokens, do not disturb, **position** (top, auto-hide, floating, left, right, bottom), **screen**, theme, settings and close.
+**In the bar:** click the conversation name, the avatars, the context ring (tokens) or ⚟ (sound). **Right-click** anywhere: conversations, sound, tokens, do not disturb, **position** (top, auto-hide, floating, left, right, bottom), **screen**, theme, settings and hide. **When hidden, the bar keeps an orange icon in the notification area** (next to the clock; on Windows 11 it may be under the ˄ arrow — drag it onto the taskbar to keep it in sight): click it to bring the bar back; right-click it for "Do not disturb" and "Quit the bar".
 
 **Global shortcuts:** `Ctrl+Shift+Alt` + `V` talk · `P` pause · `N` skip · `C` conversations · `D` do not disturb.
 
