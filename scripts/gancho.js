@@ -66,6 +66,7 @@ async function principal() {
     cwd: e.cwd,
     agente: e.agent_id,
     transcript: e.transcript_path,
+    titulo: typeof e.session_title === 'string' ? e.session_title.slice(0, 120) : undefined,
   }
   switch (evento) {
     case 'PreToolUse':
@@ -80,6 +81,9 @@ async function principal() {
       break
     case 'Notification':
       msg.mensagem = e.message
+      break
+    case 'UserPromptSubmit':
+      msg.pedido = typeof e.prompt === 'string' ? e.prompt.slice(0, 2000) : undefined
       break
     case 'Stop':
       msg.ultima = typeof e.last_assistant_message === 'string' ? e.last_assistant_message.slice(0, 8000) : undefined

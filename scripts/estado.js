@@ -38,9 +38,20 @@ function lerUso(caminho) {
     if (tamanho > n) linhas.shift() // primeira linha pode vir cortada
     let ultimo = null
     let saidaPedido = 0
+    let titulo = null
+    let fimDoPedido = false
     for (let i = linhas.length - 1; i >= 0; i--) {
       const l = linhas[i]
       if (!l) continue
+      if (!titulo && l.includes('"custom-title"')) {
+        try {
+          titulo = JSON.parse(l).customTitle || null
+        } catch {}
+      }
+      if (fimDoPedido) {
+        if (titulo) break
+        continue
+      }
       let e
       try {
         e = JSON.parse(l)
@@ -53,10 +64,10 @@ function lerUso(caminho) {
       } else if (e.type === 'user' && e.message && !e.isMeta) {
         const c = e.message.content
         const ePrompt = typeof c === 'string' || (Array.isArray(c) && !c.some(b => b && b.type === 'tool_result'))
-        if (ePrompt && ultimo) break
+        if (ePrompt && ultimo) fimDoPedido = true
       }
     }
-    if (!ultimo) return null
+    if (!ultimo) return titulo ? { titulo } : null
     const u = ultimo.usage
     const usados =
       (Number(u.input_tokens) || 0) +
@@ -64,7 +75,7 @@ function lerUso(caminho) {
       (Number(u.cache_read_input_tokens) || 0) +
       (Number(u.output_tokens) || 0)
     const limite = usados > 200000 ? 1000000 : 200000
-    return { modelo: nomeModelo(ultimo.model), usados, limite, pct: Math.round((usados / limite) * 100), saidaPedido }
+    return { modelo: nomeModelo(ultimo.model), usados, limite, pct: Math.round((usados / limite) * 100), saidaPedido, titulo }
   } catch {
     return null
   } finally {
@@ -92,11 +103,16 @@ function obter(msg) {
       transcript: null,
       uso: null,
       lidoEm: 0,
+      titulo: null,
+      pedido: '',
+      resposta: '',
+      respostaEm: null,
     }
     sessoes.set(id, s)
   }
   if (msg.cwd) s.pasta = texto.base(msg.cwd)
   if (msg.transcript) s.transcript = msg.transcript
+  if (msg.titulo) s.titulo = msg.titulo
   s.ultimo = Date.now()
   return s
 }
@@ -106,7 +122,8 @@ function atualizarUso(s, forcar) {
   if (!forcar && Date.now() - s.lidoEm < LER_TOKENS_MS) return
   s.lidoEm = Date.now()
   const uso = lerUso(s.transcript)
-  if (uso) s.uso = uso
+  if (uso && uso.titulo) s.titulo = uso.titulo
+  if (uso && uso.modelo) s.uso = uso
 }
 
 /** Atualiza o estado com um evento de gancho (de qualquer sessão, mesmo das que não falam). */
@@ -125,6 +142,7 @@ function registar(msg) {
     case 'UserPromptSubmit':
       s.estado = 'trabalhar'
       s.acao = 'A pensar'
+      if (msg.pedido) s.pedido = msg.pedido
       s.inicio = Date.now()
       s.fim = null
       atualizarUso(s, true)
@@ -151,6 +169,10 @@ function registar(msg) {
       s.estado = 'terminou'
       s.acao = 'Terminou'
       s.fim = Date.now()
+      if (msg.ultima) {
+        s.resposta = msg.ultima
+        s.respostaEm = Date.now()
+      }
       atualizarUso(s, true)
       break
   }
@@ -168,18 +190,40 @@ function limparVelhas() {
   if (mudou) avisar()
 }
 
+/** Para o servidor anotar campos extra (ex.: se a sessão está à escuta de respostas). */
+function anotar(id, campos) {
+  const s = sessoes.get(id)
+  if (!s) return
+  Object.assign(s, campos)
+  avisar()
+}
+
+/** Regista o texto que o utilizador mandou pela barra como último pedido. */
+function pedidoPelaBarra(id, texto) {
+  const s = sessoes.get(id)
+  if (!s) return
+  s.pedido = texto
+  avisar()
+}
+
 function lista() {
   return [...sessoes.values()]
     .sort((a, b) => b.ultimo - a.ultimo)
     .map(s => ({
       id: s.id,
       pasta: s.pasta,
+      titulo: s.titulo || s.pasta,
+      pedido: s.pedido.slice(0, 600),
+      resposta: s.resposta.slice(0, 1500),
+      respostaEm: s.respostaEm,
       estado: s.estado,
       acao: s.acao,
       inicio: s.inicio,
       fim: s.fim,
       uso: s.uso,
+      escuta: !!s.escuta,
+      pendentes: s.pendentes || 0,
     }))
 }
 
-module.exports = { registar, lista, aoMudar, limparVelhas, lerUso, nomeModelo }
+module.exports = { registar, lista, aoMudar, limparVelhas, lerUso, nomeModelo, anotar, pedidoPelaBarra }

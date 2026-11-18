@@ -8,6 +8,7 @@ Um plugin para o [Claude Code](https://code.claude.com) que **narra em voz alta,
 - 🗂️ **Várias sessões**: só a sessão onde escreveste por último fala tudo; as outras dizem apenas «A sessão de *pasta* terminou».
 - 🎚️ **Som afinável**: volume, altura (tom), equalizador de graves/médios/agudos e predefinições (natural, calma, clara, quente, rádio).
 - 🖥️ **Barra no Windows** ao estilo da barra de menus do macOS: a sessão, o que está a fazer, a legenda do que diz, as outras sessões, o contexto e um Centro de Controlo do som.
+- 💬 **Conversas na barra**: um avatar animado por conversa ativa, a última mensagem de cada uma, um aviso no canto quando acabam — e **respondes-lhes diretamente pela barra**.
 
 **Gratuito e 100 % local.** Não precisa de conta, chave de API nem internet (só para instalar a voz uma vez). Nada do que o Claude escreve sai do teu computador.
 
@@ -106,6 +107,14 @@ Uma barra fina e translúcida, ao estilo da barra de menus do macOS:
 Como é feita: um anfitrião pequeno em C# (`barra/anfitriao/VozBarra.cs`) compilado no teu PC pelo `csc.exe` que já vem com o .NET Framework 4.8, com a WebView2 do Windows 11 a desenhar a interface (`barra/`). Encaixa no ecrã como a barra de tarefas (as janelas maximizadas não a tapam) e usa o desfoque acrílico do Windows. O instalador só descarrega o kit WebView2 do NuGet da Microsoft (~9 MB, SHA-512 verificado). Se o vidro der problemas, cria o ficheiro vazio `~/.claude/voz/barra/sem-vidro` para um fundo opaco.
 
 A interface fala com o servidor da voz em `http://127.0.0.1:47821` (só local, com token). O arranque «com o Windows» usa uma entrada em `HKCU…Run` (sem administrador); `/voz:barra arranque mao` remove-a.
+
+### Conversas e respostas pela barra
+
+- **Avatares**: um por conversa, com a inicial do título. A rodar = a trabalhar; a pulsar = precisa de ti.
+- **Painel «Conversas»** (clica nos avatares): título de cada conversa, o que está a fazer, a última resposta do Claude, o teu último pedido e uma caixa para responder (Enter envia, Shift+Enter muda de linha).
+- **Aviso**: quando uma conversa termina ou precisa de ti, aparece um aviso no canto com a última mensagem e a caixa de resposta. Não rouba o foco e fecha sozinho ao fim de 12 s (desliga-o na estrela → «Avisar quando uma conversa termina»).
+
+Como a resposta chega ao Claude: no fim de cada resposta corre um gancho `Stop` com `asyncRewake` (`scripts/escuta.js`) que fica à escuta em segundo plano (até 12 h). Quando respondes na barra, ele entrega o texto e o Claude Code acorda o Claude com ele, mesmo com a conversa parada. Se a conversa ainda estiver a trabalhar, a resposta fica em fila e é entregue mal ela acabe o passo atual. Se escreveres na própria conversa, a escuta sai calada. Na conversa, a tua resposta aparece como uma mensagem de sistema do gancho (não como uma bolha normal tua).
 
 ## Como funciona
 

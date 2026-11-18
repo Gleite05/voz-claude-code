@@ -46,12 +46,15 @@ const PREDEFINICOES = {
   barraPosicao: 'topo', // topo | escondida | flutuante | esquerda | direita | fundo
   barraArranque: 'windows', // windows | claude | mao
   barraTema: 'sistema', // sistema | escuro | claro
+  barraAvisos: true, // aviso no canto quando uma conversa termina ou precisa de ti
+  respostasPelaBarra: true, // responder às conversas a partir da barra (gancho asyncRewake)
   barraModulos: [
     { id: 'sessao', on: true },
     { id: 'acao', on: true },
+    { id: 'conversas', on: true },
     { id: 'legenda', on: true },
     { id: 'onda', on: true },
-    { id: 'sessoes', on: true },
+    { id: 'sessoes', on: false },
     { id: 'contexto', on: true },
     { id: 'som', on: true },
     { id: 'tempo', on: true },

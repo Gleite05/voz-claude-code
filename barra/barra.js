@@ -44,7 +44,7 @@
   ]
   const MODULOS = {
     sessao: 'Sessão', acao: 'O que está a fazer', legenda: 'Legenda do que diz', onda: 'Onda da voz',
-    sessoes: 'Outras sessões', contexto: 'Contexto e tokens', som: 'Centro de Controlo', tempo: 'Tempo do pedido',
+    conversas: 'Conversas ativas', sessoes: 'Pontos das sessões', contexto: 'Contexto e tokens', som: 'Centro de Controlo', tempo: 'Tempo do pedido',
   }
   const ESQUERDA = new Set(['sessao', 'acao', 'legenda'])
   const PREDEF = {
@@ -91,6 +91,31 @@
   }
 
   // ---------------- barra ----------------
+  /** A lista de módulos da configuração, com os módulos novos acrescentados no fim. */
+  function modulosCompletos() {
+    const mods = (E.cfg.barraModulos || []).filter(m => m && MODULOS[m.id]).map(m => ({ ...m }))
+    // Configuração antiga sem «conversas»: entra no lugar dos pontos das sessões (que ficam escondidos).
+    if (!mods.some(m => m.id === 'conversas')) {
+      const i = mods.findIndex(m => m.id === 'sessoes')
+      if (i >= 0) {
+        mods[i].on = false
+        mods.splice(i, 0, { id: 'conversas', on: true })
+      }
+    }
+    for (const id of Object.keys(MODULOS)) if (!mods.some(m => m.id === id)) mods.push({ id, on: id === 'conversas' })
+    return mods
+  }
+
+  const CORES = ['#ff9b73', '#7dd3fc', '#a78bfa', '#4ade80', '#f472b6', '#fbbf24', '#60a5fa', '#34d399']
+  const cor = id => CORES[[...String(id)].reduce((a, ch) => (a * 31 + ch.charCodeAt(0)) >>> 0, 7) % CORES.length]
+  const inicial = t => (String(t || '?').trim().match(/[\p{L}\p{N}]/u) || ['?'])[0].toUpperCase()
+  const vistos = new Set()
+  function avatar(x, grande) {
+    const novo = !vistos.has(x.id)
+    vistos.add(x.id)
+    return `<span class="av ${x.estado}${grande ? ' g' : ''}${novo ? ' novo' : ''}" style="--c:${cor(x.id)}"><i>${esc(inicial(x.titulo))}</i></span>`
+  }
+
   function modulo(id, s, vertical, flut) {
     switch (id) {
       case 'sessao':
@@ -107,6 +132,15 @@
         if (E.pausado) return `<div class="it clic" data-acao="pausa" title="Em pausa — clica para retomar">${svg('pausa')}</div>`
         if (!E.falando) return ''
         return `<div class="it clic" data-acao="saltar" title="A falar — clica para saltar a frase"><span class="onda viva"><b></b><b></b><b></b><b></b><b></b></span></div>`
+      case 'conversas': {
+        if (!E.sessoes.length) return ''
+        const titulo = E.sessoes.map(x => `${x.titulo}: ${ESTADOS[x.estado] || x.estado}`).join('\n')
+        const ativas = E.sessoes.filter(x => x.estado === 'trabalhar').length
+        return `<div class="it clic conversas" data-menu="conversas" title="${esc(titulo)}"><span class="avs">${E.sessoes
+          .slice(0, 6)
+          .map(x => avatar(x))
+          .join('')}</span>${!vertical && ativas ? `<span class="num fraco-n">${ativas}</span>` : ''}</div>`
+      }
       case 'sessoes': {
         const outras = E.sessoes.filter(x => !s || x.id !== s.id)
         if (!outras.length) return ''
@@ -134,7 +168,7 @@
     const vertical = pos === 'esquerda' || pos === 'direita'
     const flut = pos === 'flutuante'
     const s = foco()
-    const mods = (E.cfg.barraModulos || []).filter(m => m && m.on && MODULOS[m.id]).map(m => m.id)
+    const mods = modulosCompletos().filter(m => m.on).map(m => m.id)
     const esq = mods.filter(id => ESQUERDA.has(id)).map(id => modulo(id, s, vertical, flut))
     const dir = mods.filter(id => !ESQUERDA.has(id)).map(id => modulo(id, s, vertical, flut))
     const marca = `<div class="it marca clic" data-menu="definicoes" title="Voz para o Claude Code">${svg('estrela')}<b>Claude</b></div>`
@@ -153,6 +187,7 @@
     const atencao = E.sessoes.filter(x => x.estado === 'atencao').map(x => x.id).join(',')
     if (atencao && atencao !== ultimaAtencao) enviarHost({ tipo: 'atencao' })
     ultimaAtencao = atencao
+    verificarAvisos()
   }
 
   // ---------------- menus ----------------
@@ -228,6 +263,10 @@
       <hr>
       <div class="op" data-ir="modulos"><span class="chk"></span>Módulos visíveis…<small>›</small></div>
       <hr>
+      <div class="tit">Conversas</div>
+      <div class="op" data-alternar="barraAvisos"><span class="chk">${chk(c.barraAvisos !== false)}</span>Avisar quando uma conversa termina</div>
+      <div class="op" data-alternar="respostasPelaBarra"><span class="chk">${chk(c.respostasPelaBarra !== false)}</span>Responder às conversas pela barra</div>
+      <hr>
       <div class="tit">Arranque</div>
       <div class="op" data-arranque="windows"><span class="chk">${chk(c.barraArranque === 'windows')}</span>Arrancar com o Windows</div>
       <div class="op" data-arranque="claude"><span class="chk">${chk(c.barraArranque === 'claude')}</span>Só com o Claude Code aberto</div>
@@ -244,7 +283,7 @@
   }
 
   function menuModulos() {
-    const mods = (E.cfg.barraModulos || []).filter(m => MODULOS[m.id])
+    const mods = modulosCompletos()
     return `<div class="menu mods">
       <div class="tit">Módulos visíveis — arrasta para ordenar</div>
       ${mods
@@ -257,8 +296,79 @@
     </div>`
   }
 
+  // ---------------- conversas ----------------
+  /** Texto curto e limpo (sem markdown) para pré-visualizar uma mensagem. */
+  function resumo(t, max) {
+    const s = String(t || '')
+      .replace(/```[\s\S]*?```/g, ' [código] ')
+      .replace(/`([^`]*)`/g, '$1')
+      .replace(/!\[[^\]]*\]\([^)]*\)/g, '')
+      .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
+      .replace(/^\s*(#{1,6}|>|[-*+]|\d+[.)])\s+/gm, '')
+      .replace(/^\s*\|.*\|\s*$/gm, '')
+      .replace(/\*\*|__|~~/g, '')
+      .replace(/\s+/g, ' ')
+      .trim()
+    return s.length > max ? s.slice(0, max - 1).trimEnd() + '…' : s
+  }
+
+  const rascunhos = {}
+  const envios = {} // sessão -> { texto, t } do último envio (para mostrar «enviado»)
+
+  function estadoEnvio(x) {
+    const e = envios[x.id]
+    if (e && Date.now() - e.t < 15000) {
+      return `<div class="envio ok">${e.entregue ? '✓ Enviado — o Claude vai responder.' : '⏳ Em fila — chega quando a conversa acabar o passo atual.'}</div>`
+    }
+    if (x.pendentes) return `<div class="envio">⏳ ${x.pendentes} resposta${x.pendentes > 1 ? 's' : ''} em fila</div>`
+    return ''
+  }
+
+  function cartao(x, aviso) {
+    const linhaEstado =
+      x.estado === 'trabalhar'
+        ? `<span class="aescrever"><b></b><b></b><b></b></span>${esc(x.acao || 'A trabalhar')}`
+        : x.estado === 'atencao'
+          ? `<span class="alerta">● ${esc(x.acao || 'Precisa de ti')}</span>`
+          : esc(ESTADOS[x.estado] || '')
+    const msg = x.resposta ? resumo(x.resposta, aviso ? 260 : 340) : ''
+    const podeResponder = E.cfg.respostasPelaBarra !== false
+    return `<div class="cartao ${x.estado}" data-cartao="${esc(x.id)}">
+      <div class="cab">${avatar(x, true)}<div class="tt"><b>${esc(x.titulo)}</b><small>${linhaEstado}${x.inicio ? ` · <span class="num">${duracao(x)}</span>` : ''}</small></div>${aviso ? '<button class="x" data-fechar="1" title="Fechar">✕</button>' : ''}</div>
+      ${msg ? `<div class="ultima">${esc(msg)}</div>` : x.estado === 'trabalhar' ? '' : '<div class="ultima vazia">Ainda sem resposta nesta sessão.</div>'}
+      ${x.pedido && !aviso ? `<div class="eu"><span>Tu:</span> ${esc(resumo(x.pedido, 140))}</div>` : ''}
+      ${
+        podeResponder
+          ? `<form class="resp" data-sessao="${esc(x.id)}"><textarea rows="1" placeholder="Responder a esta conversa…" data-sessao="${esc(x.id)}"></textarea><button type="submit" title="Enviar (Enter)">↑</button></form>${estadoEnvio(x)}`
+          : ''
+      }
+    </div>`
+  }
+
+  function menuConversas() {
+    if (!E.sessoes.length) return '<div class="painel"><div class="tit">Conversas</div><div class="vazio">Nenhuma conversa do Claude Code aberta.</div></div>'
+    const ordem = { atencao: 0, trabalhar: 1, terminou: 2, parada: 3 }
+    const lista = [...E.sessoes].sort((a, b) => (ordem[a.estado] ?? 9) - (ordem[b.estado] ?? 9))
+    return `<div class="painel"><div class="tit">Conversas <span class="num">${E.sessoes.length}</span></div>${lista.map(x => cartao(x, false)).join('')}</div>`
+  }
+
+  function menuAviso(id) {
+    const x = E.sessoes.find(s => s.id === id)
+    if (!x) return '<div class="painel aviso"></div>'
+    return `<div class="painel aviso">${cartao(x, true)}</div>`
+  }
+
   function htmlMenu(m) {
-    return m === 'som' ? menuSom() : m === 'definicoes' ? menuDefinicoes() : m === 'modulos' ? menuModulos() : menuSessao()
+    if (m && m.startsWith('aviso:')) return menuAviso(m.slice(6))
+    return m === 'som'
+      ? menuSom()
+      : m === 'definicoes'
+        ? menuDefinicoes()
+        : m === 'modulos'
+          ? menuModulos()
+          : m === 'conversas'
+            ? menuConversas()
+            : menuSessao()
   }
 
   let tamanhoEnviado = ''
@@ -267,13 +377,37 @@
       raiz.innerHTML = ''
       return
     }
+    // Guarda o que estás a escrever (e onde está o cursor) antes de redesenhar.
+    const ativo = document.activeElement
+    const focoSessao = ativo && ativo.matches && ativo.matches('textarea[data-sessao]') ? ativo.dataset.sessao : null
+    const cursor = focoSessao ? [ativo.selectionStart, ativo.selectionEnd] : null
     raiz.innerHTML = htmlMenu(menuAtual)
+    restaurarRascunhos(raiz, focoSessao, cursor)
     const el = raiz.firstElementChild
     const t = `${Math.ceil(el.offsetWidth)}x${Math.ceil(el.offsetHeight)}`
     if (t !== tamanhoEnviado) {
       tamanhoEnviado = t
       enviarHost({ tipo: 'tamanho', w: Math.ceil(el.offsetWidth), h: Math.ceil(el.offsetHeight) })
     }
+  }
+
+  function restaurarRascunhos(caixa, focoSessao, cursor) {
+    for (const ta of caixa.querySelectorAll('textarea[data-sessao]')) {
+      const r = rascunhos[ta.dataset.sessao]
+      if (r) {
+        ta.value = r
+        ajustarAltura(ta)
+      }
+      if (ta.dataset.sessao === focoSessao) {
+        ta.focus()
+        if (cursor) ta.setSelectionRange(cursor[0], cursor[1])
+      }
+    }
+  }
+
+  function ajustarAltura(ta) {
+    ta.style.height = 'auto'
+    ta.style.height = Math.min(ta.scrollHeight, 110) + 'px'
   }
 
   // Pré-visualização sem anfitrião: o menu abre dentro da própria página.
@@ -289,9 +423,79 @@
       caixa.id = 'menu-em-linha'
       document.body.appendChild(caixa)
     }
+    const ativo = document.activeElement
+    const focoSessao = ativo && ativo.matches && ativo.matches('textarea[data-sessao]') ? ativo.dataset.sessao : null
+    const cursor = focoSessao ? [ativo.selectionStart, ativo.selectionEnd] : null
     caixa.innerHTML = htmlMenu(menuEmLinha.menu)
+    restaurarRascunhos(caixa, focoSessao, cursor)
     const el = caixa.firstElementChild
-    if (menuEmLinha.menu !== 'som') el.style.left = Math.max(4, Math.min(menuEmLinha.x, innerWidth - el.offsetWidth - 8)) + 'px'
+    if (menuEmLinha.menu.startsWith('aviso:')) {
+      el.style.left = 'auto'
+      el.style.right = '8px'
+    } else if (menuEmLinha.menu !== 'som') el.style.left = Math.max(4, Math.min(menuEmLinha.x, innerWidth - el.offsetWidth - 8)) + 'px'
+  }
+
+  // ---------------- avisos ----------------
+  const estadoAnterior = {}
+  let avisoAtual = null
+  let avisoTemporizador = null
+
+  /** Quando uma conversa acaba (ou passa a precisar de ti), mostra um aviso no canto. */
+  function verificarAvisos() {
+    for (const x of E.sessoes) {
+      const antes = estadoAnterior[x.id]
+      estadoAnterior[x.id] = x.estado
+      if (!antes || antes === x.estado || E.cfg.barraAvisos === false) continue
+      if ((antes === 'trabalhar' && x.estado === 'terminou') || x.estado === 'atencao') abrirAviso(x.id)
+    }
+  }
+
+  function abrirAviso(id) {
+    avisoAtual = id
+    if (host) {
+      // Âncora: canto direito da barra (o anfitrião encosta o aviso à direita, sem roubar o foco).
+      enviarHost({ tipo: 'abrir', menu: 'aviso:' + id, x: innerWidth - 4, y: 0, w: 0, h: innerHeight, ativar: false })
+    } else {
+      menuEmLinha = { menu: 'aviso:' + id, x: innerWidth }
+      renderMenuEmLinha()
+      armarFechoDoAviso()
+    }
+  }
+
+  /** No aviso (janela do menu): fecha sozinho ao fim de 12 s, se não estiveres a mexer nele. */
+  function armarFechoDoAviso() {
+    clearTimeout(avisoTemporizador)
+    if (!(menuAtual || '').startsWith('aviso:') && !(menuEmLinha && menuEmLinha.menu.startsWith('aviso:'))) return
+    avisoTemporizador = setTimeout(() => {
+      const ta = document.querySelector('.aviso textarea')
+      const ocupado = (ta && (ta.value || document.activeElement === ta)) || document.querySelector('.aviso:hover')
+      if (ocupado) return armarFechoDoAviso()
+      fecharMenu()
+    }, 12000)
+  }
+
+  // ---------------- responder ----------------
+  async function enviarResposta(form) {
+    const id = form.dataset.sessao
+    const ta = form.querySelector('textarea')
+    const texto = ta.value.trim()
+    if (!texto) return
+    ta.disabled = true
+    const r = await api({ acao: 'responder', sessao: id, texto })
+    ta.disabled = false
+    if (r && r.ok) {
+      envios[id] = { entregue: r.entregue, t: Date.now() }
+      delete rascunhos[id]
+      ta.value = ''
+      ajustarAltura(ta)
+      if (VISTA === 'menu') renderMenu()
+      else renderMenuEmLinha()
+      if ((menuAtual || '').startsWith('aviso:') || (menuEmLinha && menuEmLinha.menu.startsWith('aviso:'))) setTimeout(fecharMenu, 1800)
+    } else {
+      const aviso = form.parentElement.querySelector('.envio') || form.insertAdjacentElement('afterend', document.createElement('div'))
+      aviso.className = 'envio erro'
+      aviso.textContent = 'Não foi possível enviar.'
+    }
   }
 
   function render() {
@@ -329,7 +533,29 @@
   }
 
   // ---------------- eventos da página ----------------
+  document.addEventListener('submit', ev => {
+    const form = ev.target.closest('form.resp')
+    if (!form) return
+    ev.preventDefault()
+    enviarResposta(form)
+  })
+  document.addEventListener('keydown', ev => {
+    const ta = ev.target.closest && ev.target.closest('textarea[data-sessao]')
+    if (ta && ev.key === 'Enter' && !ev.shiftKey) {
+      ev.preventDefault()
+      enviarResposta(ta.closest('form'))
+    } else if (ev.key === 'Escape') fecharMenu()
+  })
+  document.addEventListener('input', ev => {
+    const ta = ev.target.closest && ev.target.closest('textarea[data-sessao]')
+    if (!ta) return
+    rascunhos[ta.dataset.sessao] = ta.value
+    ajustarAltura(ta)
+    armarFechoDoAviso()
+  })
+
   document.addEventListener('click', ev => {
+    if (ev.target.closest('[data-fechar]')) return fecharMenu()
     const t = ev.target.closest('[data-menu],[data-acao],[data-foco],[data-ir],[data-posicao],[data-arranque],[data-tema],[data-predef],[data-alternar],[data-sair],[data-mod]')
     if (!t) {
       if (!host && menuEmLinha && !ev.target.closest('#menu-em-linha')) {
@@ -358,7 +584,7 @@
     if (d.alternar) return config({ [d.alternar]: !E.cfg[d.alternar] })
     if (d.sair) return enviarHost({ tipo: 'sair' })
     if (d.mod !== undefined) {
-      const mods = E.cfg.barraModulos.map(m => ({ ...m }))
+      const mods = modulosCompletos()
       mods[Number(d.mod)].on = !mods[Number(d.mod)].on
       return config({ barraModulos: mods }).then(() => render())
     }
@@ -412,7 +638,7 @@
     if (!op || deIndice === null) return
     ev.preventDefault()
     const para = Number(op.dataset.mod)
-    const mods = E.cfg.barraModulos.map(m => ({ ...m }))
+    const mods = modulosCompletos()
     const [m] = mods.splice(deIndice, 1)
     mods.splice(para, 0, m)
     deIndice = null
@@ -441,6 +667,11 @@
         tamanhoEnviado = ''
         interagindo = false
         renderMenu()
+        armarFechoDoAviso()
+        if (d.menu === 'conversas') {
+          const ta = raiz.querySelector('.cartao.atencao textarea, .cartao.terminou textarea')
+          if (ta) ta.focus()
+        }
       } else if (d.tipo === 'menu-fechado') {
         document.querySelectorAll('.it.aberto').forEach(x => x.classList.remove('aberto'))
       }

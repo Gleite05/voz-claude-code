@@ -180,6 +180,9 @@ async function instalarBarra() {
   } else dizer('1/4 Kit WebView2 já descarregado')
 
   dizer('2/4 A extrair as bibliotecas')
+  // A barra aberta bloqueia as DLLs e o .exe: fecha-a antes de os substituir.
+  spawnSync('taskkill.exe', ['/IM', 'VozBarra.exe', '/F'], { windowsHide: true, stdio: 'ignore' })
+  await new Promise(r => setTimeout(r, 700))
   const tar = path.join(process.env.WINDIR || 'C:\\Windows', 'System32', 'tar.exe')
   const ex = spawnSync(tar, ['-xf', nupkg, '-C', pacote, 'lib/net462', 'runtimes/win-x64/native'], { windowsHide: true })
   if (ex.status !== 0) throw new Error('não consegui extrair o pacote WebView2')

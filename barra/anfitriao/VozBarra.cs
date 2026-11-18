@@ -262,10 +262,13 @@ namespace VozBarra
 
         protected override bool ShowWithoutActivation { get { return false; } }
 
-        public void Abrir(string menu, Rectangle ancoraEcra)
+        bool ativar = true;
+
+        public void Abrir(string menu, Rectangle ancoraEcra, bool ativarJanela)
         {
             Atual = menu;
             ancora = ancoraEcra;
+            ativar = ativarJanela;
             aEsperarTamanho = true;
             if (!Pronta) { pendente = menu; return; }
             Enviar(new Dictionary<string, object> { { "tipo", "menu" }, { "menu", menu } });
@@ -316,18 +319,19 @@ namespace VozBarra
             var ecra = Screen.FromRectangle(ancora).Bounds;
             int x, y;
             int folga = (int)(4 * Escala);
+            bool aviso = Atual.StartsWith("aviso:");
             switch (barra.Posicao)
             {
-                case "fundo": x = ancora.Left; y = ancora.Top - h - folga; break;
-                case "esquerda": x = ancora.Right + folga; y = ancora.Top; break;
-                case "direita": x = ancora.Left - w - folga; y = ancora.Top; break;
-                default: x = ancora.Left; y = ancora.Bottom + folga; break;
+                case "fundo": x = aviso ? ancora.Right - w - folga : ancora.Left; y = ancora.Top - h - folga; break;
+                case "esquerda": x = ancora.Right + folga; y = ancora.Top + (aviso ? folga : 0); break;
+                case "direita": x = ancora.Left - w - folga; y = ancora.Top + (aviso ? folga : 0); break;
+                default: x = aviso ? ancora.Right - w - folga : ancora.Left; y = ancora.Bottom + folga; break;
             }
             x = Math.Max(ecra.Left + folga, Math.Min(x, ecra.Right - w - folga));
             y = Math.Max(ecra.Top + folga, Math.Min(y, ecra.Bottom - h - folga));
             SetBounds(x, y, w, h);
             Aberto = true;
-            Activate();
+            if (ativar) Activate(); // o aviso aparece sem tirar o foco a quem está a escrever
         }
     }
 
@@ -535,7 +539,9 @@ namespace VozBarra
                     if (p != "" && p != Posicao) AplicarPosicao(p);
                     break;
                 case "abrir":
-                    AbrirMenu(Texto(msg, "menu"), Numero(msg, "x"), Numero(msg, "y"), Numero(msg, "w"), Numero(msg, "h"));
+                    object at;
+                    bool ativar = !(msg.TryGetValue("ativar", out at) && at is bool && !(bool)at);
+                    AbrirMenu(Texto(msg, "menu"), Numero(msg, "x"), Numero(msg, "y"), Numero(msg, "w"), Numero(msg, "h"), ativar);
                     break;
                 case "largura":
                     if (Posicao == "flutuante")
@@ -569,14 +575,17 @@ namespace VozBarra
             }
         }
 
-        void AbrirMenu(string qual, double x, double y, double w, double h)
+        void AbrirMenu(string qual, double x, double y, double w, double h, bool ativar)
         {
-            if (menu.Aberto && menu.Atual == qual) { menu.Esconder(); return; }
+            bool aviso = qual.StartsWith("aviso:");
+            // Um aviso nunca tapa um menu que abriste à mão.
+            if (aviso && menu.Aberto && !menu.Atual.StartsWith("aviso:")) return;
+            if (!aviso && menu.Aberto && menu.Atual == qual) { menu.Esconder(); return; }
             // O clique que fechou o menu (perda de foco) não o deve voltar a abrir logo a seguir.
             if (!menu.Aberto && menu.Atual == qual && (DateTime.Now - menu.EscondidoEm).TotalMilliseconds < 250) return;
             var e = Escala;
             var r = new Rectangle(Left + (int)(x * e), Top + (int)(y * e), Math.Max(1, (int)(w * e)), Math.Max(1, (int)(h * e)));
-            menu.Abrir(qual, r);
+            menu.Abrir(qual, r, ativar);
         }
 
         public void MenuFechou()

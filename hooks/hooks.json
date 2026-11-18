@@ -17,7 +17,12 @@
       { "hooks": [{ "type": "command", "command": "node", "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/gancho.js"], "async": true, "timeout": 10 }] }
     ],
     "Stop": [
-      { "hooks": [{ "type": "command", "command": "node", "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/gancho.js"], "async": true, "timeout": 10 }] }
+      {
+        "hooks": [
+          { "type": "command", "command": "node", "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/gancho.js"], "async": true, "timeout": 10 },
+          { "type": "command", "command": "node", "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/escuta.js"], "asyncRewake": true, "timeout": 43200 }
+        ]
+      }
     ],
     "SessionEnd": [
       { "hooks": [{ "type": "command", "command": "node", "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/gancho.js"], "async": true, "timeout": 2 }] }

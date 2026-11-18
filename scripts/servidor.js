@@ -31,6 +31,8 @@ let falando = null // { texto, sessao } enquanto uma frase toca
 let pausado = false
 let aoRetomar = []
 let web = null
+const escutas = new Map() // sessão -> socket do gancho escuta.js (asyncRewake) à espera de uma resposta
+const pendentes = new Map() // sessão -> [textos] escritos na barra enquanto a sessão trabalhava
 
 function publicar() {
   if (web) web.publicar()
@@ -209,7 +211,14 @@ function tratarEvento(msg) {
   const cfg = lerConfig()
   if (DEPURAR) log(`evento ${msg.evento} sessão=${String(msg.sessao).slice(0, 8)}${msg.ferramenta ? ' ' + msg.ferramenta : ''}${msg.delta !== undefined ? ` #${msg.index}${msg.final ? ' final' : ''} ${JSON.stringify(String(msg.delta).slice(0, 60))}` : ''}`)
   estado.registar(msg) // a barra vê tudo, mesmo com a voz desligada
-  if (msg.evento === 'UserPromptSubmit' && !msg.agente) sessaoFoco = msg.sessao
+  if (msg.evento === 'UserPromptSubmit' && !msg.agente) {
+    sessaoFoco = msg.sessao
+    largarEscuta(msg.sessao) // escreveste na conversa: a escuta da barra já não é precisa
+  }
+  if (msg.evento === 'SessionEnd') {
+    largarEscuta(msg.sessao)
+    pendentes.delete(msg.sessao)
+  }
   if (msg.evento === 'SessionStart') talvezAbrirBarra(cfg)
   if (!cfg.ligado) return
   if (msg.agente) return // subagentes ficam calados
@@ -316,11 +325,70 @@ function tratarControlo(msg, responder) {
   responder({ ok: false, erro: 'controlo desconhecido' })
 }
 
+// ---------- respostas pela barra ----------
+
+function enviarEscuta(socket, msg) {
+  try {
+    socket.write(JSON.stringify(msg) + '\n')
+  } catch {}
+}
+
+function registarEscuta(msg, socket) {
+  const id = msg.escuta
+  const antiga = escutas.get(id)
+  if (antiga && antiga !== socket) enviarEscuta(antiga, { sair: true })
+  const fila = pendentes.get(id)
+  if (fila && fila.length) {
+    // Havia respostas à espera: entrega já e a escuta acaba (o Claude acorda).
+    pendentes.delete(id)
+    enviarEscuta(socket, { resposta: fila.join('\n\n') })
+    estado.anotar(id, { escuta: false, pendentes: 0 })
+    return
+  }
+  escutas.set(id, socket)
+  estado.anotar(id, { escuta: true })
+  socket.on('close', () => {
+    if (escutas.get(id) === socket) {
+      escutas.delete(id)
+      estado.anotar(id, { escuta: false })
+    }
+  })
+}
+
+function largarEscuta(id) {
+  const s = escutas.get(id)
+  if (!s) return
+  escutas.delete(id)
+  enviarEscuta(s, { sair: true })
+  estado.anotar(id, { escuta: false })
+}
+
+function responder(id, texto) {
+  texto = String(texto || '').trim().slice(0, 4000)
+  if (!id || !texto) return { ok: false, erro: 'falta a sessão ou o texto' }
+  estado.pedidoPelaBarra(id, texto)
+  const s = escutas.get(id)
+  if (s) {
+    escutas.delete(id)
+    enviarEscuta(s, { resposta: texto })
+    estado.anotar(id, { escuta: false })
+    log('resposta pela barra entregue a ' + id.slice(0, 8))
+    return { ok: true, entregue: true }
+  }
+  const fila = pendentes.get(id) || []
+  fila.push(texto)
+  pendentes.set(id, fila)
+  estado.anotar(id, { pendentes: fila.length })
+  log('resposta pela barra em fila para ' + id.slice(0, 8))
+  return { ok: true, entregue: false }
+}
+
 // ---------- barra ----------
 
 const CHAVES_BARRA = new Set([
   'ligado', 'anunciarAcoes', 'lerRespostas', 'velocidade', 'volume', 'altura', 'graves', 'medios', 'agudos',
   'soSessaoAtiva', 'avisarOutrasSessoes', 'barraPosicao', 'barraModulos', 'barraArranque', 'barraTema',
+  'barraAvisos', 'respostasPelaBarra',
 ])
 
 function estadoParaBarra() {
@@ -356,6 +424,7 @@ function pedidoDaBarra(p) {
     tratarControlo({ controlo: p.controlo, texto: p.texto }, x => (r = x))
     return r
   }
+  if (p.acao === 'responder') return responder(p.sessao, p.texto)
   if (p.acao === 'foco' && p.sessao) {
     sessaoFoco = p.sessao
     publicar()
@@ -433,7 +502,8 @@ function arrancar() {
           continue
         }
         try {
-          if (msg.controlo) tratarControlo(msg, r => socket.write(JSON.stringify(r) + '\n'))
+          if (msg.escuta) registarEscuta(msg, socket)
+          else if (msg.controlo) tratarControlo(msg, r => socket.write(JSON.stringify(r) + '\n'))
           else tratarEvento(msg)
         } catch (erro) {
           log(`erro ao tratar ${msg.evento || msg.controlo}: ${erro.stack || erro.message}`)
