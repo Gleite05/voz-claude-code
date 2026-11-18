@@ -1,0 +1,26 @@
+{
+  "description": "Voz: passa os eventos do Claude Code ao narrador local",
+  "hooks": {
+    "SessionStart": [
+      { "hooks": [{ "type": "command", "command": "node", "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/gancho.js"], "async": true, "timeout": 10 }] }
+    ],
+    "UserPromptSubmit": [
+      { "hooks": [{ "type": "command", "command": "node", "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/gancho.js"], "async": true, "timeout": 10 }] }
+    ],
+    "PreToolUse": [
+      { "hooks": [{ "type": "command", "command": "node", "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/gancho.js"], "async": true, "timeout": 10 }] }
+    ],
+    "MessageDisplay": [
+      { "hooks": [{ "type": "command", "command": "node", "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/gancho.js"], "async": true, "timeout": 10 }] }
+    ],
+    "Notification": [
+      { "hooks": [{ "type": "command", "command": "node", "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/gancho.js"], "async": true, "timeout": 10 }] }
+    ],
+    "Stop": [
+      { "hooks": [{ "type": "command", "command": "node", "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/gancho.js"], "async": true, "timeout": 10 }] }
+    ],
+    "SessionEnd": [
+      { "hooks": [{ "type": "command", "command": "node", "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/gancho.js"], "async": true, "timeout": 2 }] }
+    ]
+  }
+}

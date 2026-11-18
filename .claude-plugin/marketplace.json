@@ -1,0 +1,12 @@
+{
+  "name": "voz",
+  "owner": { "name": "Gleite05" },
+  "description": "Voz: o Claude Code narrado em português de Portugal",
+  "plugins": [
+    {
+      "name": "voz",
+      "source": "./",
+      "description": "Narra em voz alta, em português de Portugal, o que o Claude Code está a fazer e o que escreve"
+    }
+  ]
+}
