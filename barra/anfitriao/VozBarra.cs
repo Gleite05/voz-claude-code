@@ -390,6 +390,11 @@ namespace VozBarra
         readonly uint mensagemBarraCriada;
         DateTime reservaReparadaEm = DateTime.MinValue;
         bool appBarRegistada;
+        // Ecrã inteiro: quando uma janela (RDP, vídeo, jogo, apresentação…) ocupa o monitor da barra,
+        // a barra recolhe-se para trás dela e volta quando essa janela sai do ecrã inteiro.
+        readonly System.Windows.Forms.Timer vigiaEcraInteiro = new System.Windows.Forms.Timer();
+        IntPtr janelaEcraInteiro = IntPtr.Zero;
+        bool recolhida;
         int larguraFlutuante = 520;
         readonly System.Windows.Forms.Timer relogio = new System.Windows.Forms.Timer();
         // Sensor do ambiente: ausência (rato/teclado parados), microfone ocupado e ecrã inteiro.
@@ -436,6 +441,8 @@ namespace VozBarra
             relogio.Tick += delegate { Vigiar(); };
             sensor.Interval = 2000;
             sensor.Tick += delegate { Sentir(); };
+            vigiaEcraInteiro.Interval = 300;
+            vigiaEcraInteiro.Tick += delegate { VigiarEcraInteiro(); };
             Iniciar(dados.Url("barra"));
         }
 
@@ -448,6 +455,7 @@ namespace VozBarra
             RegistarAtalhos();
             relogio.Start();
             sensor.Start();
+            vigiaEcraInteiro.Start();
             bandeja.Icon = Nativo.IconeVoz((int)Math.Round(16 * Escala));
             bandeja.Visible = true;
         }
@@ -577,7 +585,44 @@ namespace VozBarra
                     SetBounds(Ecra.Left, Ecra.Top, Ecra.Width, Espessura(false));
                 }
             }
+            if (!recolhida) TopMost = true;
+        }
+
+        // ---------- ecrã inteiro ----------
+        void VigiarEcraInteiro()
+        {
+            if (NaBandeja) { if (recolhida) Voltar(); return; }
+            var monitor = Nativo.MonitorDe(Handle);
+            var fg = Nativo.GetForegroundWindow();
+            if (fg != IntPtr.Zero && Nativo.MonitorDe(fg) == monitor && Nativo.EmEcraInteiro(fg))
+            {
+                janelaEcraInteiro = fg;
+                if (!recolhida) Recolher();
+                return;
+            }
+            if (!recolhida) return;
+            // Continua escondida enquanto a janela em ecrã inteiro existir e estiveres a usar outro monitor
+            // (ex.: o RDP em ecrã inteiro no principal e o rato noutro ecrã).
+            bool aindaCheia = Nativo.IsWindow(janelaEcraInteiro) && Nativo.MonitorDe(janelaEcraInteiro) == monitor && Nativo.EmEcraInteiro(janelaEcraInteiro);
+            bool focoNoutroMonitor = fg == IntPtr.Zero || Nativo.MonitorDe(fg) != monitor;
+            if (!(aindaCheia && focoNoutroMonitor)) Voltar();
+        }
+
+        void Recolher()
+        {
+            recolhida = true;
+            menu.Esconder();
+            TopMost = false;
+            Nativo.ParaTras(Handle);
+            Registo.Escrever("ecrã inteiro no monitor da barra: a barra recolhe-se");
+        }
+
+        void Voltar()
+        {
+            recolhida = false;
+            janelaEcraInteiro = IntPtr.Zero;
             TopMost = true;
+            Registo.Escrever("fim do ecrã inteiro: a barra volta");
         }
 
         // ---------- AppBar ----------
@@ -672,7 +717,7 @@ namespace VozBarra
             {
                 int aviso = m.WParam.ToInt32();
                 if (aviso == Nativo.ABN_POSCHANGED) PosicionarAppBar(Posicao);
-                else if (aviso == Nativo.ABN_FULLSCREENAPP) TopMost = m.LParam == IntPtr.Zero;
+                else if (aviso == Nativo.ABN_FULLSCREENAPP && m.LParam == IntPtr.Zero && !recolhida) TopMost = true;
             }
             else if (m.Msg == 0x0006 && appBarRegistada) // WM_ACTIVATE
             {
@@ -919,6 +964,50 @@ namespace VozBarra
             mi.cbSize = Marshal.SizeOf(typeof(MONITORINFO));
             GetMonitorInfo(MonitorFromWindow(janela, 2), ref mi); // MONITOR_DEFAULTTONEAREST
             return mi.rcWork;
+        }
+
+        [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
+        [DllImport("user32.dll")] static extern bool GetWindowRect(IntPtr h, out RECT r);
+        [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr h, out uint pid);
+        [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern int GetClassName(IntPtr h, System.Text.StringBuilder s, int n);
+        [DllImport("user32.dll")] static extern int GetWindowLong(IntPtr h, int i);
+        [DllImport("user32.dll")] public static extern bool IsWindow(IntPtr h);
+        [DllImport("user32.dll")] static extern bool IsWindowVisible(IntPtr h);
+        [DllImport("user32.dll")] static extern bool IsIconic(IntPtr h);
+        [DllImport("user32.dll")] static extern bool SetWindowPos(IntPtr h, IntPtr depois, int x, int y, int cx, int cy, uint f);
+
+        /// Põe a janela atrás de todas as outras sem a ativar nem a mexer.
+        public static void ParaTras(IntPtr h)
+        {
+            SetWindowPos(h, new IntPtr(1), 0, 0, 0, 0, 0x0001 | 0x0002 | 0x0010); // HWND_BOTTOM; NOSIZE|NOMOVE|NOACTIVATE
+        }
+
+        /// Monitor onde a janela está (para comparar com o da barra).
+        public static IntPtr MonitorDe(IntPtr h) { return MonitorFromWindow(h, 2); }
+
+        static readonly uint MeuPid = (uint)Process.GetCurrentProcess().Id;
+
+        /// A janela ocupa o monitor inteiro (ecrã inteiro: RDP, vídeo, jogo, apresentação…)?
+        /// Ficam de fora o ambiente de trabalho, as barras de tarefas, janelas-ferramenta e as da própria barra.
+        public static bool EmEcraInteiro(IntPtr h)
+        {
+            if (h == IntPtr.Zero || !IsWindowVisible(h) || IsIconic(h)) return false;
+            uint pid;
+            GetWindowThreadProcessId(h, out pid);
+            if (pid == MeuPid) return false;
+            var c = new System.Text.StringBuilder(64);
+            GetClassName(h, c, 64);
+            string cls = c.ToString();
+            if (cls == "Progman" || cls == "WorkerW" || cls == "Shell_TrayWnd" || cls == "Shell_SecondaryTrayWnd") return false;
+            int ex = GetWindowLong(h, -20);
+            if ((ex & 0x80) != 0 || (ex & 0x08000000) != 0) return false; // WS_EX_TOOLWINDOW, WS_EX_NOACTIVATE
+            RECT r;
+            if (!GetWindowRect(h, out r)) return false;
+            var mi = new MONITORINFO();
+            mi.cbSize = Marshal.SizeOf(typeof(MONITORINFO));
+            if (!GetMonitorInfo(MonitorFromWindow(h, 2), ref mi)) return false;
+            var m = mi.rcMonitor;
+            return r.left <= m.left && r.top <= m.top && r.right >= m.right && r.bottom >= m.bottom;
         }
         [DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern uint RegisterWindowMessage(string nome);
         [DllImport("user32.dll")] public static extern bool ReleaseCapture();

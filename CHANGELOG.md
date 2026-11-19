@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 1.3.2
+
+- **Ecrã inteiro:** quando uma app ocupa o ecrã todo no monitor da barra (Ambiente de Trabalho Remoto, vídeo, jogo, apresentação…), a barra recolhe-se para trás dela e deixa de a tapar, como a barra de tarefas do Windows. Volta quando a app sai do ecrã inteiro ou quando passas para outra janela nesse monitor. Se estiveres a trabalhar noutro monitor, a barra continua escondida enquanto a janela em ecrã inteiro lá estiver.
+
 ## 1.3.1
 
 - **A barra encaixada volta a empurrar as janelas** depois de o Explorer reiniciar. O Windows esquece as barras que reservam espaço quando o Explorer reinicia (atualizações, programas que mexem na barra de tarefas…), e a barra ficava por cima das janelas e dos ícones do ambiente de trabalho. Agora ouve o aviso `TaskbarCreated` e regista-se de novo, como a barra de tarefas. Também confirma a cada 2 s que a área de trabalho ainda a exclui, e repõe a reserva se outra app a tiver desfeito.
