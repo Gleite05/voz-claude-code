@@ -386,6 +386,9 @@ namespace VozBarra
         public string Posicao = "topo";
         readonly Menu menu;
         readonly uint mensagemAppBar;
+        // O Explorer avisa com "TaskbarCreated" quando reinicia — e nessa altura esquece todas as AppBars.
+        readonly uint mensagemBarraCriada;
+        DateTime reservaReparadaEm = DateTime.MinValue;
         bool appBarRegistada;
         int larguraFlutuante = 520;
         readonly System.Windows.Forms.Timer relogio = new System.Windows.Forms.Timer();
@@ -425,6 +428,7 @@ namespace VozBarra
             bandeja.MouseClick += delegate(object o, MouseEventArgs a) { if (a.Button == MouseButtons.Left) AlternarBandeja(); };
             AtualizarBandeja();
             mensagemAppBar = Nativo.RegisterWindowMessage("VozBarraAppBar");
+            mensagemBarraCriada = Nativo.RegisterWindowMessage("TaskbarCreated");
             Posicao = DadosBarra.PosicaoGuardada();
             Text = "Voz";
             menu = new Menu(dados, this);
@@ -610,6 +614,26 @@ namespace VozBarra
             SetBounds(abd.rc.left, abd.rc.top, abd.rc.right - abd.rc.left, abd.rc.bottom - abd.rc.top);
         }
 
+        bool Encaixada { get { return Posicao == "topo" || Posicao == "fundo" || Posicao == "esquerda" || Posicao == "direita"; } }
+
+        /// A barra encaixada tem de empurrar as janelas: se a área de trabalho do monitor deixou de a
+        /// excluir (o Explorer reiniciou, outra barra mexeu na área de trabalho…), volta a reservar o lugar.
+        void VerificarReserva()
+        {
+            if (!appBarRegistada || !Encaixada || !Visible || NaBandeja) return;
+            var w = Nativo.AreaDeTrabalho(Handle);
+            var b = Bounds;
+            bool ok = Posicao == "topo" ? w.top >= b.Bottom
+                : Posicao == "fundo" ? w.bottom <= b.Top
+                : Posicao == "esquerda" ? w.left >= b.Right
+                : w.right <= b.Left;
+            if (ok || (DateTime.Now - reservaReparadaEm).TotalSeconds < 15) return;
+            reservaReparadaEm = DateTime.Now;
+            Registo.Escrever("a reserva da barra perdeu-se (área de trabalho " + w.left + "," + w.top + "-" + w.right + "," + w.bottom + "); a registar de novo");
+            RemoverAppBar();
+            RegistarAppBar(Posicao);
+        }
+
         void RemoverAppBar()
         {
             if (!appBarRegistada) return;
@@ -636,6 +660,13 @@ namespace VozBarra
                     if (Posicao == "escondida") mostrarAte = DateTime.Now.AddSeconds(4);
                     Enviar(new Dictionary<string, object> { { "tipo", "atalho" }, { "qual", Atalhos[i] } });
                 }
+            }
+            else if (mensagemBarraCriada != 0 && m.Msg == (int)mensagemBarraCriada)
+            {
+                // O Explorer reiniciou e esqueceu a reserva: regista-se de novo, como faz a barra de tarefas.
+                appBarRegistada = false;
+                if (Encaixada && Visible && !NaBandeja)
+                    BeginInvoke((Action)delegate { Registo.Escrever("Explorer reiniciado: a reservar o lugar da barra de novo"); RegistarAppBar(Posicao); });
             }
             else if (appBarRegistada && m.Msg == (int)mensagemAppBar)
             {
@@ -665,6 +696,7 @@ namespace VozBarra
         /// ou apresentação, para a voz se calar sozinha e resumir o que aconteceu enquanto estavas fora.
         void Sentir()
         {
+            VerificarReserva();
             uint parado = Nativo.TempoParadoMs();
             if (!ausente && parado >= AUSENTE_MS)
             {
@@ -874,6 +906,20 @@ namespace VozBarra
         struct MARGINS { public int l, r, t, b; }
 
         [DllImport("shell32.dll")] public static extern UIntPtr SHAppBarMessage(uint msg, ref APPBARDATA data);
+
+        [StructLayout(LayoutKind.Sequential)]
+        struct MONITORINFO { public int cbSize; public RECT rcMonitor; public RECT rcWork; public int dwFlags; }
+        [DllImport("user32.dll")] static extern IntPtr MonitorFromWindow(IntPtr h, uint flags);
+        [DllImport("user32.dll")] static extern bool GetMonitorInfo(IntPtr mon, ref MONITORINFO mi);
+
+        /// Área de trabalho atual do monitor da janela (lida na hora; a do WinForms fica em cache).
+        public static RECT AreaDeTrabalho(IntPtr janela)
+        {
+            var mi = new MONITORINFO();
+            mi.cbSize = Marshal.SizeOf(typeof(MONITORINFO));
+            GetMonitorInfo(MonitorFromWindow(janela, 2), ref mi); // MONITOR_DEFAULTTONEAREST
+            return mi.rcWork;
+        }
         [DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern uint RegisterWindowMessage(string nome);
         [DllImport("user32.dll")] public static extern bool ReleaseCapture();
         [DllImport("user32.dll")] public static extern bool RegisterHotKey(IntPtr h, int id, uint mods, uint vk);

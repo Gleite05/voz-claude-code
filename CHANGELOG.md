@@ -1,5 +1,9 @@
 # Histórico de versões
 
+## 1.3.1
+
+- **A barra encaixada volta a empurrar as janelas** depois de o Explorer reiniciar. O Windows esquece as barras que reservam espaço quando o Explorer reinicia (atualizações, programas que mexem na barra de tarefas…), e a barra ficava por cima das janelas e dos ícones do ambiente de trabalho. Agora ouve o aviso `TaskbarCreated` e regista-se de novo, como a barra de tarefas. Também confirma a cada 2 s que a área de trabalho ainda a exclui, e repõe a reserva se outra app a tiver desfeito.
+
 ## 1.3.0
 
 - **Diz como correu:** com os ganchos `PostToolUse`/`PostToolUseFailure`, a voz diz «Os 38 testes passaram», «Falharam 3 testes», «A compilação falhou», «Push feito», e a duração dos comandos de mais de um minuto. Um `grep` sem resultados não conta como falha: só testes, compilações, instalações, pushes e publicações.
