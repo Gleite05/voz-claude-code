@@ -49,6 +49,7 @@
       'def.conversas': 'Conversas', 'def.avisos': 'Avisar quando uma conversa termina', 'def.responder': 'Responder às conversas pela barra',
       'def.aprovar': 'Aprovar permissões pela barra', 'def.arranque': 'Arranque', 'def.comWindows': 'Arrancar com o Windows',
       'def.comClaude': 'Só com o Claude Code aberto', 'def.aMao': 'Só à mão', 'def.aspeto': 'Aspeto', 'def.seguirWindows': 'Seguir o tema do Windows',
+      'def.material': 'Material', 'mat.titulo': 'Material da barra', 'mat.liquido': 'Vidro líquido', 'mat.fosco': 'Vidro fosco', 'mat.personalizado': 'Personalizado', 'mat.classico': 'Clássico', 'mat.textura': 'Textura', 'mat.transparencia': 'Transparência', 'mat.desfoque': 'Desfoque', 'mat.aresta': 'Aresta', 'mat.refracao': 'Refração', 'mat.borda': 'Largura da lente', 'mat.dispersao': 'Dispersão', 'mat.luz': 'Luz', 'mat.brilho': 'Brilho', 'mat.sombra': 'Sombra', 'mat.repor': 'Repor o vidro líquido', 'mat.soEncaixada': 'O vidro líquido só aparece com a barra encaixada (em cima, em baixo ou de lado).',
       'def.testar': 'Testar a voz', 'def.sair': 'Sair da barra',
       // clique direito
       'dir.conversas': 'Conversas…', 'dir.som': 'Som…', 'dir.tokens': 'Tokens de hoje…', 'dir.silencio': 'Não incomodar',
@@ -162,6 +163,7 @@
       'def.conversas': 'Conversations', 'def.avisos': 'Notify when a conversation finishes', 'def.responder': 'Reply to conversations from the bar',
       'def.aprovar': 'Approve permissions from the bar', 'def.arranque': 'Startup', 'def.comWindows': 'Start with Windows',
       'def.comClaude': 'Only while Claude Code is open', 'def.aMao': 'Manually only', 'def.aspeto': 'Theme', 'def.seguirWindows': 'Follow the Windows theme',
+      'def.material': 'Material', 'mat.titulo': 'Bar material', 'mat.liquido': 'Liquid glass', 'mat.fosco': 'Frosted glass', 'mat.personalizado': 'Custom', 'mat.classico': 'Classic', 'mat.textura': 'Texture', 'mat.transparencia': 'Transparency', 'mat.desfoque': 'Blur', 'mat.aresta': 'Edge', 'mat.refracao': 'Refraction', 'mat.borda': 'Refraction edge', 'mat.dispersao': 'Dispersion', 'mat.luz': 'Lighting', 'mat.brilho': 'Highlight', 'mat.sombra': 'Shadow', 'mat.repor': 'Restore liquid glass', 'mat.soEncaixada': 'Liquid glass only shows when the bar is docked (top, bottom or side).',
       'def.testar': 'Test the voice', 'def.sair': 'Quit the bar',
       'dir.conversas': 'Conversations…', 'dir.som': 'Sound…', 'dir.tokens': "Today's tokens…", 'dir.silencio': 'Do not disturb',
       'dir.vozLigada': 'Voice on', 'dir.posicao': 'Position', 'dir.aspeto': 'Theme', 'dir.definicoes': 'Settings…', 'dir.fechar': 'Hide the bar',
@@ -269,6 +271,7 @@
       'def.conversas': 'Conversaciones', 'def.avisos': 'Avisar cuando termine una conversación', 'def.responder': 'Responder a las conversaciones desde la barra',
       'def.aprovar': 'Aprobar permisos desde la barra', 'def.arranque': 'Inicio', 'def.comWindows': 'Iniciar con Windows',
       'def.comClaude': 'Solo con Claude Code abierto', 'def.aMao': 'Solo manualmente', 'def.aspeto': 'Aspecto', 'def.seguirWindows': 'Seguir el tema de Windows',
+      'def.material': 'Material', 'mat.titulo': 'Material de la barra', 'mat.liquido': 'Vidrio líquido', 'mat.fosco': 'Vidrio esmerilado', 'mat.personalizado': 'Personalizado', 'mat.classico': 'Clásico', 'mat.textura': 'Textura', 'mat.transparencia': 'Transparencia', 'mat.desfoque': 'Desenfoque', 'mat.aresta': 'Borde', 'mat.refracao': 'Refracción', 'mat.borda': 'Ancho de la lente', 'mat.dispersao': 'Dispersión', 'mat.luz': 'Luz', 'mat.brilho': 'Brillo', 'mat.sombra': 'Sombra', 'mat.repor': 'Restaurar el vidrio líquido', 'mat.soEncaixada': 'El vidrio líquido solo aparece con la barra anclada (arriba, abajo o a un lado).',
       'def.testar': 'Probar la voz', 'def.sair': 'Salir de la barra',
       'dir.conversas': 'Conversaciones…', 'dir.som': 'Sonido…', 'dir.tokens': 'Tokens de hoy…', 'dir.silencio': 'No molestar',
       'dir.vozLigada': 'Voz activada', 'dir.posicao': 'Posición', 'dir.aspeto': 'Aspecto', 'dir.definicoes': 'Ajustes…', 'dir.fechar': 'Ocultar la barra',

@@ -730,6 +730,7 @@ const CHAVES_BARRA = new Set([
   'soSessaoAtiva', 'avisarOutrasSessoes', 'barraPosicao', 'barraModulos', 'barraArranque', 'barraTema',
   'barraAvisos', 'respostasPelaBarra', 'naoIncomodar', 'silencioHorario', 'vozPorConversa', 'idiomaAuto',
   'vozPadrao', 'aprovarPelaBarra', 'barraEcra', 'ditadoIdioma', 'ditadoModelo', 'idioma', 'anunciarResultados', 'sons', 'somEspacial', 'silencioReunioes', 'resumoAoVoltar', 'moeda', 'aprovarPorVoz', 'maosLivres',
+  'barraMaterial', 'vidroTransparencia', 'vidroDesfoque', 'vidroRefracao', 'vidroBorda', 'vidroDispersao', 'vidroBrilho', 'vidroSombra',
 ])
 
 function estadoParaBarra() {

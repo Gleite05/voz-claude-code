@@ -21,6 +21,8 @@
   let interagindo = false
   let semSessoesDesde = null
   let ultimaAtencao = ''
+  let fundoPedido = null // pedimos ao anfitrião o fundo por trás da barra (vidro líquido)?
+  let fundoDemoFeito = ''
 
   // ---------------- utilitários ----------------
   const ICONES = {
@@ -310,6 +312,8 @@
     const natural = Math.ceil(c.scrollWidth) + 2 // + a borda da cápsula
     if (natural > max) c.classList.add('aperta')
     const largura = Math.min(max, natural)
+    if (ilhaEl.style.width !== largura + 'px' && document.body.classList.contains('liquido'))
+      VozVidro.seguir(700, () => E.cfg, () => !document.body.classList.contains('claro'))
     ilhaEl.style.width = largura + 'px'
     // Posição: centrada na barra; na flutuante, no centro do lugar reservado entre os módulos.
     const barra = raiz.firstElementChild.getBoundingClientRect()
@@ -389,6 +393,36 @@
     return ''
   }
 
+  // ---------------- vidro líquido ----------------
+  const ENCAIXADAS = new Set(['topo', 'fundo', 'esquerda', 'direita'])
+  /** O vidro líquido só existe na barra encaixada: aí, por trás dela, só há o fundo do ambiente de trabalho. */
+  function querLiquido() {
+    return (
+      VISTA === 'barra' && !!E && (E.cfg.barraMaterial || 'liquido') !== 'classico' &&
+      ENCAIXADAS.has(E.cfg.barraPosicao || 'topo') && !document.body.classList.contains('sem-vidro')
+    )
+  }
+  /** Pede (ou deixa de pedir) o fundo ao anfitrião; devolve se a barra está em vidro líquido. */
+  function atualizarVidro() {
+    const quer = querLiquido()
+    if (host) {
+      if (quer !== fundoPedido) {
+        fundoPedido = quer
+        enviarHost({ tipo: 'fundo', ligado: quer })
+      }
+    } else if (quer && q.get('fundo') === 'demo') {
+      const k = innerWidth + 'x' + innerHeight
+      if (k !== fundoDemoFeito) {
+        fundoDemoFeito = k
+        VozVidro.definirFundo(VozVidro.fundoDemo(innerWidth, innerHeight))
+      }
+    }
+    if (!quer && VozVidro.ativo()) VozVidro.definirFundo(null)
+    const liq = quer && VozVidro.ativo()
+    document.body.classList.toggle('liquido', liq)
+    return liq
+  }
+
   function renderBarra() {
     const pos = E.cfg.barraPosicao || 'topo'
     const vertical = pos === 'esquerda' || pos === 'direita'
@@ -401,12 +435,28 @@
     const marca = `<div class="it marca clic" data-menu="definicoes" title="${t('barra.marca')}">${svg('estrela')}<b>Claude</b></div>`
     const classe = vertical ? 'barra v' : flut ? 'barra flut' : 'barra'
     const comIlha = ilhaLigada()
-    raiz.innerHTML = `<div class="${classe}">${marca}${esq.join('')}${comIlha ? '<i class="ilha-lugar"></i>' : ''}${flut ? '' : '<div class="espaco"></div>'}${dir.join('')}</div>`
+    const liq = atualizarVidro()
+    const lugarIlha = comIlha ? '<i class="ilha-lugar"></i>' : ''
+    const espaco = flut ? '' : '<div class="espaco"></div>'
+    if (liq) {
+      // Vidro líquido: cada grupo é uma cápsula de vidro por cima do fundo real.
+      const capsula = html => (html ? `<div class="vg"><i class="vf"></i>${html}</div>` : '')
+      raiz.innerHTML = `<div class="${classe} liquida">${capsula(marca + esq.join(''))}${lugarIlha}${espaco}${capsula(dir.join(''))}</div>`
+    } else raiz.innerHTML = `<div class="${classe}">${marca}${esq.join('')}${lugarIlha}${espaco}${dir.join('')}</div>`
     if (comIlha) desenharIlha(raiz.querySelector('.ilha-lugar'), flut)
     else {
       ilhaChave = ''
       if (ilhaEl) ilhaEl.hidden = true
     }
+    if (ilhaEl) {
+      let vf = ilhaEl.querySelector(':scope > .vf')
+      if (liq && !vf) {
+        vf = document.createElement('i')
+        vf.className = 'vf'
+        ilhaEl.appendChild(vf)
+      } else if (!liq && vf) vf.remove()
+    }
+    if (liq) VozVidro.sincronizar(E.cfg, !document.body.classList.contains('claro'))
 
     if (pos !== posicaoEnviada) {
       posicaoEnviada = pos
@@ -596,9 +646,33 @@
       <div class="op" data-tema="sistema"><span class="chk">${chk(c.barraTema === 'sistema')}</span>${t('def.seguirWindows')}</div>
       <div class="op" data-tema="escuro"><span class="chk">${chk(c.barraTema === 'escuro')}</span>${t('tema.escuro')}</div>
       <div class="op" data-tema="claro"><span class="chk">${chk(c.barraTema === 'claro')}</span>${t('tema.claro')}</div>
+      <div class="op" data-ir="material"><span class="chk"></span>${t('def.material')}<small>${esc(t('mat.' + (c.barraMaterial || 'liquido')))} ›</small></div>
       <hr>
       <div class="op" data-acao="testar"><span class="chk"></span>${t('def.testar')}</div>
       <div class="op" data-sair="1"><span class="chk"></span>${t('def.sair')}</div>
+    </div>`
+  }
+
+  // Material da barra (como o painel do Atrium): predefinições e afinação fina.
+  const MATERIAIS = ['liquido', 'fosco', 'personalizado', 'classico']
+  function menuMaterial() {
+    const c = E.cfg
+    const atual = c.barraMaterial || 'liquido'
+    const p = VozVidro.parametros(c)
+    const enc = ENCAIXADAS.has(c.barraPosicao || 'topo')
+    const linha = (k, min, max, un) =>
+      `<div class="rot"><span>${t('mat.' + k)}</span><span class="num" data-valor="${VozVidro.CFG[k]}">${p[k]}${un}</span></div><input type="range" data-chave="${VozVidro.CFG[k]}" min="${min}" max="${max}" step="1" value="${p[k]}">`
+    const desligado = atual === 'classico'
+    return `<div class="painel material">
+      <div class="tit">${t('mat.titulo')}</div>
+      <div class="mat-cartoes">${MATERIAIS.map(m => `<button class="mat-cartao ${m === atual ? 'sel' : ''}" data-material="${m}"><span class="mat-amostra ${m}"><i></i></span><span>${t('mat.' + m)}</span></button>`).join('')}</div>
+      ${enc ? '' : `<div class="leg">${t('mat.soEncaixada')}</div>`}
+      <div class="mat-grupos ${desligado ? 'desligado' : ''}">
+        <div class="bloco"><div class="tit2">${t('mat.textura')}</div>${linha('transparencia', 40, 100, '%')}${linha('desfoque', 0, 100, '%')}</div>
+        <div class="bloco"><div class="tit2">${t('mat.aresta')}</div>${linha('refracao', 0, 20, ' px')}${linha('borda', 2, 20, ' px')}${linha('dispersao', 0, 20, '%')}</div>
+        <div class="bloco"><div class="tit2">${t('mat.luz')}</div>${linha('brilho', 0, 100, '%')}${linha('sombra', 0, 100, '%')}</div>
+        <button class="chip" data-material="liquido">${t('mat.repor')}</button>
+      </div>
     </div>`
   }
 
@@ -1028,6 +1102,7 @@
     if (m === 'vozes') return menuVozes()
     if (m === 'uso') return menuUso()
     if (m === 'wrapped') return menuWrapped()
+    if (m === 'material') return menuMaterial()
     return m === 'som'
       ? menuSom()
       : m === 'definicoes'
@@ -1318,7 +1393,7 @@
     const alvo = ev.target.closest(
       '[data-menu],[data-acao],[data-foco],[data-ir],[data-posicao],[data-arranque],[data-tema],[data-ciclo-tema],[data-predef],[data-alternar],[data-sair],[data-esconder],[data-mod],' +
         '[data-falar],[data-falar-sessao],[data-alternar-silencio],[data-decidir],[data-voz-baixar],[data-voz-padrao],[data-voz-remover],' +
-        '[data-voz-experimentar],[data-wrapped],[data-ciclo-moeda],[data-ecra],[data-horario-ativo],[data-alternar-por-conversa],[data-idioma],[data-conv],[data-ilha],[data-ciclo-idioma],[data-cc-eq]',
+        '[data-voz-experimentar],[data-wrapped],[data-material],[data-ciclo-moeda],[data-ecra],[data-horario-ativo],[data-alternar-por-conversa],[data-idioma],[data-conv],[data-ilha],[data-ciclo-idioma],[data-cc-eq]',
     )
     if (!alvo) {
       if (!host && menuEmLinha && !ev.target.closest('#menu-em-linha')) {
@@ -1367,6 +1442,7 @@
     if (d.vozPadrao) return api({ acao: 'vozes', op: 'padrao', id: d.vozPadrao })
     if (d.vozRemover) return api({ acao: 'vozes', op: 'remover', id: d.vozRemover }).then(carregarCatalogo)
     if (d.wrapped) return acaoWrapped(d.wrapped)
+    if (d.material) return config({ barraMaterial: d.material }).then(redesenharMenuAtual)
     if (d.cicloMoeda) {
       const L = ['auto', 'EUR', 'USD']
       return config({ moeda: L[(L.indexOf(E.cfg.moeda || 'auto') + 1) % L.length] }).then(redesenharMenuAtual)
@@ -1455,14 +1531,29 @@
     const rot = document.querySelector(`[data-valor="${el.dataset.chave}"]`)
     if (rot) {
       const k = el.dataset.chave
-      rot.textContent =
-        k === 'volume' ? Math.round(v * 100) + '%' : k === 'velocidade' ? num(v, 2) : (v > 0 ? '+' : '') + num(v, 0)
+      rot.textContent = k.startsWith('vidro')
+        ? v + (k === 'vidroRefracao' || k === 'vidroBorda' ? ' px' : '%')
+        : k === 'volume' ? Math.round(v * 100) + '%' : k === 'velocidade' ? num(v, 2) : (v > 0 ? '+' : '') + num(v, 0)
     }
+    if (el.dataset.chave.startsWith('vidro')) gravarVidro(el.dataset.chave, v, false)
   })
+  // Material: ao mexer num valor passa a «personalizado» (com os valores da predefinição de onde vieste).
+  let vidroTimer = null
+  function gravarVidro(chave, v, ja) {
+    const p = VozVidro.parametros(E.cfg)
+    const valores = { barraMaterial: 'personalizado' }
+    for (const k of VozVidro.CHAVES) valores[VozVidro.CFG[k]] = p[k]
+    valores[chave] = v
+    Object.assign(E.cfg, valores)
+    clearTimeout(vidroTimer)
+    if (ja) return config(valores)
+    vidroTimer = setTimeout(() => config(valores), 120)
+  }
   document.addEventListener('change', ev => {
     const el = ev.target
     if (!el.dataset.chave) return
-    config({ [el.dataset.chave]: Number(el.value) })
+    if (el.dataset.chave.startsWith('vidro')) gravarVidro(el.dataset.chave, Number(el.value), true)
+    else config({ [el.dataset.chave]: Number(el.value) })
     setTimeout(() => (interagindo = false), 400)
   })
   document.addEventListener('pointerup', () => setTimeout(() => (interagindo = false), 400))
@@ -1527,6 +1618,11 @@
         cartoesVistos.clear()
         graficoVisto = false
         document.querySelectorAll('.it.aberto').forEach(x => x.classList.remove('aberto'))
+      } else if (d.tipo === 'fundo') {
+        if (querLiquido() && d.img) {
+          VozVidro.definirFundo(d.img)
+          render()
+        }
       } else if (d.tipo === 'ecras') {
         ecras = Array.isArray(d.lista) ? d.lista : []
       } else if ((d.tipo === 'ambiente' || d.tipo === 'regresso') && VISTA === 'barra') {

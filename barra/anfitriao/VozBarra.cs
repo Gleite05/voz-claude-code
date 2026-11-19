@@ -25,7 +25,7 @@ namespace VozBarra
             ? Environment.GetEnvironmentVariable("VOZ_DIR")
             : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".claude", "voz");
         public static readonly string PastaBarra = Path.Combine(Pasta, "barra");
-        public static readonly JavaScriptSerializer Json = new JavaScriptSerializer();
+        public static readonly JavaScriptSerializer Json = new JavaScriptSerializer { MaxJsonLength = int.MaxValue };
         /// Sem vidro: fundo opaco (para Windows sem acrílico, ou se o vidro der problemas).
         public static readonly bool SemVidro = Environment.GetEnvironmentVariable("VOZ_SEM_VIDRO") == "1" || File.Exists(Path.Combine(PastaBarra, "sem-vidro"));
 
@@ -395,6 +395,12 @@ namespace VozBarra
         readonly System.Windows.Forms.Timer vigiaEcraInteiro = new System.Windows.Forms.Timer();
         IntPtr janelaEcraInteiro = IntPtr.Zero;
         bool recolhida;
+        // Vidro líquido: a página desenha o fundo do ambiente de trabalho que fica por trás da barra
+        // (encaixada, por trás só há o fundo) e refrata-o. O anfitrião capta-o e envia-o.
+        bool querFundo;
+        string fundoEnviado = "";
+        readonly System.Windows.Forms.Timer fundoAtraso = new System.Windows.Forms.Timer();
+        DateTime fundoEm = DateTime.MinValue;
         int larguraFlutuante = 520;
         readonly System.Windows.Forms.Timer relogio = new System.Windows.Forms.Timer();
         // Sensor do ambiente: ausência (rato/teclado parados), microfone ocupado e ecrã inteiro.
@@ -441,6 +447,8 @@ namespace VozBarra
             relogio.Tick += delegate { Vigiar(); };
             sensor.Interval = 2000;
             sensor.Tick += delegate { Sentir(); };
+            fundoAtraso.Interval = 350;
+            fundoAtraso.Tick += delegate { fundoAtraso.Stop(); EnviarFundo(false); };
             vigiaEcraInteiro.Interval = 300;
             vigiaEcraInteiro.Tick += delegate { VigiarEcraInteiro(); };
             Iniciar(dados.Url("barra"));
@@ -729,6 +737,10 @@ namespace VozBarra
                 var abd = NovoAbd();
                 Nativo.SHAppBarMessage(Nativo.ABM_WINDOWPOSCHANGED, ref abd);
             }
+            else if (m.Msg == 0x001A && m.WParam.ToInt32() == 0x14 && querFundo) // WM_SETTINGCHANGE, SPI_SETDESKWALLPAPER
+            {
+                fundoAtraso.Stop(); fundoAtraso.Start();
+            }
             else if (m.Msg == 0x007E && appBarRegistada) // WM_DISPLAYCHANGE
             {
                 BeginInvoke((Action)delegate { PosicionarAppBar(Posicao); });
@@ -742,6 +754,7 @@ namespace VozBarra
         void Sentir()
         {
             VerificarReserva();
+            if (querFundo && (DateTime.Now - fundoEm).TotalSeconds >= 60) EnviarFundo(false); // fundos em apresentação
             uint parado = Nativo.TempoParadoMs();
             if (!ausente && parado >= AUSENTE_MS)
             {
@@ -806,6 +819,36 @@ namespace VozBarra
             try { File.WriteAllText(FicheiroJanela, Programa.Json.Serialize(new Dictionary<string, object> { { "x", Left }, { "y", Top } })); } catch { }
         }
 
+        protected override void OnLocationChanged(EventArgs e)
+        {
+            base.OnLocationChanged(e);
+            if (querFundo) { fundoAtraso.Stop(); fundoAtraso.Start(); }
+        }
+
+        protected override void OnSizeChanged(EventArgs e)
+        {
+            base.OnSizeChanged(e);
+            if (querFundo) { fundoAtraso.Stop(); fundoAtraso.Start(); }
+        }
+
+        /// Capta o pedaço do fundo do ambiente de trabalho por trás da barra e envia-o à página (PNG).
+        /// Só faz sentido encaixada: aí a área está reservada e por trás só há o fundo.
+        void EnviarFundo(bool forcar)
+        {
+            fundoEm = DateTime.Now;
+            if (!querFundo || !Encaixada || !Visible) return;
+            try
+            {
+                var b = Bounds;
+                string png = Nativo.FundoDoAmbiente(b);
+                if (png == null) return;
+                if (!forcar && png == fundoEnviado) return;
+                fundoEnviado = png;
+                Enviar(new Dictionary<string, object> { { "tipo", "fundo" }, { "img", "data:image/png;base64," + png }, { "w", b.Width }, { "h", b.Height } });
+            }
+            catch (Exception e) { Registo.Escrever("fundo: " + e.Message); }
+        }
+
         protected override void OnResizeEnd(EventArgs e)
         {
             base.OnResizeEnd(e);
@@ -855,6 +898,11 @@ namespace VozBarra
                     break;
                 case "atencao":
                     mostrarAte = DateTime.Now.AddSeconds(6);
+                    break;
+                case "fundo":
+                    object lg;
+                    querFundo = msg.TryGetValue("ligado", out lg) && lg is bool && (bool)lg;
+                    if (querFundo) EnviarFundo(true);
                     break;
                 case "servidor-em-baixo":
                     Task.Run(delegate { Servidor.Garantir(Dados); });
@@ -975,6 +1023,39 @@ namespace VozBarra
         [DllImport("user32.dll")] static extern bool IsWindowVisible(IntPtr h);
         [DllImport("user32.dll")] static extern bool IsIconic(IntPtr h);
         [DllImport("user32.dll")] static extern bool SetWindowPos(IntPtr h, IntPtr depois, int x, int y, int cx, int cy, uint f);
+
+        [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern IntPtr FindWindow(string c, string n);
+        [DllImport("user32.dll")] static extern bool PrintWindow(IntPtr h, IntPtr dc, uint f);
+
+        /// O fundo do ambiente de trabalho (como o Explorer o desenha, sem as janelas por cima) no retângulo
+        /// dado, em coordenadas do ecrã. Devolve um PNG em base64, ou null se não der.
+        public static string FundoDoAmbiente(Rectangle area)
+        {
+            IntPtr prog = FindWindow("Progman", null);
+            if (prog == IntPtr.Zero) return null;
+            RECT r;
+            if (!GetWindowRect(prog, out r)) return null;
+            int w = r.right - r.left, h = r.bottom - r.top;
+            if (w <= 0 || h <= 0) return null;
+            using (var tudo = new Bitmap(w, h))
+            {
+                using (var g = Graphics.FromImage(tudo))
+                {
+                    IntPtr dc = g.GetHdc();
+                    bool ok = PrintWindow(prog, dc, 2); // PW_RENDERFULLCONTENT
+                    g.ReleaseHdc(dc);
+                    if (!ok) return null;
+                }
+                var corte = Rectangle.Intersect(new Rectangle(area.X - r.left, area.Y - r.top, area.Width, area.Height), new Rectangle(0, 0, w, h));
+                if (corte.Width <= 0 || corte.Height <= 0) return null;
+                using (var parte = tudo.Clone(corte, System.Drawing.Imaging.PixelFormat.Format24bppRgb))
+                using (var ms = new MemoryStream())
+                {
+                    parte.Save(ms, System.Drawing.Imaging.ImageFormat.Png);
+                    return Convert.ToBase64String(ms.ToArray());
+                }
+            }
+        }
 
         /// Põe a janela atrás de todas as outras sem a ativar nem a mexer.
         public static void ParaTras(IntPtr h)

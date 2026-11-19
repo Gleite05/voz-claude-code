@@ -22,6 +22,7 @@
 - 📋 **Progreso de tareas y subagentes** — el anillo «4/7» de la lista de tareas, los asistentes orbitando el avatar de la conversación y el aviso cuando se compacta.
 - 🛡️ **Aprobar permisos desde la barra** — la petición aparece en una tarjeta con el comando exacto o el **diff en color** de lo que va a cambiar: *Permitir*, *Rechazar* o **«Siempre»** (la regla que sugiere el propio Claude Code, p. ej. `git push:*`).
 - 🎧 **Manos libres y aprobar por voz** — tras cada respuesta la barra te escucha y envía lo que digas (para sola cuando te callas); en las peticiones de permiso pregunta «¿Lo permites?» y entiende «sí», «no» o «siempre». Desactivados por defecto.
+- 🫧 **Vidrio líquido** — la barra anclada refracta tu fondo de verdad (lente en los bordes, dispersión, brillo en el borde), con un panel *Material* para ajustarlo o volver al clásico.
 - 🔔 **Sonidos y sonido espacial** — sonidos cortos para pasó, falló, permiso y terminó; con varias conversaciones, cada una habla desde su lado.
 - 🤫 **Callada en reuniones** — con el micrófono ocupado por otra app (Teams, Zoom…) o algo a pantalla completa, la voz se calla sola.
 - 👋 **«Mientras estabas fuera»** — al volver al ordenador te dice qué terminó, qué falló y qué te necesita.

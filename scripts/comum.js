@@ -56,6 +56,14 @@ const PREDEFINICOES = {
   barraPosicao: 'topo', // topo | escondida | flutuante | esquerda | direita | fundo
   barraArranque: 'windows', // windows | claude | mao
   barraTema: 'sistema', // sistema | escuro | claro
+  barraMaterial: 'liquido', // liquido | fosco | personalizado | classico (vidro líquido só na barra encaixada)
+  vidroTransparencia: 87, // material «personalizado» (como o painel Material do Atrium)
+  vidroDesfoque: 100,
+  vidroRefracao: 6,
+  vidroBorda: 10,
+  vidroDispersao: 4,
+  vidroBrilho: 45,
+  vidroSombra: 30,
   barraAvisos: true, // aviso no canto quando uma conversa termina ou precisa de ti
   respostasPelaBarra: true, // responder às conversas a partir da barra (gancho asyncRewake)
   barraModulos: [

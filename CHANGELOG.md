@@ -1,5 +1,11 @@
 # Histórico de versões
 
+## 1.4.0
+
+- **Vidro líquido:** a barra encaixada passa a desenhar o fundo real do ambiente de trabalho que fica por trás dela (a faixa fica «transparente») e os grupos aparecem em cápsulas de vidro que o refratam a sério: lente nas bordas, dispersão das cores, desfoque, brilho na aresta, sombra e tinta. A ilha dinâmica também é de vidro.
+- **Painel «Material»** (Definições → Aspeto → Material): predefinições *Vidro líquido*, *Vidro fosco*, *Personalizado* e *Clássico* (o acrílico de antes), e afinação de transparência, desfoque, refração, largura da lente, dispersão, brilho e sombra, com a barra a mudar enquanto arrastas.
+- O fundo é captado no próprio PC (o desenho do ambiente de trabalho pelo Explorer, sem as janelas por cima), volta a ser lido quando mudas de fundo, de posição ou de ecrã, e a cada minuto para os fundos em apresentação. Na barra flutuante ou escondida fica o material clássico, porque aí há janelas por trás.
+
 ## 1.3.2
 
 - **Ecrã inteiro:** quando uma app ocupa o ecrã todo no monitor da barra (Ambiente de Trabalho Remoto, vídeo, jogo, apresentação…), a barra recolhe-se para trás dela e deixa de a tapar, como a barra de tarefas do Windows. Volta quando a app sai do ecrã inteiro ou quando passas para outra janela nesse monitor. Se estiveres a trabalhar noutro monitor, a barra continua escondida enquanto a janela em ecrã inteiro lá estiver.
