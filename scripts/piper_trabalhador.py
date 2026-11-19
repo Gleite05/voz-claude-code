@@ -113,11 +113,21 @@ def main() -> int:
             partes = [c.audio_float_array for c in voz.synthesize(p["texto"], syn_config=config)]
             x = np.concatenate(partes) if partes else np.zeros(0, dtype=np.float32)
             x = afinar(x, taxa, p)
+            pan = max(-1.0, min(1.0, float(p.get("pan") or 0)))
             with wave.open(p["ficheiro"], "wb") as saida:
-                saida.setnchannels(1)
                 saida.setsampwidth(2)
                 saida.setframerate(taxa)
-                saida.writeframes((x * 32767).astype("<i2").tobytes())
+                if pan:
+                    # Som espacial: cada conversa fala do seu lado (o ouvido mais perto fica a 100%).
+                    th = (pan + 1) * math.pi / 4
+                    ge, gd = math.cos(th), math.sin(th)
+                    m = max(ge, gd)
+                    estereo = np.stack([x * (ge / m), x * (gd / m)], axis=1)
+                    saida.setnchannels(2)
+                    saida.writeframes((estereo * 32767).astype("<i2").tobytes())
+                else:
+                    saida.setnchannels(1)
+                    saida.writeframes((x * 32767).astype("<i2").tobytes())
             print(json.dumps({"ok": True, "segundos": round(len(x) / taxa, 2), "niveis": niveis(x, taxa)}), flush=True)
         except Exception as erro:  # noqa: BLE001
             print(json.dumps({"ok": False, "erro": f"{type(erro).__name__}: {erro}"}), flush=True)

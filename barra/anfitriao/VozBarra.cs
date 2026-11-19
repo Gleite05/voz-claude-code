@@ -389,6 +389,13 @@ namespace VozBarra
         bool appBarRegistada;
         int larguraFlutuante = 520;
         readonly System.Windows.Forms.Timer relogio = new System.Windows.Forms.Timer();
+        // Sensor do ambiente: ausência (rato/teclado parados), microfone ocupado e ecrã inteiro.
+        readonly System.Windows.Forms.Timer sensor = new System.Windows.Forms.Timer();
+        bool ausente;
+        DateTime ausenteDesde;
+        string ambienteEnviado = "";
+        DateTime ambienteEm = DateTime.MinValue;
+        const uint AUSENTE_MS = 5 * 60 * 1000;
         bool escondidaVisivel = true;
         DateTime ratoSaiuEm = DateTime.MinValue;
         DateTime mostrarAte = DateTime.MinValue;
@@ -423,6 +430,8 @@ namespace VozBarra
             menu = new Menu(dados, this);
             relogio.Interval = 120;
             relogio.Tick += delegate { Vigiar(); };
+            sensor.Interval = 2000;
+            sensor.Tick += delegate { Sentir(); };
             Iniciar(dados.Url("barra"));
         }
 
@@ -434,6 +443,7 @@ namespace VozBarra
             AplicarPosicao(Posicao);
             RegistarAtalhos();
             relogio.Start();
+            sensor.Start();
             bandeja.Icon = Nativo.IconeVoz((int)Math.Round(16 * Escala));
             bandeja.Visible = true;
         }
@@ -648,6 +658,35 @@ namespace VozBarra
                 BeginInvoke((Action)delegate { PosicionarAppBar(Posicao); });
             }
             base.WndProc(ref m);
+        }
+
+        // ---------- ambiente ----------
+        /// Diz à página (que diz ao servidor) quando voltas ao computador e quando estás numa reunião
+        /// ou apresentação, para a voz se calar sozinha e resumir o que aconteceu enquanto estavas fora.
+        void Sentir()
+        {
+            uint parado = Nativo.TempoParadoMs();
+            if (!ausente && parado >= AUSENTE_MS)
+            {
+                ausente = true;
+                ausenteDesde = DateTime.UtcNow.AddMilliseconds(-(double)parado);
+            }
+            else if (ausente && parado < 4000)
+            {
+                ausente = false;
+                var desde = (long)(ausenteDesde - new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalMilliseconds;
+                Enviar(new Dictionary<string, object> { { "tipo", "regresso" }, { "desde", desde } });
+            }
+            string app = Nativo.MicrofoneEmUso();
+            int n = Nativo.EstadoNotificacoes();
+            bool ecraInteiro = n == 2 || n == 3 || n == 4; // QUNS_BUSY, QUNS_RUNNING_D3D_FULL_SCREEN, QUNS_PRESENTATION_MODE
+            string chave = (app ?? "") + "|" + ecraInteiro;
+            if (chave != ambienteEnviado || (DateTime.Now - ambienteEm).TotalSeconds >= 10)
+            {
+                ambienteEnviado = chave;
+                ambienteEm = DateTime.Now;
+                Enviar(new Dictionary<string, object> { { "tipo", "ambiente" }, { "micro", app != null }, { "app", app ?? "" }, { "ecraInteiro", ecraInteiro } });
+            }
         }
 
         // ---------- escondida / flutuante ----------
@@ -894,6 +933,59 @@ namespace VozBarra
         }
 
         [DllImport("user32.dll")] static extern bool DestroyIcon(IntPtr h);
+
+        [StructLayout(LayoutKind.Sequential)]
+        struct LASTINPUTINFO { public uint cbSize; public uint dwTime; }
+        [DllImport("user32.dll")] static extern bool GetLastInputInfo(ref LASTINPUTINFO p);
+        [DllImport("shell32.dll")] static extern int SHQueryUserNotificationState(out int estado);
+
+        /// Há quanto tempo não mexes no rato nem no teclado.
+        public static uint TempoParadoMs()
+        {
+            var l = new LASTINPUTINFO();
+            l.cbSize = (uint)Marshal.SizeOf(l);
+            if (!GetLastInputInfo(ref l)) return 0;
+            return unchecked((uint)Environment.TickCount - l.dwTime);
+        }
+
+        /// QUERY_USER_NOTIFICATION_STATE (2 = ecrã inteiro, 3 = jogo D3D, 4 = modo de apresentação, 5 = normal).
+        public static int EstadoNotificacoes()
+        {
+            try { int e; return SHQueryUserNotificationState(out e) == 0 ? e : 0; } catch { return 0; }
+        }
+
+        /// Nome da app que está a usar o microfone agora (Teams, Zoom…), ou null. O ditado da Voz não conta.
+        public static string MicrofoneEmUso()
+        {
+            try
+            {
+                using (var k = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\microphone"))
+                {
+                    if (k == null) return null;
+                    string r = ProcurarMicrofone(k, false);
+                    if (r != null) return r;
+                    using (var np = k.OpenSubKey("NonPackaged")) return np == null ? null : ProcurarMicrofone(np, true);
+                }
+            }
+            catch { return null; }
+        }
+
+        static string ProcurarMicrofone(Microsoft.Win32.RegistryKey k, bool caminhos)
+        {
+            foreach (var nome in k.GetSubKeyNames())
+            {
+                if (nome == "NonPackaged") continue;
+                if (nome.IndexOf("#.claude#voz#", StringComparison.OrdinalIgnoreCase) >= 0) continue; // o ditado da própria Voz
+                using (var s = k.OpenSubKey(nome))
+                {
+                    if (s == null) continue;
+                    object ini = s.GetValue("LastUsedTimeStart"), fim = s.GetValue("LastUsedTimeStop");
+                    if (ini is long && (long)ini > 0 && fim is long && (long)fim == 0)
+                        return caminhos ? Path.GetFileNameWithoutExtension(nome.Replace('#', '\\')) : nome.Split('_')[0];
+                }
+            }
+            return null;
+        }
 
         /// Ícone da área de notificação, desenhado aqui: quadrado laranja arredondado com uma onda de voz.
         public static Icon IconeVoz(int lado)

@@ -10,6 +10,24 @@
     "PreToolUse": [
       { "hooks": [{ "type": "command", "command": "node", "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/gancho.js"], "async": true, "timeout": 10 }] }
     ],
+    "PostToolUse": [
+      { "hooks": [{ "type": "command", "command": "node", "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/gancho.js"], "async": true, "timeout": 10 }] }
+    ],
+    "PostToolUseFailure": [
+      { "hooks": [{ "type": "command", "command": "node", "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/gancho.js"], "async": true, "timeout": 10 }] }
+    ],
+    "SubagentStart": [
+      { "hooks": [{ "type": "command", "command": "node", "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/gancho.js"], "async": true, "timeout": 10 }] }
+    ],
+    "SubagentStop": [
+      { "hooks": [{ "type": "command", "command": "node", "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/gancho.js"], "async": true, "timeout": 10 }] }
+    ],
+    "PreCompact": [
+      { "hooks": [{ "type": "command", "command": "node", "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/gancho.js"], "async": true, "timeout": 10 }] }
+    ],
+    "PostCompact": [
+      { "hooks": [{ "type": "command", "command": "node", "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/gancho.js"], "async": true, "timeout": 10 }] }
+    ],
     "PermissionRequest": [
       { "hooks": [{ "type": "command", "command": "node", "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/permissao.js"], "timeout": 600 }] }
     ],

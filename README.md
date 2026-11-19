@@ -17,12 +17,19 @@
 - 🏝️ **Ilha dinâmica** — uma cápsula de vidro no centro da barra mostra a ação, a legenda enquanto fala, os pedidos de autorização e quando uma conversa termina.
 - 🗣️ **Diz o que o Claude está a fazer** — «A editar config.ts», «A correr o npm», «A ligar a um servidor remoto» — e **lê as respostas enquanto aparecem**, sem código, tabelas nem links.
 - 💬 **Conversas na barra** — um avatar com anel por conversa (o anel enche com o contexto, roda enquanto trabalha e pulsa quando precisa de ti); clica nele para veres as últimas ações e **responderes diretamente**.
-- 🛡️ **Aprovar permissões pela barra** — o pedido aparece num cartão com o comando exato: *Permitir* ou *Recusar*.
+- ✅ **Diz como correu** — «Os 38 testes passaram», «A compilação falhou», «Push feito», comandos longos com a duração; a ilha fica vermelha quando algo importante falha e mostra um **cronómetro** enquanto um comando corre.
+- 📋 **Progresso das tarefas e sub-agentes** — o anel «4/7» da lista de tarefas, os assistentes a orbitar o avatar da conversa e o aviso quando a conversa é compactada.
+- 🛡️ **Aprovar permissões pela barra** — o pedido aparece num cartão com o comando exato ou o **diff colorido** do que vai mudar: *Permitir*, *Recusar* ou **«Sempre»** (a regra que o próprio Claude Code sugere, ex.: `git push:*`).
+- 🎧 **Mãos-livres e autorizar por voz** — depois de cada resposta a barra ouve-te e envia o que disseres (pára sozinha quando te calas); nos pedidos de autorização pergunta «Autorizas?» e percebe «sim», «não» ou «sempre». Desligados por omissão.
 - 🎤 **Falar com o Claude** — dita a resposta; o Whisper transcreve no teu PC.
+- 🔔 **Sons e som espacial** — sons curtos para «passou», «falhou», «autorização» e «terminou»; com várias conversas, cada uma fala do seu lado (esquerda, centro, direita).
+- 🤫 **Calada nas reuniões** — com o microfone ocupado por outra app (Teams, Zoom…) ou um programa em ecrã inteiro, a voz cala-se sozinha.
+- 👋 **«Enquanto estiveste fora»** — quando voltas ao computador, diz o que terminou, o que falhou e o que precisa de ti.
+- 💶 **Custo em euros e «A tua semana»** — quanto custariam os tokens na API (taxa do BCE) e um cartão da semana (horas, conversas, projetos, ferramentas) para copiares como imagem.
 - 🌍 **Vozes de 11 idiomas** — instala mais vozes, escolhe uma voz e um tom para cada conversa, e as respostas noutro idioma usam a voz desse idioma.
 - 🌐 **Interface em português, inglês e espanhol** — a barra e as frases faladas seguem a língua do Windows (ou a que escolheres no clique direito).
 - 🌙 **Não incomodar** — um botão (ou um horário, ex.: 22:00 → 08:00) sem voz nem avisos.
-- 📊 **Tokens do dia** — gráfico dos últimos 7 dias e as conversas que mais gastaram.
+- 📊 **Tokens do dia** — gráfico dos últimos 7 dias, o custo e as conversas que mais gastaram.
 - 🎚️ **Som afinável** — volume, altura, equalizador e predefinições (natural, calma, clara, quente, rádio).
 
 <p align="center"><img src="docs/imagens/ilha.png" width="640" alt="Ilha dinâmica: a trabalhar, a falar e a pedir autorização"></p>
@@ -82,23 +89,29 @@ As opções ficam em `~/.claude/voz/config.json` (ex.: `idioma` — `auto`, `pt`
 
 ## Como funciona
 
-- **Ganchos** do Claude Code (`PreToolUse`, `MessageDisplay` para o texto em tempo real, `Stop`, `Notification`, `PermissionRequest`) enviam os eventos para um **servidor local** (um por utilizador, por um pipe; arranca sozinho).
+- **Ganchos** do Claude Code (`PreToolUse`/`PostToolUse`/`PostToolUseFailure`, `MessageDisplay` para o texto em tempo real, `SubagentStart`/`SubagentStop`, `PreCompact`/`PostCompact`, `Stop`, `Notification`, `PermissionRequest`) enviam os eventos para um **servidor local** (um por utilizador, por um pipe; arranca sozinho).
 - O servidor decide o que dizer, sintetiza com o **Piper** (a frase seguinte prepara-se enquanto a atual toca) e serve a barra em `http://127.0.0.1:47821` (só local, com token).
 - **Responder pela barra** usa um gancho `Stop` com `asyncRewake`: no fim de cada resposta fica à escuta e, quando escreves na barra, o Claude acorda com a tua mensagem. Na conversa, a tua resposta aparece como mensagem do gancho.
 - **Permissões:** na app do Claude, o gancho corre ao lado do diálogo normal (vale quem decidir primeiro). No terminal não espera (para não atrasar o diálogo).
+- **Sons** gerados no próprio PC (não há ficheiros de áudio no repositório); o som espacial passa a voz do Piper a estéreo.
+- **Reuniões e regresso:** o anfitrião da barra vê se outra app está a usar o microfone (o registo de privacidade do Windows), se há um programa em ecrã inteiro e há quanto tempo não mexes no rato nem no teclado.
 - **A barra** é um anfitrião pequeno em C# (`barra/anfitriao/VozBarra.cs`) com a WebView2, encaixado no ecrã como a barra de tarefas, com o vidro acrílico do Windows. Recompila-se sozinha quando o plugin atualiza.
 
 ## Privacidade e segurança
 
 - Tudo corre no teu computador: **nenhum texto, áudio ou dado sai do PC**. Sem telemetria.
 - Acessos à rede só nos instaladores: `piper-tts`, `faster-whisper` e `sounddevice` (PyPI), vozes (Hugging Face, `rhasspy/piper-voices`, MD5 verificado), modelo Whisper (Hugging Face), `uv` (GitHub, SHA-256 verificado) e o kit WebView2 (NuGet, SHA-512 verificado).
+- Depois de instalado, o único acesso à rede é a **taxa de câmbio do Banco Central Europeu** (pública, uma vez por dia, sem enviar nada), para mostrar o custo em euros.
+- O microfone só é usado quando carregas no 🎤/atalho, ou depois de cada resposta e nos pedidos de autorização se ligares o **mãos-livres** ou o **autorizar por voz** (desligados por omissão). A transcrição é local.
 - O servidor local só aceita ligações de `127.0.0.1`, exige um token aleatório guardado na tua pasta de utilizador e verifica o cabeçalho `Host` (contra *DNS rebinding*).
-- A barra lê do histórico local (`~/.claude/projects`) apenas o título das conversas e a contagem de tokens.
+- A barra lê do histórico local (`~/.claude/projects`) apenas o título das conversas, a contagem de tokens, o modelo, a pasta e o nome das ferramentas usadas (para o custo e «A tua semana»).
 
 ## Limites conhecidos
 
 - A voz pt-PT é a melhor gratuita e local que existe hoje («tugão», Piper); não é tão natural como uma voz paga.
 - A barra é só para Windows; a voz funciona em macOS e Linux mas está pouco testada.
+- No mãos-livres, para interromper a voz usa o atalho ou o 🎤: falar por cima seria apanhado pelo próprio microfone.
+- O custo é uma estimativa ao preço público da API; com uma subscrição (Pro/Max) não pagas isto.
 - Cada conversa parada deixa um pequeno processo `node` à escuta de respostas (até 12 h).
 
 ## Desinstalar

@@ -18,7 +18,14 @@
 
 - 🗣️ **Dice lo que Claude está haciendo** — «editando config.ts», «ejecutando npm» — y **lee las respuestas a medida que aparecen**, sin código, tablas ni enlaces.
 - 💬 **Conversaciones en la barra** — un avatar animado por conversación (girando = trabajando, latiendo = te necesita), el último mensaje de cada una y una caja para **responder directamente**.
-- 🛡️ **Aprobar permisos desde la barra** — la petición aparece en una tarjeta con el comando exacto: *Permitir* o *Rechazar*.
+- ✅ **Dice cómo fue** — «Las 38 pruebas pasaron», «La compilación falló», «Push hecho», comandos largos con su duración; la isla se pone roja cuando algo importante falla y muestra un **cronómetro** mientras corre un comando.
+- 📋 **Progreso de tareas y subagentes** — el anillo «4/7» de la lista de tareas, los asistentes orbitando el avatar de la conversación y el aviso cuando se compacta.
+- 🛡️ **Aprobar permisos desde la barra** — la petición aparece en una tarjeta con el comando exacto o el **diff en color** de lo que va a cambiar: *Permitir*, *Rechazar* o **«Siempre»** (la regla que sugiere el propio Claude Code, p. ej. `git push:*`).
+- 🎧 **Manos libres y aprobar por voz** — tras cada respuesta la barra te escucha y envía lo que digas (para sola cuando te callas); en las peticiones de permiso pregunta «¿Lo permites?» y entiende «sí», «no» o «siempre». Desactivados por defecto.
+- 🔔 **Sonidos y sonido espacial** — sonidos cortos para pasó, falló, permiso y terminó; con varias conversaciones, cada una habla desde su lado.
+- 🤫 **Callada en reuniones** — con el micrófono ocupado por otra app (Teams, Zoom…) o algo a pantalla completa, la voz se calla sola.
+- 👋 **«Mientras estabas fuera»** — al volver al ordenador te dice qué terminó, qué falló y qué te necesita.
+- 💶 **Coste en euros y «Tu semana»** — cuánto costarían los tokens en la API (tasa del BCE) y una tarjeta semanal (horas, conversaciones, proyectos, herramientas) para copiar como imagen.
 - 🎤 **Hablar con Claude** — dicta tu respuesta; Whisper la transcribe en tu PC.
 - 🏝️ **Isla dinámica** — una cápsula de cristal en el centro de la barra muestra la acción, los subtítulos mientras habla, las peticiones de permiso y cuándo termina una conversación.
 - 🌐 **Interfaz en español, inglés y portugués** — la barra y los avisos siguen el idioma del sistema.
@@ -65,6 +72,8 @@ Instala la **voz** (Piper), el **dictado** (Whisper) y, en Windows, la **barra**
 
 - Todo funciona en tu ordenador: **ningún texto, audio o dato sale de tu PC**. Sin telemetría.
 - Acceso a la red solo durante la instalación (PyPI, Hugging Face con MD5, `uv` con SHA-256, WebView2 de NuGet con SHA-512).
+- Tras la instalación, el único acceso a la red es la **tasa de cambio del Banco Central Europeo** (pública, una vez al día, sin enviar nada) para mostrar el coste en euros.
+- El micrófono solo se usa al pulsar 🎤/el atajo, o tras cada respuesta y en las peticiones de permiso si activas **manos libres** o **aprobar por voz** (desactivados por defecto). La transcripción es local.
 - El servidor local solo escucha en `127.0.0.1`, exige un token aleatorio y comprueba la cabecera `Host`.
 
 ## Desinstalar

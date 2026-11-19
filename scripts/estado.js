@@ -4,9 +4,12 @@
 
 const fs = require('node:fs')
 const texto = require('./texto')
+const tarefas = require('./tarefas')
 
 const SESSAO_VELHA_MS = 45 * 60 * 1000
 const LER_TOKENS_MS = 12 * 1000
+const FERRAMENTA_VELHA_MS = 30 * 60 * 1000 // uma ferramenta sem fim há tanto tempo já não está a correr
+const COMPACTAR_MAX_MS = 5 * 60 * 1000
 
 const sessoes = new Map()
 let ouvintes = []
@@ -108,6 +111,12 @@ function obter(msg) {
       resposta: '',
       respostaEm: null,
       historico: [], // últimas ações (para a linha temporal da barra)
+      correr: new Map(), // tool_use_id -> início (ferramentas a correr agora)
+      temFim: false, // esta versão do Claude Code manda PostToolUse? (sem isso não há cronómetro)
+      falha: null, // { texto, t } do último comando importante que falhou
+      subagentes: new Map(), // agent_id -> { tipo, inicio }
+      compactar: null, // início da compactação em curso
+      plano: null, // lista de tarefas [{ t, s }]
     }
     sessoes.set(id, s)
   }
@@ -141,6 +150,9 @@ function registar(msg) {
       atualizarUso(s, true)
       break
     case 'UserPromptSubmit':
+      s.correr.clear()
+      s.falha = null
+      { const r = tarefas.resumir(s.plano); if (r && r.feitas === r.total) s.plano = null } // plano acabado: o pedido novo começa limpo
       s.estado = 'trabalhar'
       s.acao = texto.frase(msg.idioma, 'aPensar')
       if (msg.pedido) s.pedido = msg.pedido
@@ -151,15 +163,48 @@ function registar(msg) {
     case 'PreToolUse': {
       const frase = texto.anunciarFerramenta(msg.ferramenta, msg.entrada, msg.idioma)
       s.estado = 'trabalhar'
+      s.compactar = null
       if (!s.inicio) s.inicio = Date.now()
+      if (msg.id) s.correr.set(msg.id, Date.now())
       if (frase) {
         s.acao = frase.replace(/\.$/, '')
-        s.historico.push({ t: Date.now(), acao: s.acao })
+        s.historico.push({ t: Date.now(), acao: s.acao, id: msg.id })
         if (s.historico.length > 6) s.historico.shift()
       }
+      s.plano = tarefas.atualizar(s.plano, msg.ferramenta, msg.entrada)
       atualizarUso(s, false)
       break
     }
+    case 'PostToolUse':
+    case 'PostToolUseFailure': {
+      s.temFim = true
+      const desde = msg.id ? s.correr.get(msg.id) : null
+      if (msg.id) s.correr.delete(msg.id)
+      const ok = msg.evento === 'PostToolUse'
+      const h = msg.id && s.historico.find(x => x.id === msg.id)
+      if (h) {
+        h.ok = ok || !!msg.interrompido
+        h.dur = Number.isFinite(msg.duracao) ? msg.duracao : desde ? Date.now() - desde : undefined
+      }
+      if (!ok && !msg.interrompido) {
+        const leg = texto.legendaFalha(msg.ferramenta, msg.entrada, msg.idioma)
+        if (leg) s.falha = { texto: leg, t: Date.now() }
+      }
+      break
+    }
+    case 'SubagentStart':
+      if (msg.subagente && msg.tipoAgente) s.subagentes.set(msg.subagente, { tipo: msg.tipoAgente, inicio: Date.now() })
+      break
+    case 'SubagentStop':
+      if (!msg.subagente || !s.subagentes.delete(msg.subagente)) return
+      break
+    case 'PreCompact':
+      s.compactar = Date.now()
+      break
+    case 'PostCompact':
+      s.compactar = null
+      atualizarUso(s, true)
+      break
     case 'MessageDisplay':
       if (s.estado !== 'atencao') {
         s.estado = 'trabalhar'
@@ -171,6 +216,8 @@ function registar(msg) {
       s.acao = texto.frasesNotificacao(msg.mensagem, msg.idioma).replace(/\.$/, '')
       break
     case 'Stop':
+      s.correr.clear()
+      s.compactar = null
       s.estado = 'terminou'
       s.acao = texto.frase(msg.idioma, 'terminou')
       s.fim = Date.now()
@@ -211,6 +258,28 @@ function pedidoPelaBarra(id, texto) {
   avisar()
 }
 
+/** Desde quando corre a ferramenta mais antiga ainda sem fim (só se o Claude Code avisar quando acabam). */
+function emCursoDesde(s) {
+  if (!s.temFim || s.estado !== 'trabalhar' || !s.correr.size) return null
+  const agora = Date.now()
+  let min = null
+  for (const [id, t] of s.correr) {
+    if (agora - t > FERRAMENTA_VELHA_MS) s.correr.delete(id)
+    else if (min === null || t < min) min = t
+  }
+  return min
+}
+
+function subagentesDe(s) {
+  const agora = Date.now()
+  const out = []
+  for (const [id, a] of s.subagentes) {
+    if (agora - a.inicio > FERRAMENTA_VELHA_MS) s.subagentes.delete(id)
+    else out.push({ id, tipo: a.tipo, inicio: a.inicio })
+  }
+  return out
+}
+
 function lista() {
   return [...sessoes.values()]
     .sort((a, b) => b.ultimo - a.ultimo)
@@ -223,7 +292,12 @@ function lista() {
       respostaEm: s.respostaEm,
       estado: s.estado,
       acao: s.acao,
-      historico: s.historico.slice(-4),
+      historico: s.historico.slice(-4).map(({ t, acao, ok, dur }) => ({ t, acao, ok, dur })),
+      emCursoDesde: emCursoDesde(s),
+      falha: s.falha,
+      subagentes: subagentesDe(s),
+      compactar: !!s.compactar && Date.now() - s.compactar < COMPACTAR_MAX_MS,
+      tarefas: tarefas.resumir(s.plano),
       inicio: s.inicio,
       fim: s.fim,
       uso: s.uso,

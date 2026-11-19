@@ -9,7 +9,8 @@ const { spawn } = require('node:child_process')
 const { CAMINHOS, WIN, garantirPasta, lerConfig, escreverConfig, log, piperInstalado } = require('./comum')
 const texto = require('./texto')
 const estado = require('./estado')
-const { criarMotor } = require('./motores')
+const { criarMotor, criarLeitorWav } = require('./motores')
+const sons = require('./sons')
 const { arrancarWeb, PASTA_BARRA, versao } = require('./web')
 const vozes = require('./vozes')
 const uso = require('./uso')
@@ -40,8 +41,65 @@ const pendentes = new Map() // sessão -> [textos] escritos na barra enquanto a 
 const permissoes = new Map() // id -> { socket, sessao, ferramenta, resumo, descricao, criado }
 const ordemSessoes = [] // pela ordem em que apareceram (para dar um tom diferente a cada conversa)
 let aOuvir = false
+let aOuvirAuto = false // a escuta automática (autorizar por voz, mãos-livres) — pára sozinha quando te calas
+const aoAcabarDeFalar = [] // quem espera que a voz se cale (para começar a ouvir)
 
-const { emSilencio, idiomaEfetivo } = require('./comum')
+const { emSilencio: silencioMarcado, idiomaEfetivo } = require('./comum')
+
+// ---------- ambiente (vindo do anfitrião da barra) ----------
+// Microfone ocupado por outra app (Teams, Zoom…) ou um programa em ecrã inteiro / apresentação:
+// com «silencioReunioes», a voz cala-se sozinha enquanto durar.
+const AMBIENTE_VELHO_MS = 25 * 1000 // o anfitrião manda o estado a cada 10 s; sem notícias, deixa de contar
+let ambiente = { micro: false, app: '', ecraInteiro: false, t: 0 }
+
+function emReuniao(cfg) {
+  if (cfg.silencioReunioes === false || Date.now() - ambiente.t > AMBIENTE_VELHO_MS) return null
+  if (ambiente.micro) return { motivo: 'micro', app: ambiente.app }
+  if (ambiente.ecraInteiro) return { motivo: 'ecra', app: '' }
+  return null
+}
+
+/** Silêncio por botão, por horário ou por reunião. */
+function emSilencio(cfg) {
+  return silencioMarcado(cfg) || !!emReuniao(cfg)
+}
+
+function atualizarAmbiente(a) {
+  const cfg = lerConfig()
+  const antes = !!emReuniao(cfg)
+  ambiente = { micro: !!a.micro, app: String(a.app || '').slice(0, 60), ecraInteiro: !!a.ecraInteiro, t: Date.now() }
+  const agora = !!emReuniao(cfg)
+  if (agora !== antes) {
+    log(agora ? `reunião/apresentação (${ambiente.app || 'ecrã inteiro'}): voz em silêncio` : 'fim da reunião: voz de volta')
+    if (agora) pararTudo()
+    publicar()
+  }
+  return { ok: true }
+}
+
+/** Voltaste ao computador: diz (e mostra) o que aconteceu enquanto estavas fora. */
+function regresso(desde) {
+  const cfg = lerConfig()
+  if (cfg.resumoAoVoltar === false || !Number.isFinite(desde)) return { ok: true }
+  const idioma = idiomaEfetivo(cfg)
+  const S = estado.lista()
+  const pedem = new Set([...permissoes.values()].map(p => p.sessao))
+  const r = {
+    terminaram: S.filter(x => x.estado === 'terminou' && x.fim && x.fim >= desde).map(x => x.titulo),
+    precisam: S.filter(x => x.estado === 'atencao' || pedem.has(x.id)).map(x => x.titulo),
+    falhas: S.filter(x => x.falha && x.falha.t >= desde).map(x => ({ titulo: x.titulo, texto: x.falha.texto })),
+    trabalham: S.filter(x => x.estado === 'trabalhar' && !pedem.has(x.id)).map(x => x.titulo),
+  }
+  const frase = texto.resumoAusencia(r, idioma)
+  if (!frase) return { ok: true, nada: true }
+  log(`regresso depois de ${Math.round((Date.now() - desde) / 60000)} min: ${frase}`)
+  if (web) web.emitir('regresso', { ...r, desde })
+  if (cfg.ligado && !emSilencio(cfg) && !aOuvir) {
+    tocarSom('pronto', null)
+    enfileirar('aviso', frase, null)
+  }
+  return { ok: true, frase }
+}
 
 function publicar() {
   if (web) web.publicar()
@@ -68,6 +126,35 @@ function obterMotor() {
     log(`motor: ${motor.nome}`)
   }
   return motor
+}
+
+// ---------- sons e som espacial ----------
+
+let leitorSons = null
+function obterLeitorSons() {
+  if (!leitorSons) {
+    leitorSons = criarLeitorWav()
+    leitorSons.aquecer()
+  }
+  return leitorSons
+}
+
+// Lado de cada conversa: a primeira ao centro, as outras alternam esquerda/direita.
+const PANS = [0, -0.6, 0.6, -0.3, 0.3]
+function panDe(sessao, cfg) {
+  if (!sessao || cfg.somEspacial === false) return 0
+  const vivas = new Set(estado.lista().map(x => x.id))
+  const ordem = ordemSessoes.filter(id => vivas.has(id))
+  if (ordem.length < 2) return 0
+  const i = ordem.indexOf(sessao)
+  return i < 0 ? 0 : PANS[i % PANS.length]
+}
+
+/** Um som curto antes de um aviso (se os sons estiverem ligados). */
+function tocarSom(nome, sessao) {
+  const cfg = lerConfig()
+  if (cfg.sons === false || !cfg.ligado || emSilencio(cfg) || aOuvir) return
+  enfileirar('som', nome, sessao)
 }
 
 // ---------- fila ----------
@@ -107,10 +194,21 @@ async function bombear() {
   }
   const preparar = item => {
     const cfg = lerConfig()
+    if (item.tipo === 'som') {
+      try {
+        return Promise.resolve({ som: sons.caminho(item.texto, { volume: cfg.volume, pan: panDe(item.sessao, cfg) }) })
+      } catch (erro) {
+        log(`som: ${erro.message}`)
+        return Promise.resolve(null)
+      }
+    }
     // Voz da frase: a escolhida para a conversa (ou uma variação de tom automática) e o idioma do texto.
     const v = item.modelo ? { modelo: item.modelo, altura: 0 } : vozes.escolher(cfg, item.sessao, item.texto, item.tipo, ordemSessoes)
+    v.pan = panDe(item.sessao, cfg)
     return m.preparar(texto.pronunciar(item.texto, cfg.pronuncias), cfg, v).catch(erro => (log(`preparar: ${erro.message}`), null))
   }
+  const tocar = p => (p.som ? obterLeitorSons().tocar(p.som) : m.tocar(p))
+  const descartar = p => p && !p.som && m.descartar(p)
   try {
     let atual = tirarProximo()
     let prep = atual && preparar(atual)
@@ -120,19 +218,24 @@ async function bombear() {
       const seguinte = tirarProximo()
       const prepSeguinte = seguinte && preparar(seguinte)
       if (g !== geracao) {
-        if (pedaco) m.descartar(pedaco)
-        if (prepSeguinte) prepSeguinte.then(p => p && m.descartar(p))
+        descartar(pedaco)
+        if (prepSeguinte) prepSeguinte.then(descartar)
         break
       }
       while (pausado && g === geracao) await esperarRetoma()
       if (pedaco && g === geracao) {
-        falando = { texto: atual.texto, sessao: atual.sessao, tipo: atual.tipo }
-        publicar()
-        await m.tocar(pedaco).catch(erro => log(`tocar: ${erro.message}`))
-        falando = null
-        publicar()
-      } else if (pedaco) {
-        m.descartar(pedaco)
+        const som = !!pedaco.som
+        if (!som) {
+          falando = { texto: atual.texto, sessao: atual.sessao, tipo: atual.tipo }
+          publicar()
+        }
+        await Promise.resolve(tocar(pedaco)).catch(erro => log(`tocar: ${erro.message}`))
+        if (!som) {
+          falando = null
+          publicar()
+        }
+      } else {
+        descartar(pedaco)
       }
       atual = seguinte
       prep = prepSeguinte
@@ -140,13 +243,20 @@ async function bombear() {
         atual = tirarProximo()
         prep = atual && preparar(atual)
       }
-      if (g !== geracao && prep) prep.then(p => p && m.descartar(p))
+      if (g !== geracao && prep) prep.then(descartar)
     }
   } finally {
     aFalar = false
     ultimaAtividade = Date.now()
     if (fila.length) setImmediate(bombear)
+    else for (const fn of aoAcabarDeFalar.splice(0)) setImmediate(fn)
   }
+}
+
+/** Corre fn quando a voz acabar de falar (ou já, se estiver calada). */
+function depoisDeFalar(fn) {
+  if (!aFalar && !fila.length) setImmediate(fn)
+  else aoAcabarDeFalar.push(fn)
 }
 
 function pararTudo() {
@@ -187,6 +297,7 @@ function textoDeMensagem(msg, cfg) {
       m.proximo++
       for (const frase of texto.processarDelta(m.estado, lote.delta)) enfileirar('fala', frase, msg.sessao)
       if (lote.final) {
+        for (const frase of texto.fecharMensagem(m.estado)) enfileirar('fala', frase, msg.sessao)
         mensagens.delete(id)
         return
       }
@@ -218,6 +329,14 @@ function avisarInstalacao() {
 
 const DEPURAR = Boolean(process.env.VOZ_DEBUG)
 
+const TURNO_LONGO_MS = 45 * 1000
+const inicioTurno = new Map() // sessão -> quando escreveste o último pedido
+function duracaoTurno(s) {
+  const t = inicioTurno.get(s)
+  return t ? Date.now() - t : 0
+}
+const permissoesDaSessao = s => [...permissoes.values()].some(p => p.sessao === s)
+
 function tratarEvento(msg) {
   const cfg = lerConfig()
   if (DEPURAR) log(`evento ${msg.evento} sessão=${String(msg.sessao).slice(0, 8)}${msg.ferramenta ? ' ' + msg.ferramenta : ''}${msg.delta !== undefined ? ` #${msg.index}${msg.final ? ' final' : ''} ${JSON.stringify(String(msg.delta).slice(0, 60))}` : ''}`)
@@ -226,6 +345,7 @@ function tratarEvento(msg) {
   estado.registar(msg) // a barra vê tudo, mesmo com a voz desligada
   if (msg.sessao && !msg.agente && !ordemSessoes.includes(msg.sessao)) ordemSessoes.push(msg.sessao)
   if (msg.evento === 'UserPromptSubmit' && !msg.agente) {
+    inicioTurno.set(msg.sessao, Date.now())
     sessaoFoco = msg.sessao
     largarEscuta(msg.sessao) // escreveste na conversa: a escuta da barra já não é precisa
   }
@@ -258,6 +378,26 @@ function tratarEvento(msg) {
       enfileirar('acao', texto.anunciarFerramenta(msg.ferramenta, msg.entrada, idioma), s)
       return
 
+    case 'PostToolUse':
+    case 'PostToolUseFailure': {
+      if (cfg.anunciarResultados === false) return
+      const ok = msg.evento === 'PostToolUse'
+      const r = texto.avaliarResultado(msg.ferramenta, msg.entrada, { ok, erro: msg.erro, saida: msg.saida, duracaoMs: msg.duracao, interrompido: msg.interrompido }, idioma)
+      if (!r) return
+      if (emFoco(s, cfg)) {
+        tocarSom(r.bom ? 'ok' : 'falha', s)
+        enfileirar('aviso', r.frase, s)
+      } else if (!r.bom && cfg.avisarOutrasSessoes) {
+        tocarSom('falha', s)
+        enfileirar('aviso', texto.frase(idioma, 'naSessao', nomePasta(msg.cwd, idioma), r.frase), s)
+      }
+      return
+    }
+
+    case 'PreCompact':
+      if (msg.gatilho === 'auto' && emFoco(s, cfg) && cfg.anunciarAcoes) enfileirar('aviso', texto.frase(idioma, 'compactar'), s)
+      return
+
     case 'MessageDisplay':
       if (!cfg.lerRespostas || !emFoco(s, cfg)) return
       turnoComTexto.add(s)
@@ -266,6 +406,10 @@ function tratarEvento(msg) {
 
     case 'Notification': {
       const frase = texto.frasesNotificacao(msg.mensagem, idioma)
+      // O pedido de autorização já tocou o seu som quando chegou à barra.
+      const pedeAutorizacao = /permission|permiss/i.test(String(msg.mensagem || '')) && permissoesDaSessao(s)
+      if (!pedeAutorizacao) tocarSom('atencao', s)
+      if (pedeAutorizacao && cfg.aprovarPorVoz) return // a pergunta falada já diz o que é
       if (emFoco(s, cfg)) enfileirar('aviso', frase, s)
       else if (cfg.avisarOutrasSessoes) enfileirar('aviso', texto.frase(idioma, 'naSessao', nomePasta(msg.cwd, idioma), frase), s)
       return
@@ -275,10 +419,16 @@ function tratarEvento(msg) {
       if (emFoco(s, cfg)) {
         // Versões sem MessageDisplay: lê a resposta final de uma vez.
         if (!turnoComTexto.has(s) && cfg.lerRespostas && msg.ultima) {
-          const estado = texto.novoEstado(cfg.maxCaracteres, idioma)
-          for (const frase of texto.processarDelta(estado, msg.ultima)) enfileirar('fala', frase, s)
+          const est = texto.novoEstado(cfg.maxCaracteres, idioma)
+          for (const frase of texto.processarDelta(est, msg.ultima)) enfileirar('fala', frase, s)
+          for (const frase of texto.fecharMensagem(est)) enfileirar('fala', frase, s)
         }
+        // Um pedido demorado acaba com um acorde (depois de ler a resposta): sabes que podes voltar.
+        if (duracaoTurno(s) >= TURNO_LONGO_MS && !cfg.maosLivres) tocarSom('pronto', s)
+        // Mãos-livres: depois de ler a resposta, ouve-te para continuares a conversa.
+        if (cfg.maosLivres && !msg.agente) depoisDeFalar(() => conversarPorVoz(s).catch(erro => log(`mãos-livres: ${erro.message}`)))
       } else if (cfg.avisarOutrasSessoes) {
+        tocarSom('pronto', s)
         enfileirar('aviso', texto.frase(idioma, 'sessaoTerminou', nomePasta(msg.cwd, idioma)), s)
       }
       turnoComTexto.delete(s)
@@ -404,6 +554,8 @@ function registarPermissao(p, socket) {
   if (!p || !p.id) return
   permissoes.set(p.id, { ...p, socket, criado: Date.now() })
   log(`pedido de autorização (${p.ferramenta}) da sessão ${String(p.sessao).slice(0, 8)}`)
+  tocarSom('atencao', p.sessao)
+  perguntarPorVoz(p)
   publicar()
   // Se o Claude Code decidir por outro lado (diálogo da app) ou desistir, o gancho fecha a ligação.
   socket.on('close', () => {
@@ -414,14 +566,75 @@ function registarPermissao(p, socket) {
 function decidirPermissao(id, decisao) {
   const p = permissoes.get(id)
   if (!p) return { ok: false, erro: texto.frase(idiomaEfetivo(lerConfig()), 'jaRespondido') }
-  if (decisao !== 'allow' && decisao !== 'deny') return { ok: false, erro: 'decisão inválida' }
+  if (decisao !== 'allow' && decisao !== 'deny' && decisao !== 'always') return { ok: false, erro: 'decisão inválida' }
+  if (decisao === 'always' && !p.sempre) decisao = 'allow'
   permissoes.delete(id)
   try {
     p.socket.write(JSON.stringify({ decisao }) + '\n')
   } catch {}
-  log(`autorização ${decisao === 'allow' ? 'dada' : 'recusada'} pela barra (${p.ferramenta})`)
+  log(`autorização ${decisao === 'always' ? 'dada para sempre' : decisao === 'allow' ? 'dada' : 'recusada'} pela barra (${p.ferramenta})`)
   publicar()
   return { ok: true }
+}
+
+// ---------- escuta automática: autorizar por voz e mãos-livres ----------
+
+/** Um «bip» e depois ouve até te calares. Devolve { texto, semFala } ou null se não der para ouvir. */
+async function escutarVoz(o, sessao) {
+  const cfg = lerConfig()
+  if (aOuvir || !ouvido.instalado() || emSilencio(cfg)) return null
+  if (cfg.sons !== false && cfg.ligado) await new Promise(r => (enfileirar('som', 'ouvir', sessao), depoisDeFalar(r)))
+  if (aOuvir) return null
+  aOuvir = true
+  aOuvirAuto = true
+  publicar()
+  const idioma = cfg.ditadoIdioma && cfg.ditadoIdioma !== 'auto' ? cfg.ditadoIdioma : idiomaEfetivo(cfg)
+  let r
+  try {
+    r = await ouvido.escutar({ idioma, ...o }, cfg.ditadoModelo)
+  } finally {
+    aOuvir = false
+    aOuvirAuto = false
+    publicar()
+  }
+  return r && r.ok ? r : null
+}
+
+/** Pedido de autorização falado: diz o que é, ouve «sim», «não» ou «sempre» e decide. */
+function perguntarPorVoz(p) {
+  const cfg = lerConfig()
+  if (!cfg.aprovarPorVoz || !cfg.ligado || emSilencio(cfg) || !ouvido.instalado()) return
+  const idioma = idiomaEfetivo(cfg)
+  const s = estado.lista().find(x => x.id === p.sessao)
+  enfileirar('aviso', texto.perguntaAutorizacao(p.ferramenta, p.resumo, s ? s.titulo : null, idioma), p.sessao)
+  depoisDeFalar(async () => {
+    if (!permissoes.has(p.id) || aOuvir) return
+    const r = await escutarVoz({ espera: 6, silencio: 0.9, max: 8 }, p.sessao)
+    if (!r || !r.texto || !permissoes.has(p.id)) return
+    const d = texto.classificarResposta(r.texto, idioma)
+    log(`autorizar por voz: «${r.texto}» → ${d || 'não percebi'}`)
+    if (!d) return
+    const res = decidirPermissao(p.id, d)
+    if (res.ok) enfileirar('aviso', texto.fraseVoz(idioma, d === 'deny' ? 'recusado' : d === 'always' && p.sempre ? 'autorizadoSempre' : 'autorizado'), p.sessao)
+  })
+}
+
+/** Mãos-livres: ouve-te e envia o que disseres para a conversa (sem teres de rever nem carregar Enter). */
+async function conversarPorVoz(sessao, o = {}) {
+  const cfg = lerConfig()
+  if (!sessao || !cfg.maosLivres) return
+  if ([...permissoes.values()].some(p => p.sessao === sessao)) return // primeiro responde à autorização
+  const r = await escutarVoz({ espera: o.espera || 8, silencio: 1.3, max: 45 }, sessao)
+  if (!r || !r.texto) return
+  const idioma = idiomaEfetivo(cfg)
+  if (texto.eFimDeConversa(r.texto)) {
+    log(`mãos-livres: «${r.texto}» → fim`)
+    enfileirar('aviso', texto.fraseVoz(idioma, 'fim'), sessao)
+    return
+  }
+  const res = responder(sessao, r.texto)
+  log(`mãos-livres: enviado para ${String(sessao).slice(0, 8)} (${r.texto.length} car.)`)
+  if (web) web.emitir('ditado', { texto: r.texto, enviado: true, entregue: !!(res && res.entregue), sessao })
 }
 
 // ---------- ditado (Whisper) ----------
@@ -429,6 +642,21 @@ function decidirPermissao(id, decisao) {
 async function ouvir(ordem, sessao) {
   const cfg = lerConfig()
   if (!ouvido.instalado()) return { ok: false, erro: texto.frase(idiomaEfetivo(cfg), 'ditadoNaoInstalado') }
+  // Durante uma escuta automática, o botão/atalho termina-a já (ou cancela-a).
+  if (aOuvirAuto && (ordem === 'parar' || ordem === 'iniciar')) {
+    ouvido.acabar(cfg.ditadoModelo)
+    return { ok: true }
+  }
+  if (aOuvirAuto && ordem === 'cancelar') {
+    ouvido.cancelar(cfg.ditadoModelo)
+    return { ok: true }
+  }
+  // Mãos-livres: o atalho ouve até te calares e envia logo.
+  if (ordem === 'iniciar' && cfg.maosLivres) {
+    pararTudo()
+    conversarPorVoz(sessao || sessaoFoco, { espera: 10 }).catch(erro => log(`mãos-livres: ${erro.message}`))
+    return { ok: true, aOuvir: true }
+  }
   if (ordem === 'iniciar') {
     pararTudo() // não grava a própria voz
     aOuvir = true
@@ -501,7 +729,7 @@ const CHAVES_BARRA = new Set([
   'ligado', 'anunciarAcoes', 'lerRespostas', 'velocidade', 'volume', 'altura', 'graves', 'medios', 'agudos',
   'soSessaoAtiva', 'avisarOutrasSessoes', 'barraPosicao', 'barraModulos', 'barraArranque', 'barraTema',
   'barraAvisos', 'respostasPelaBarra', 'naoIncomodar', 'silencioHorario', 'vozPorConversa', 'idiomaAuto',
-  'vozPadrao', 'aprovarPelaBarra', 'barraEcra', 'ditadoIdioma', 'ditadoModelo', 'idioma',
+  'vozPadrao', 'aprovarPelaBarra', 'barraEcra', 'ditadoIdioma', 'ditadoModelo', 'idioma', 'anunciarResultados', 'sons', 'somEspacial', 'silencioReunioes', 'resumoAoVoltar', 'moeda', 'aprovarPorVoz', 'maosLivres',
 ])
 
 function estadoParaBarra() {
@@ -522,7 +750,10 @@ function estadoParaBarra() {
     falando,
     pausado,
     silencio: emSilencio(c),
+    reuniao: emReuniao(c),
     aOuvir,
+    aOuvirAuto,
+    ditadoInstalado: ouvido.instalado(),
     naFila: fila.length,
     permissoes: [...permissoes.values()].map(({ socket, ...p }) => p),
     vozes: {
@@ -554,6 +785,8 @@ function pedidoDaBarra(p) {
   if (p.acao === 'permissao') return decidirPermissao(p.id, p.decisao)
   if (p.acao === 'ouvir') return ouvir(p.ordem, p.sessao)
   if (p.acao === 'vozes') return pedidoVozes(p)
+  if (p.acao === 'ambiente') return atualizarAmbiente(p)
+  if (p.acao === 'regresso') return regresso(Number(p.desde))
   if (p.acao === 'foco' && p.sessao) {
     sessaoFoco = p.sessao
     publicar()
@@ -592,6 +825,7 @@ function aplicarArranque(modo) {
 function sair() {
   try {
     if (motor) motor.fechar()
+    if (leitorSons) leitorSons.fechar()
     ouvido.fechar()
   } catch {}
   setTimeout(() => process.exit(0), 50)

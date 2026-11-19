@@ -24,6 +24,13 @@ const FRASES = {
     naSessao: (p, f) => `Na sessão de ${p}: ${f}`, sessaoTerminou: p => `A sessão de ${p} terminou.`, outraPasta: 'outra pasta',
     instalar: 'Para a voz natural, escreve barra voz, dois pontos, instalar.', testar: 'Olá! A voz está a funcionar.',
     aPensar: 'A pensar', aEscrever: 'A escrever', terminou: 'Terminou',
+    testesOk: n => (n === 1 ? 'O teste passou.' : n ? `Os ${n} testes passaram.` : 'Os testes passaram.'),
+    testesFalha: n => (n === 1 ? 'Falhou um teste.' : n ? `Falharam ${n} testes.` : 'Os testes falharam.'),
+    compilarOk: 'Compilação concluída.', compilarFalha: 'A compilação falhou.', pushOk: 'Push feito.', pushFalha: 'O push falhou.',
+    instalarOk: 'Instalação concluída.', instalarFalha: 'A instalação falhou.', deployOk: 'Publicação concluída.', deployFalha: 'A publicação falhou.',
+    longoOk: d => `Comando concluído, demorou ${d}.`, compactar: 'A compactar a conversa para libertar contexto.', aCompactar: 'A compactar a conversa',
+    falhou: p => `${p} falhou`, seg: n => (n === 1 ? '1 segundo' : `${n} segundos`), min: n => (n === 1 ? '1 minuto' : `${n} minutos`), e: 'e',
+    topicos: l => `Também fala de ${l}.`, perguntaFim: q => `E no fim pergunta: ${q}`,
     ditadoNaoInstalado: 'O ditado não está instalado: corre /voz:instalar ouvir.', jaRespondido: 'este pedido já foi respondido',
   },
   en: {
@@ -45,6 +52,13 @@ const FRASES = {
     naSessao: (p, f) => `In the ${p} session: ${f}`, sessaoTerminou: p => `The ${p} session has finished.`, outraPasta: 'another folder',
     instalar: 'For a natural voice, type slash voz, colon, instalar.', testar: 'Hello! The voice is working.',
     aPensar: 'Thinking', aEscrever: 'Writing', terminou: 'Done',
+    testesOk: n => (n === 1 ? 'The test passed.' : n ? `All ${n} tests passed.` : 'The tests passed.'),
+    testesFalha: n => (n === 1 ? 'One test failed.' : n ? `${n} tests failed.` : 'The tests failed.'),
+    compilarOk: 'Build finished.', compilarFalha: 'The build failed.', pushOk: 'Push done.', pushFalha: 'The push failed.',
+    instalarOk: 'Install finished.', instalarFalha: 'The install failed.', deployOk: 'Deploy finished.', deployFalha: 'The deploy failed.',
+    longoOk: d => `Command finished, it took ${d}.`, compactar: 'Compacting the conversation to free up context.', aCompactar: 'Compacting the conversation',
+    falhou: p => `${p} failed`, seg: n => (n === 1 ? '1 second' : `${n} seconds`), min: n => (n === 1 ? '1 minute' : `${n} minutes`), e: 'and',
+    topicos: l => `It also covers ${l}.`, perguntaFim: q => `And at the end it asks: ${q}`,
     ditadoNaoInstalado: 'Dictation is not installed: run /voz:instalar ouvir.', jaRespondido: 'this request has already been answered',
   },
   es: {
@@ -66,6 +80,13 @@ const FRASES = {
     naSessao: (p, f) => `En la sesión de ${p}: ${f}`, sessaoTerminou: p => `La sesión de ${p} ha terminado.`, outraPasta: 'otra carpeta',
     instalar: 'Para una voz natural, escribe barra voz, dos puntos, instalar.', testar: '¡Hola! La voz funciona.',
     aPensar: 'Pensando', aEscrever: 'Escribiendo', terminou: 'Terminado',
+    testesOk: n => (n === 1 ? 'La prueba pasó.' : n ? `Las ${n} pruebas pasaron.` : 'Las pruebas pasaron.'),
+    testesFalha: n => (n === 1 ? 'Ha fallado una prueba.' : n ? `Han fallado ${n} pruebas.` : 'Las pruebas fallaron.'),
+    compilarOk: 'Compilación terminada.', compilarFalha: 'La compilación falló.', pushOk: 'Push hecho.', pushFalha: 'El push falló.',
+    instalarOk: 'Instalación terminada.', instalarFalha: 'La instalación falló.', deployOk: 'Despliegue terminado.', deployFalha: 'El despliegue falló.',
+    longoOk: d => `Comando terminado, tardó ${d}.`, compactar: 'Compactando la conversación para liberar contexto.', aCompactar: 'Compactando la conversación',
+    falhou: p => `${p} falló`, seg: n => (n === 1 ? '1 segundo' : `${n} segundos`), min: n => (n === 1 ? '1 minuto' : `${n} minutos`), e: 'y',
+    topicos: l => `También habla de ${l}.`, perguntaFim: q => `Y al final pregunta: ${q}`,
     ditadoNaoInstalado: 'El dictado no está instalado: ejecuta /voz:instalar ouvir.', jaRespondido: 'esta petición ya se respondió',
   },
 }
@@ -174,16 +195,19 @@ function limparLinha(linha, idioma = 'pt') {
 // ---------- texto em streaming (MessageDisplay) ----------
 
 function novoEstado(maxCaracteres = 1200, idioma = 'pt') {
-  return { emCodigo: false, emTabela: false, caracteres: 0, cortado: false, max: maxCaracteres, idioma }
+  return { emCodigo: false, emTabela: false, caracteres: 0, cortado: false, max: maxCaracteres, idioma, titulos: [], ultima: '' }
 }
+
+const RE_TITULO = /^\s{0,3}#{1,6}\s+|^\s*\*\*[^*]{2,80}\*\*:?\s*$/
 
 /**
  * Recebe um bloco de linhas acabadas e devolve as frases a dizer.
  * Guarda no estado se está dentro de um bloco de código ou tabela, e quanto já disse.
+ * Depois do limite fica calado, mas continua a tomar nota dos títulos e da última frase
+ * (para fecharMensagem dizer de que mais fala e a pergunta do fim).
  */
 function processarDelta(estado, delta) {
   const saida = []
-  if (estado.cortado) return saida
   for (const linha of String(delta || '').split(/\r?\n/)) {
     if (/^\s*(```|~~~)/.test(linha)) {
       estado.emCodigo = !estado.emCodigo
@@ -191,7 +215,7 @@ function processarDelta(estado, delta) {
     }
     if (estado.emCodigo) continue
     if (/^\s*\|/.test(linha)) {
-      if (!estado.emTabela) saida.push(frase(estado.idioma, 'tabela'))
+      if (!estado.emTabela && !estado.cortado) saida.push(frase(estado.idioma, 'tabela'))
       estado.emTabela = true
       continue
     }
@@ -199,14 +223,41 @@ function processarDelta(estado, delta) {
     if (/^\s*([-*_]\s*){3,}$/.test(linha)) continue
     const dita = limparLinha(linha, estado.idioma)
     if (!dita) continue
+    if (estado.cortado) {
+      if (RE_TITULO.test(linha)) estado.titulos.push(dita.replace(/[.:]$/, ''))
+      else estado.ultima = dita
+      continue
+    }
     if (estado.caracteres + dita.length > estado.max && estado.caracteres > 0) {
       saida.push(frase(estado.idioma, 'resto'))
       estado.cortado = true
-      break
+      if (RE_TITULO.test(linha)) estado.titulos.push(dita.replace(/[.:]$/, ''))
+      else estado.ultima = dita
+      continue
     }
     estado.caracteres += dita.length
     saida.push(dita)
   }
+  return saida
+}
+
+/** «A, B e C» */
+function juntarLista(itens, idioma) {
+  if (itens.length <= 1) return itens.join('')
+  return itens.slice(0, -1).join(', ') + ' ' + frase(idioma, 'e') + ' ' + itens[itens.length - 1]
+}
+
+/**
+ * Fim de uma mensagem longa: os temas que ficaram por dizer e, se a mensagem acaba numa pergunta, a pergunta.
+ * Mensagens que couberam no limite não acrescentam nada.
+ */
+function fecharMensagem(estado) {
+  if (!estado || !estado.cortado) return []
+  const saida = []
+  const titulos = [...new Set(estado.titulos)].filter(t => t.length <= 60).slice(0, 5)
+  if (titulos.length) saida.push(frase(estado.idioma, 'topicos', juntarLista(titulos, estado.idioma)))
+  const u = estado.ultima
+  if (u && /\?$/.test(u) && u.length <= 300) saida.push(frase(estado.idioma, 'perguntaFim', u))
   return saida
 }
 
@@ -352,6 +403,205 @@ function pronunciar(frase, dicionario) {
   return t
 }
 
+// ---------- resultados (PostToolUse / PostToolUseFailure) ----------
+
+// O tipo de comando decide se o resultado merece voz: um grep sem resultados também «falha».
+const TIPOS_COMANDO = [
+  ['testes', /\b(?:npm|pnpm|yarn|bun)\s+(?:run\s+)?test\b|\b(?:jest|vitest|mocha|ava|phpunit|rspec|ctest|pytest|tox)\b|\bplaywright\s+test\b|\bcypress\s+run\b|\bpython3?\s+-m\s+(?:pytest|unittest)\b|\bnode\s+--test\b|\b(?:go|cargo|dotnet|swift|deno|bun)\s+test\b|\b(?:mvn|gradlew?)\b[^|;&]*\btest\b|\binvoke-pester\b/i],
+  ['deploy', /\b(?:vercel|netlify|firebase|fly|wrangler)\s+(?:deploy|--prod)\b|\bvercel\s+--prod\b|\bkubectl\s+apply\b|\bdocker\s+(?:compose\s+up|push)\b|\bgh\s+release\s+create\b/i],
+  ['push', /\bgit\s+push\b/i],
+  ['instalar', /\b(?:npm|pnpm|yarn|bun)\s+(?:install|i|ci|add)\b|\b(?:pip3?|uv\s+pip|cargo|winget|choco|scoop|brew)\s+install\b|\buv\s+(?:sync|add)\b|\bapt(?:-get)?\s+install\b/i],
+  ['compilar', /\b(?:npm|pnpm|yarn|bun)\s+(?:run\s+)?build\b|\b(?:vite|next|astro|nuxt|webpack|rollup|esbuild)\s+build\b|\btsc\b|\b(?:cargo|go|swift)\s+build\b|\bdotnet\s+(?:build|publish)\b|\bmsbuild\b|\bmake\b|\bcmake\s+--build\b|\b(?:mvn|gradlew?)\b[^|;&]*\b(?:package|assemble|build|install)\b|\bcsc(?:\.exe)?\b|\bcompilar-barra\b|\bgradlew?\s+assemble/i],
+]
+
+/** testes | deploy | push | instalar | compilar | null */
+function tipoComando(comando) {
+  const c = String(comando || '')
+  if (/scripts[\\/]voz\.js/.test(c)) return null
+  for (const [tipo, re] of TIPOS_COMANDO) if (re.test(c)) return tipo
+  return null
+}
+
+/** Quantos testes passaram/falharam, lido da saída dos executores mais comuns (o último número ganha). */
+function contarTestes(saida) {
+  const s = String(saida || '')
+  const ultimo = re => {
+    let m
+    let v = null
+    re.lastIndex = 0
+    while ((m = re.exec(s))) v = Number(m[1])
+    return v
+  }
+  const passaram =
+    ultimo(/(?:^|[\s#ℹ✔])pass(?:ed)?\s+(\d+)\b/gim) ??
+    ultimo(/\b(\d+)\s+(?:passed|passing)\b/gi) ??
+    ultimo(/\bPassed:\s*(\d+)/g)
+  const falharam =
+    ultimo(/(?:^|[\s#ℹ✖])fail(?:ed)?\s+(\d+)\b/gim) ??
+    ultimo(/\b(\d+)\s+(?:failed|failing)\b/gi) ??
+    ultimo(/\bFailed:\s*(\d+)/g)
+  return { passaram, falharam }
+}
+
+/** «42 segundos», «1 minuto e 20 segundos», «3 minutos». */
+function duracaoFalada(ms, idioma = 'pt') {
+  const total = Math.max(1, Math.round(Number(ms) / 1000))
+  const m = Math.floor(total / 60)
+  const s = total % 60
+  if (!m) return frase(idioma, 'seg', s)
+  if (!s || m >= 5) return frase(idioma, 'min', m)
+  return `${frase(idioma, 'min', m)} ${frase(idioma, 'e')} ${frase(idioma, 'seg', s)}`
+}
+
+const LONGO_MS = 60 * 1000
+
+/**
+ * Frase para o fim de um comando, ou null para ficar calado.
+ * r = { ok, erro, saida, duracaoMs, interrompido }
+ */
+function avaliarResultado(ferramenta, entrada, r, idioma = 'pt') {
+  if (ferramenta !== 'Bash' && ferramenta !== 'PowerShell') return null
+  if (!r || r.interrompido) return null
+  const tipo = tipoComando(entrada && entrada.command)
+  const f = (k, ...a) => frase(idioma, k, ...a)
+  const dur = Number(r.duracaoMs) || 0
+  const bom = frase => ({ frase, bom: true })
+  const mau = frase => ({ frase, bom: false })
+  if (tipo === 'testes') {
+    const n = contarTestes(r.ok ? r.saida : r.erro || r.saida)
+    if (r.ok && !n.falharam) return bom(f('testesOk', n.passaram))
+    return mau(f('testesFalha', n.falharam))
+  }
+  if (tipo === 'compilar') return r.ok ? (dur >= 15000 ? bom(f('compilarOk')) : null) : mau(f('compilarFalha'))
+  if (tipo === 'instalar') return r.ok ? (dur >= 20000 ? bom(f('instalarOk')) : null) : mau(f('instalarFalha'))
+  if (tipo === 'push') return r.ok ? bom(f('pushOk')) : mau(f('pushFalha'))
+  if (tipo === 'deploy') return r.ok ? bom(f('deployOk')) : mau(f('deployFalha'))
+  if (r.ok && dur >= LONGO_MS) return bom(f('longoOk', duracaoFalada(dur, idioma)))
+  return null
+}
+
+function anunciarResultado(ferramenta, entrada, r, idioma = 'pt') {
+  const a = avaliarResultado(ferramenta, entrada, r, idioma)
+  return a ? a.frase : null
+}
+
+/** Legenda curta de uma falha para a ilha («npm test falhou»), ou null se não interessa mostrar. */
+function legendaFalha(ferramenta, entrada, idioma = 'pt') {
+  if (ferramenta !== 'Bash' && ferramenta !== 'PowerShell') return null
+  const comando = String((entrada && entrada.command) || '')
+  if (!tipoComando(comando)) return null
+  const limpo = comando.replace(/^cd\s+("[^"]*"|'[^']*'|\S+)\s*(?:&&|;)\s*/i, '').split(/\s*(?:&&|\|\||;|\|)\s*/)[0].trim()
+  const curto = limpo.length > 40 ? limpo.slice(0, 39) + '…' : limpo
+  return frase(idioma, 'falhou', curto || primeiroPrograma(comando))
+}
+
+// ---------- «enquanto estiveste fora» ----------
+
+const FORA = {
+  pt: {
+    inicio: l => `Olá de novo. Enquanto estiveste fora: ${l}.`,
+    terminou: t => `${t} terminou`, terminaram: l => `${l} terminaram`,
+    precisa: t => `${t} precisa de ti`, precisam: l => `${l} precisam de ti`,
+    falhou: (t, f) => `em ${t}, ${f}`, trabalha: t => `${t} continua a trabalhar`, trabalham: n => `${n} conversas continuam a trabalhar`,
+  },
+  en: {
+    inicio: l => `Welcome back. While you were away: ${l}.`,
+    terminou: t => `${t} finished`, terminaram: l => `${l} finished`,
+    precisa: t => `${t} needs you`, precisam: l => `${l} need you`,
+    falhou: (t, f) => `in ${t}, ${f}`, trabalha: t => `${t} is still working`, trabalham: n => `${n} conversations are still working`,
+  },
+  es: {
+    inicio: l => `Hola de nuevo. Mientras estabas fuera: ${l}.`,
+    terminou: t => `${t} terminó`, terminaram: l => `${l} terminaron`,
+    precisa: t => `${t} te necesita`, precisam: l => `${l} te necesitan`,
+    falhou: (t, f) => `en ${t}, ${f}`, trabalha: t => `${t} sigue trabajando`, trabalham: n => `${n} conversaciones siguen trabajando`,
+  },
+}
+
+/**
+ * Frase de regresso, ou null se nada aconteceu.
+ * r = { terminaram: [títulos], precisam: [títulos], falhas: [{ titulo, texto }], trabalham: [títulos] }
+ */
+function resumoAusencia(r, idioma = 'pt') {
+  const F = FORA[idioma] || FORA.pt
+  const lista = l => juntarLista(l, idioma)
+  const partes = []
+  const term = r.terminaram || []
+  const prec = r.precisam || []
+  const falhas = r.falhas || []
+  if (!term.length && !prec.length && !falhas.length) return null
+  if (term.length) partes.push(term.length === 1 ? F.terminou(term[0]) : F.terminaram(lista(term)))
+  for (const f of falhas.slice(0, 2)) partes.push(F.falhou(f.titulo, f.texto))
+  if (prec.length) partes.push(prec.length === 1 ? F.precisa(prec[0]) : F.precisam(lista(prec)))
+  const trab = r.trabalham || []
+  if (trab.length) partes.push(trab.length === 1 ? F.trabalha(trab[0]) : F.trabalham(trab.length))
+  return F.inicio(partes.join('; '))
+}
+
+// ---------- voz: autorizar e mãos-livres ----------
+
+const VOZ = {
+  pt: {
+    pede: (c, a) => `${c ? c + ' pede' : 'Peço'} autorização para ${a}. Autorizas?`,
+    correr: p => `correr ${p}`, editar: f => `editar ${f}`, usar: f => `usar ${f}`, comando: 'correr um comando',
+    autorizado: 'Autorizado.', autorizadoSempre: 'Autorizado, e não volto a perguntar.', recusado: 'Recusado.', fim: 'Está bem, fico à espera.',
+  },
+  en: {
+    pede: (c, a) => `${c || 'I'} ${c ? 'wants' : 'want'} to ${a}. Allow?`,
+    correr: p => `run ${p}`, editar: f => `edit ${f}`, usar: f => `use ${f}`, comando: 'run a command',
+    autorizado: 'Allowed.', autorizadoSempre: "Allowed, and I won't ask again.", recusado: 'Denied.', fim: "Okay, I'll wait.",
+  },
+  es: {
+    pede: (c, a) => `${c ? c + ' pide' : 'Pido'} permiso para ${a}. ¿Lo permites?`,
+    correr: p => `ejecutar ${p}`, editar: f => `editar ${f}`, usar: f => `usar ${f}`, comando: 'ejecutar un comando',
+    autorizado: 'Permitido.', autorizadoSempre: 'Permitido, y no volveré a preguntar.', recusado: 'Rechazado.', fim: 'Vale, me quedo esperando.',
+  },
+}
+
+/** Frase da voz para os pedidos falados (`chave` em VOZ). */
+function fraseVoz(idioma, chave, ...args) {
+  const d = VOZ[idioma] || VOZ.pt
+  const v = d[chave]
+  return typeof v === 'function' ? v(...args) : v
+}
+
+/** «Voz 1.3 pede autorização para correr git. Autorizas?» */
+function perguntaAutorizacao(ferramenta, resumo, conversa, idioma = 'pt') {
+  const r = String(resumo || '')
+  let acao
+  if (ferramenta === 'Bash' || ferramenta === 'PowerShell') {
+    const p = primeiroPrograma(r)
+    acao = p ? fraseVoz(idioma, 'correr', p) : fraseVoz(idioma, 'comando')
+  } else if (/^(Edit|MultiEdit|Write|NotebookEdit)$/.test(ferramenta || '')) acao = fraseVoz(idioma, 'editar', base(r) || r)
+  else acao = fraseVoz(idioma, 'usar', String(ferramenta || '').replace(/^mcp__[^_]+__/, '').replace(/_/g, ' '))
+  return fraseVoz(idioma, 'pede', conversa, acao)
+}
+
+const RESPOSTAS = {
+  pt: { nao: /\b(n[aã]o|recus\w*|cancel\w*|neg\w*|espera|p[aá]ra)\b/, sempre: /\bsempre\b/, sim: /\b(sim|pode|podes|autoriz\w*|permit\w*|ok|okay|claro|for[cç]a|avan[cç]a|vai|faz|confirm\w*|d[aá])\b/ },
+  en: { nao: /\b(no|nope|deny|denied|don'?t|stop|cancel|wait)\b/, sempre: /\balways\b/, sim: /\b(yes|yeah|yep|sure|ok|okay|allow\w*|go ahead|do it|approve\w*|fine)\b/ },
+  es: { nao: /\b(no|rechaz\w*|cancel\w*|espera|para|niega)\b/, sempre: /\bsiempre\b/, sim: /\b(s[ií]|vale|claro|dale|adelante|permit\w*|autoriz\w*|ok|okay|hazlo)\b/ },
+}
+const normalizar = t => ' ' + String(t || '').toLowerCase().replace(/[.,!?¿¡;:«»"“”]/g, ' ').replace(/\s+/g, ' ').trim() + ' '
+
+/** O que disseste a um pedido de autorização: 'allow', 'always', 'deny' ou null (não percebi). */
+function classificarResposta(dito, idioma = 'pt') {
+  const t = normalizar(dito)
+  if (t.trim().split(' ').length > 8) return null // uma frase comprida não é um «sim»
+  for (const R of [RESPOSTAS[idioma] || RESPOSTAS.pt, RESPOSTAS.en]) {
+    if (R.nao.test(t)) return 'deny'
+    if (R.sempre.test(t)) return 'always'
+    if (R.sim.test(t)) return 'allow'
+  }
+  return null
+}
+
+/** No mãos-livres, «para», «chega», «obrigado»… terminam a conversa em vez de serem enviados. */
+function eFimDeConversa(dito) {
+  const t = normalizar(dito).trim()
+  return t.split(' ').length <= 4 && /^(para|p[aá]ra|chega|basta|obrigad[oa]|termina|acabou|[eé] tudo|por agora [eé] tudo|stop|that'?s all|thanks|thank you|gracias|eso es todo|nada mais|nada m[aá]s)( obrigad[oa]| thanks| gracias)?$/.test(t)
+}
+
 // ---------- notificações ----------
 
 function frasesNotificacao(mensagem, idioma = 'pt') {
@@ -374,4 +624,16 @@ module.exports = {
   frase,
   FRASES,
   idiomaDe,
+  tipoComando,
+  contarTestes,
+  duracaoFalada,
+  anunciarResultado,
+  legendaFalha,
+  fecharMensagem,
+  resumoAusencia,
+  fraseVoz,
+  perguntaAutorizacao,
+  classificarResposta,
+  eFimDeConversa,
+  avaliarResultado,
 }

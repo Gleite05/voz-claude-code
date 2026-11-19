@@ -228,6 +228,7 @@ function criarMotorPiper() {
           graves: lim(cfg.graves, -12, 12, 0),
           medios: lim(cfg.medios, -12, 12, 0),
           agudos: lim(cfg.agudos, -12, 12, 0),
+          pan: lim(extra.pan, -1, 1, 0),
         }),
       )
       let r
@@ -319,4 +320,4 @@ function criarMotor(cfg) {
   return criarMotorSistema(cfg)
 }
 
-module.exports = { criarMotor }
+module.exports = { criarMotor, criarLeitorWav }

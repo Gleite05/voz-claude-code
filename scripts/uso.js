@@ -7,6 +7,9 @@ const fs = require('node:fs')
 const os = require('node:os')
 const path = require('node:path')
 const { CAMINHOS, log } = require('./comum')
+const precos = require('./precos')
+
+const VERSAO = 2 // 2: custo, ferramentas, horas e projetos por dia (a cache antiga é relida do zero)
 
 const PROJETOS = process.env.VOZ_PROJETOS || path.join(os.homedir(), '.claude', 'projects')
 const CACHE = path.join(CAMINHOS.pasta, 'uso.json')
@@ -19,8 +22,9 @@ function carregar() {
   try {
     dados = JSON.parse(fs.readFileSync(CACHE, 'utf8'))
   } catch {
-    dados = { versao: 1, ficheiros: {}, dias: {} }
+    dados = null
   }
+  if (!dados || dados.versao !== VERSAO) dados = { versao: VERSAO, ficheiros: {}, dias: {}, titulos: (dados && dados.titulos) || {} }
   return dados
 }
 
@@ -36,17 +40,43 @@ const diaLocal = iso => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
-function somar(dia, sessao, u) {
-  const d = (dados.dias[dia] = dados.dias[dia] || { entrada: 0, saida: 0, cache: 0, sessoes: {} })
+function diaVazio() {
+  return { entrada: 0, saida: 0, cache: 0, custo: 0, semPreco: 0, sessoes: {}, ferramentas: {}, horas: Array(24).fill(0), projetos: {} }
+}
+
+function somar(dia, sessao, u, e) {
+  const d = (dados.dias[dia] = dados.dias[dia] || diaVazio())
   const entrada = (Number(u.input_tokens) || 0) + (Number(u.cache_creation_input_tokens) || 0)
   const cache = Number(u.cache_read_input_tokens) || 0
   const saida = Number(u.output_tokens) || 0
+  const c = precos.custo(e.message.model, u)
   d.entrada += entrada
   d.cache += cache
   d.saida += saida
-  const s = (d.sessoes[sessao] = d.sessoes[sessao] || { saida: 0, entrada: 0 })
+  if (c === null) d.semPreco += entrada + saida
+  else d.custo += c
+  const s = (d.sessoes[sessao] = d.sessoes[sessao] || { saida: 0, entrada: 0, custo: 0 })
   s.saida += saida
   s.entrada += entrada
+  s.custo = (s.custo || 0) + (c || 0)
+  const h = new Date(e.timestamp).getHours()
+  if (h >= 0) d.horas[h]++
+  if (e.cwd) {
+    const pasta = String(e.cwd).split(/[\\/]/).filter(Boolean).pop() // Windows ou Unix, venha de onde vier
+    d.projetos[pasta] = (d.projetos[pasta] || 0) + saida
+  }
+}
+
+/** Ferramentas usadas numa linha do histórico (cada bloco tool_use da mensagem do assistente). */
+function contarFerramentas(dia, e) {
+  const c = e.message && e.message.content
+  if (!Array.isArray(c)) return
+  const d = (dados.dias[dia] = dados.dias[dia] || diaVazio())
+  for (const b of c) {
+    if (!b || b.type !== 'tool_use' || !b.name) continue
+    const nome = String(b.name).startsWith('mcp__') ? 'MCP' : String(b.name).slice(0, 40)
+    d.ferramentas[nome] = (d.ferramentas[nome] || 0) + 1
+  }
 }
 
 function listarFicheiros() {
@@ -109,13 +139,15 @@ async function atualizar() {
             continue
           }
           if (e.type !== 'assistant' || !e.message || !e.message.usage) continue
+          const dia = diaLocal(e.timestamp)
+          if (!dia) continue
+          // O histórico escreve uma linha por bloco: as ferramentas contam-se em todas, os tokens só uma vez.
+          contarFerramentas(dia, e)
+          mudou = true
           const id = e.message.id || e.requestId
           if (id && id === info.ultimoId) continue
           info.ultimoId = id
-          const dia = diaLocal(e.timestamp)
-          if (!dia) continue
-          somar(dia, sessao, e.message.usage)
-          mudou = true
+          somar(dia, sessao, e.message.usage, e)
         }
       })
       leitor.on('end', resolve)
@@ -128,7 +160,44 @@ async function atualizar() {
   return mudou
 }
 
-/** Resumo para a barra: os últimos 7 dias e as conversas de hoje que mais gastaram. */
+const somaMapas = mapas => {
+  const r = {}
+  for (const m of mapas) for (const [k, v] of Object.entries(m || {})) r[k] = (r[k] || 0) + v
+  return r
+}
+const topoDe = (m, n) => Object.entries(m).sort((a, b) => b[1] - a[1]).slice(0, n).map(([nome, valor]) => ({ nome, valor }))
+
+/** A semana em números, para o «Voz Wrapped»: totais, horas ativas, dias seguidos, projetos e ferramentas. */
+function semana(dias) {
+  const vs = dias.map(x => dados.dias[x.dia] || diaVazio())
+  const horasAtivas = vs.reduce((t, v) => t + (v.horas || []).filter(n => n > 0).length, 0)
+  let seguidos = 0
+  let melhor = 0
+  for (const v of vs) {
+    seguidos = v.saida > 0 ? seguidos + 1 : 0
+    melhor = Math.max(melhor, seguidos)
+  }
+  const horas = Array(24).fill(0)
+  for (const v of vs) (v.horas || []).forEach((n, i) => (horas[i] += n))
+  const horaPico = horas.some(n => n > 0) ? horas.indexOf(Math.max(...horas)) : null
+  const diaPico = dias.reduce((a, b) => (b.entrada + b.saida > a.entrada + a.saida ? b : a), dias[0])
+  const conversas = new Set(vs.flatMap(v => Object.keys(v.sessoes || {}))).size
+  return {
+    entrada: vs.reduce((t, v) => t + v.entrada, 0),
+    saida: vs.reduce((t, v) => t + v.saida, 0),
+    cache: vs.reduce((t, v) => t + v.cache, 0),
+    custo: vs.reduce((t, v) => t + (v.custo || 0), 0),
+    horasAtivas,
+    diasSeguidos: melhor,
+    horaPico,
+    diaPico: diaPico && diaPico.entrada + diaPico.saida > 0 ? diaPico.dia : null,
+    conversas,
+    projetos: topoDe(somaMapas(vs.map(v => v.projetos)), 3),
+    ferramentas: topoDe(somaMapas(vs.map(v => v.ferramentas)), 6),
+  }
+}
+
+/** Resumo para a barra: os últimos 7 dias, as conversas de hoje que mais gastaram e a semana. */
 function resumo(titulos = {}) {
   carregar()
   const hoje = diaLocal(new Date().toISOString())
@@ -137,15 +206,52 @@ function resumo(titulos = {}) {
     const d = new Date()
     d.setDate(d.getDate() - i)
     const k = diaLocal(d.toISOString())
-    const v = dados.dias[k] || { entrada: 0, saida: 0, cache: 0 }
-    dias.push({ dia: k, entrada: v.entrada, saida: v.saida, cache: v.cache })
+    const v = dados.dias[k] || diaVazio()
+    dias.push({ dia: k, entrada: v.entrada, saida: v.saida, cache: v.cache, custo: v.custo || 0 })
   }
-  const h = dados.dias[hoje] || { entrada: 0, saida: 0, cache: 0, sessoes: {} }
+  const h = dados.dias[hoje] || diaVazio()
   const topo = Object.entries(h.sessoes || {})
-    .map(([id, v]) => ({ id, titulo: titulos[id] || (dados.titulos || {})[id] || null, saida: v.saida, entrada: v.entrada }))
+    .map(([id, v]) => ({ id, titulo: titulos[id] || (dados.titulos || {})[id] || null, saida: v.saida, entrada: v.entrada, custo: v.custo || 0 }))
     .sort((a, b) => b.saida - a.saida)
     .slice(0, 5)
-  return { hoje: { dia: hoje, entrada: h.entrada, saida: h.saida, cache: h.cache }, dias, topo }
+  return {
+    hoje: { dia: hoje, entrada: h.entrada, saida: h.saida, cache: h.cache, custo: h.custo || 0, semPreco: h.semPreco || 0 },
+    dias,
+    topo,
+    semana: semana(dias),
+    cambio: cambio(),
+  }
+}
+
+// ---------- câmbio dólar → euro (taxa diária do Banco Central Europeu) ----------
+// Pedido público, sem chave e sem dados do utilizador; uma vez por dia. Sem rede, fica a última taxa conhecida.
+const CAMBIO_RESERVA = 0.86
+const URL_BCE = 'https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml'
+
+function cambio() {
+  const c = (dados && dados.cambio) || null
+  return c && c.eurPorDolar ? c : { eurPorDolar: CAMBIO_RESERVA, data: null, reserva: true }
+}
+
+async function atualizarCambio() {
+  carregar()
+  const c = dados.cambio
+  if (c && c.obtido && Date.now() - c.obtido < 12 * 3600 * 1000) return false
+  try {
+    const r = await fetch(URL_BCE, { signal: AbortSignal.timeout(8000) })
+    if (!r.ok) throw new Error(`HTTP ${r.status}`)
+    const xml = await r.text()
+    const usd = /currency=['"]USD['"]\s+rate=['"]([\d.]+)['"]/.exec(xml)
+    const data = /time=['"](\d{4}-\d{2}-\d{2})['"]/.exec(xml)
+    if (!usd) throw new Error('sem a taxa do dólar')
+    dados.cambio = { eurPorDolar: 1 / Number(usd[1]), data: data ? data[1] : null, obtido: Date.now() }
+    gravar()
+    return true
+  } catch (erro) {
+    log(`câmbio do BCE: ${erro.message}`)
+    if (c) c.obtido = Date.now() // tenta outra vez daqui a 12 h
+    return false
+  }
 }
 
 let aCorrer = false
@@ -154,7 +260,9 @@ function arrancarVigia(aoMudar) {
     if (aCorrer) return
     aCorrer = true
     try {
-      if (await atualizar()) aoMudar()
+      const a = await atualizar()
+      const b = await atualizarCambio()
+      if (a || b) aoMudar()
     } catch (erro) {
       log(`uso: ${erro.message}`)
     } finally {
@@ -165,4 +273,4 @@ function arrancarVigia(aoMudar) {
   setInterval(passo, 60 * 1000).unref()
 }
 
-module.exports = { atualizar, resumo, arrancarVigia }
+module.exports = { atualizar, resumo, arrancarVigia, atualizarCambio }

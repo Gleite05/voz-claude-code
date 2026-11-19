@@ -18,7 +18,14 @@
 
 - 🗣️ **Says what Claude is doing** — "editing config.ts", "running npm", "connecting to a remote server" — and **reads replies as they appear**, skipping code, tables and links.
 - 💬 **Conversations in the bar** — an animated avatar per conversation (spinning = working, pulsing = needs you), the last message of each one and a box to **reply directly**.
-- 🛡️ **Approve permissions from the bar** — the request shows up as a card with the exact command: *Allow* or *Deny*.
+- ✅ **Tells you how it went** — "All 38 tests passed", "The build failed", "Push done", long commands with their duration; the island turns red when something important fails and shows a **timer** while a command runs.
+- 📋 **Task progress and subagents** — a "4/7" ring for the task list, agents orbiting the conversation's avatar and a notice when the conversation is compacted.
+- 🛡️ **Approve permissions from the bar** — the request shows up as a card with the exact command or a **coloured diff** of what will change: *Allow*, *Deny* or **"Always"** (the rule Claude Code itself suggests, e.g. `git push:*`).
+- 🎧 **Hands-free and voice approval** — after each reply the bar listens and sends what you say (it stops when you go quiet); on permission requests it asks "Allow?" and understands "yes", "no" or "always". Off by default.
+- 🔔 **Sounds and spatial audio** — short sounds for passed, failed, permission and done; with several conversations each one speaks from its own side.
+- 🤫 **Quiet in meetings** — when another app is using the microphone (Teams, Zoom…) or something is full screen, the voice goes quiet by itself.
+- 👋 **"While you were away"** — when you come back to your computer it tells you what finished, what failed and what needs you.
+- 💶 **Cost and "Your week"** — what the tokens would cost on the API (euros at the ECB rate, or dollars) and a weekly card (hours, conversations, projects, tools) you can copy as an image.
 - 🎤 **Talk to Claude** — dictate your reply; Whisper transcribes it on your PC.
 - 🏝️ **Dynamic island** — a glass capsule in the middle of the bar shows the current action, live captions while it speaks, permission requests and when a conversation finishes.
 - 🌐 **English, Spanish and Portuguese interface** — the bar and the announcements follow your system language.
@@ -69,7 +76,7 @@ This installs the **voice** (Piper + "tugão", pt-PT), **dictation** (Whisper) a
 
 ## How it works
 
-- Claude Code **hooks** (`PreToolUse`, `MessageDisplay` for live text, `Stop`, `Notification`, `PermissionRequest`) send events to a **local server** (one per user, over a pipe; starts on demand).
+- Claude Code **hooks** (`PreToolUse`/`PostToolUse`/`PostToolUseFailure`, `MessageDisplay` for live text, `SubagentStart`/`SubagentStop`, `PreCompact`/`PostCompact`, `Stop`, `Notification`, `PermissionRequest`) send events to a **local server** (one per user, over a pipe; starts on demand).
 - The server decides what to say, synthesizes with **Piper** and serves the bar at `http://127.0.0.1:47821` (local only, token-protected).
 - **Replying from the bar** uses a `Stop` hook with `asyncRewake`: it listens after each reply and wakes Claude with your message. In the conversation your reply shows up as a hook message.
 - **Permissions:** in the Claude desktop app the hook runs alongside the normal dialog (whichever answers first wins). In the terminal it does not wait.
@@ -79,6 +86,8 @@ This installs the **voice** (Piper + "tugão", pt-PT), **dictation** (Whisper) a
 
 - Everything runs on your computer: **no text, audio or data leaves your PC**. No telemetry.
 - Network access only during installation: PyPI packages, voices from Hugging Face (MD5 checked), the Whisper model, `uv` (SHA-256 checked) and the WebView2 kit from NuGet (SHA-512 checked).
+- After installation the only network access is the **European Central Bank exchange rate** (public, once a day, nothing sent) to show the cost in euros.
+- The microphone is only used when you press 🎤/the shortcut, or after each reply and on permission requests if you turn on **hands-free** or **voice approval** (both off by default). Transcription is local.
 - The local server only listens on `127.0.0.1`, requires a random token stored in your user folder and checks the `Host` header (against DNS rebinding).
 
 ## Uninstall

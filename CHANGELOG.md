@@ -1,5 +1,20 @@
 # Histórico de versões
 
+## 1.3.0
+
+- **Diz como correu:** com os ganchos `PostToolUse`/`PostToolUseFailure`, a voz diz «Os 38 testes passaram», «Falharam 3 testes», «A compilação falhou», «Push feito», e a duração dos comandos de mais de um minuto. Um `grep` sem resultados não conta como falha: só testes, compilações, instalações, pushes e publicações.
+- **Ilha:** fica vermelha (e abana) quando um desses comandos falha, mostra um **cronómetro** enquanto um comando corre, o progresso da lista de tarefas («4/7», incluindo o plano da app do Claude) e «A compactar a conversa».
+- **Sub-agentes:** pontinhos a orbitar o avatar da conversa enquanto trabalham, e a lista no cartão da conversa. A linha temporal marca a vermelho as ações que falharam e mostra quanto demoraram.
+- **Permissões:** botão **«Sempre»** com a regra que o próprio Claude Code sugere (ex.: `git push:*`, «Aceitar edições»), e o **diff colorido** do que um Edit/Write vai mudar.
+- **Respostas longas:** depois do limite, a voz diz os temas que ficaram por ler e, se a mensagem acaba numa pergunta, a pergunta.
+- **Sons** curtos (passou, falhou, autorização, terminou, a ouvir), gerados no PC, e **som espacial**: com várias conversas, cada uma fala do seu lado.
+- **Calada em reuniões:** microfone ocupado por outra app ou programa em ecrã inteiro/apresentação = voz em silêncio (o ícone da lua fica roxo e diz porquê).
+- **«Enquanto estiveste fora»:** depois de 5 minutos sem rato nem teclado, ao voltares a voz e a ilha resumem o que terminou, falhou ou precisa de ti.
+- **Custo:** os tokens em euros (taxa diária do BCE) ou dólares, ao preço público de cada modelo, por dia e por conversa.
+- **«A tua semana»:** um cartão com tokens, horas ativas, conversas, dias seguidos, dia e hora de ponta, projetos e ferramentas mais usadas, para copiar ou guardar como imagem.
+- **Mãos-livres** (desligado por omissão): depois de cada resposta a barra ouve-te, pára sozinha quando te calas e envia para a conversa; «obrigado» ou «chega» terminam. O atalho de falar, neste modo, envia logo.
+- **Autorizar por voz** (desligado por omissão): «Site pede autorização para correr git. Autorizas?» — responde «sim», «não» ou «sempre».
+
 ## 1.2.3
 
 - **Barra flutuante corrigida:** esticava sem parar (chegava a ficar mais larga do que o ecrã). A largura medida passou a ser a do conteúdo, não a da janela, e a ilha tem um lugar fixo nesta posição, para a barra não mudar de tamanho a cada frase.

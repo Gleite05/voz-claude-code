@@ -52,11 +52,25 @@
   const svg = n => `<svg class="i" viewBox="0 0 24 24">${ICONES[n]}</svg>`
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c])
   const mil = n =>
-    n >= 1e6
+    n >= 1e9
+      ? (n / 1e9).toLocaleString(localeAtual(), { maximumFractionDigits: 1 }) + (IDIOMA === 'en' ? ' B' : ' mil M')
+      : n >= 1e6
       ? (n / 1e6).toLocaleString(localeAtual(), { maximumFractionDigits: n >= 1e8 ? 0 : 1 }) + ' M'
       : n >= 1000
         ? (n / 1000).toLocaleString(localeAtual(), { maximumFractionDigits: n >= 100000 ? 0 : 1 }) + (IDIOMA === 'en' ? 'k' : ' mil')
         : String(n)
+  /** Moeda para o custo: automática = euro em português/espanhol, dólar em inglês. */
+  const moeda = () => {
+    const m = (E && E.cfg.moeda) || 'auto'
+    return m === 'auto' ? (IDIOMA === 'en' ? 'USD' : 'EUR') : m
+  }
+  /** Um valor em dólares, na moeda escolhida (euros pela taxa do BCE). */
+  const dinheiro = usd => {
+    const m = moeda()
+    const taxa = m === 'EUR' && E && E.uso && E.uso.cambio ? E.uso.cambio.eurPorDolar : 1
+    const v = (Number(usd) || 0) * taxa
+    return v.toLocaleString(localeAtual(), { style: 'currency', currency: m, maximumFractionDigits: v >= 100 ? 0 : 2, minimumFractionDigits: v >= 100 ? 0 : 2 })
+  }
   const num = (v, d) => Number(v).toLocaleString(localeAtual(), { minimumFractionDigits: d, maximumFractionDigits: d })
   // ESTADOS[x] devolve o nome do estado na língua atual.
   const ESTADOS = new Proxy({}, { get: (_, k) => t('estado.' + String(k)) })
@@ -111,6 +125,22 @@
     return h ? `${h}:${String(m).padStart(2, '0')}:${ss}` : `${String(m).padStart(2, '0')}:${ss}`
   }
 
+  /** Cronómetro curto («0:42», «1:05:10») desde o instante `desde`. */
+  function cron(desde) {
+    const seg = Math.max(0, Math.floor((Date.now() - desde) / 1000))
+    const h = Math.floor(seg / 3600)
+    const m = Math.floor((seg % 3600) / 60)
+    const ss = String(seg % 60).padStart(2, '0')
+    return h ? `${h}:${String(m).padStart(2, '0')}:${ss}` : `${m}:${ss}`
+  }
+  const CRON_MIN_MS = 3000 // só mostra o cronómetro de uma ferramenta que já corre há algum tempo
+  /** Os cronómetros da página avançam sozinhos (sem redesenhar o HTML, para as animações não recomeçarem). */
+  function atualizarCronos(el) {
+    for (const c of (el || document).querySelectorAll('[data-desde]')) c.textContent = cron(Number(c.dataset.desde))
+  }
+  /** Duração curta de uma ação já acabada: «850 ms», «12 s», «2 min». */
+  const durCurta = ms => (ms < 1000 ? `${Math.round(ms)} ms` : ms < 60000 ? `${Math.round(ms / 1000)} s` : `${Math.round(ms / 60000)} min`)
+
   // ---------------- barra ----------------
   /** A lista de módulos da configuração, com os módulos novos acrescentados no fim. */
   function modulosCompletos() {
@@ -149,7 +179,10 @@
     vistos.add(x.id)
     const p = x.uso && Number.isFinite(x.uso.pct) ? Math.max(4, Math.min(100, x.uso.pct)) : 100
     const clique = grande ? '' : ` data-conv="${esc(x.id)}" title="${esc(x.titulo + ' · ' + (ESTADOS[x.estado] || x.estado))}"`
-    return `<span class="av ${x.estado}${grande ? ' g' : ''}${novo ? ' novo' : ''}" style="--c:${cor(x.id)};--p:${p}%"${clique}><i>${esc(inicial(x.titulo))}</i></span>`
+    // Sub-agentes: pontinhos a orbitar o avatar (até 3).
+    const subs = (x.subagentes || []).slice(0, 3)
+    const orb = subs.length ? `<span class="orb n${subs.length}">${subs.map((_, i) => `<b style="--k:${i}"></b>`).join('')}</span>` : ''
+    return `<span class="av ${x.estado}${grande ? ' g' : ''}${novo ? ' novo' : ''}${subs.length ? ' com-sub' : ''}" style="--c:${cor(x.id)};--p:${p}%"${clique}><i>${esc(inicial(x.titulo))}</i>${orb}</span>`
   }
 
   // ---------------- ilha dinâmica ----------------
@@ -177,9 +210,14 @@
     '<span class="i-onda">' + Array.from({ length: 12 }, (_, i) => `<b style="animation-delay:${-((i * 137) % 900)}ms;animation-duration:${700 + ((i * 53) % 400)}ms"></b>`).join('') + '</span>'
   const chip = x => `<span class="i-chip" style="--c:${cor(x.id)}"><i></i><span>${esc(x.titulo)}</span></span>`
 
+  let cronArmado = 0
+  const FALHA_MS = 6000
+  let regressoRecente = null // { terminaram, precisam, falhas, desde, ate }
+  const falhaArmada = {}
   function estadoIlha() {
     const S = E.sessoes
     if (E.aOuvir) {
+      if (E.aOuvirAuto) return { k: 'dit-auto', cls: 'dit', clique: 'dit', titulo: t('ilha.acabarJa'), html: `<span class="i-rec">${svg('micro')}</span><b>${t('ilha.aOuvir')}</b><span class="i-t2">${t('ilha.falaOuCala')}</span>` }
       return { k: 'dit', cls: 'dit', clique: 'dit', html: `<span class="i-rec">${svg('micro')}</span><span>${t('ilha.aOuvir')}</span><span class="i-kbd">Ctrl Shift Alt V</span>` }
     }
     const p = (E.permissoes || [])[0]
@@ -189,6 +227,24 @@
     }
     const at = S.find(x => x.estado === 'atencao')
     if (at) return { k: 'at:' + at.id, cls: 'perm', clique: 'aviso:' + at.id, html: `<span class="i-esc">${svg('sino')}</span><b>${esc(t('ilha.precisa', { nome: at.titulo }))}</b>` }
+    // Voltaste ao computador: o que aconteceu enquanto estavas fora (12 s).
+    if (regressoRecente && regressoRecente.ate > Date.now()) {
+      const r = regressoRecente
+      const bits = []
+      if (r.terminaram.length) bits.push(t(r.terminaram.length === 1 ? 'fora.terminou1' : 'fora.terminaram', { n: r.terminaram.length }))
+      if (r.falhas.length) bits.push(t(r.falhas.length === 1 ? 'fora.falha1' : 'fora.falhas', { n: r.falhas.length }))
+      if (r.precisam.length) bits.push(t(r.precisam.length === 1 ? 'fora.precisa1' : 'fora.precisam', { n: r.precisam.length }))
+      return { k: 'regresso:' + r.desde, cls: 'fim regresso', clique: 'conversas', html: `<span class="i-volta">${svg('estrela')}</span><b>${esc(t('fora.titulo'))}</b><span class="i-t2">· ${esc(bits.join(' · '))}</span>` }
+    }
+    // Um comando importante falhou há pouco: vermelho durante uns segundos.
+    const fa = S.filter(x => x.falha && Date.now() - x.falha.t < FALHA_MS).sort((a, b) => b.falha.t - a.falha.t)[0]
+    if (fa) {
+      if (!falhaArmada[fa.id + fa.falha.t]) {
+        falhaArmada[fa.id + fa.falha.t] = true
+        setTimeout(render, FALHA_MS - (Date.now() - fa.falha.t) + 50)
+      }
+      return { k: 'falha:' + fa.id + fa.falha.t, cls: 'falha', clique: 'conv:' + fa.id, html: `<span class="i-x"><svg viewBox="0 0 24 24"><path d="M7 7l10 10M17 7L7 17"/></svg></span><b>${esc(fa.falha.texto)}</b>${S.length > 1 ? `<span class="i-t2">· ${esc(fa.titulo)}</span>` : ''}` }
+    }
     if (E.falando) {
       const s = S.find(x => x.id === E.falando.sessao)
       return { k: 'fala', cls: 'fala', clique: 'saltar', titulo: t('ilha.saltar'), html: `${s ? chip(s) : ''}<span class="i-leg"><span>${esc(E.falando.texto)}</span></span>${ondaIlha()}` }
@@ -198,8 +254,17 @@
       if (s) return { k: 'fim:' + s.id, cls: 'fim', clique: 'conv:' + s.id, html: `<span class="i-ok"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span><b>${esc(t('ilha.terminou', { nome: s.titulo }))}</b>${s.inicio ? `<span class="i-t2 num">· ${duracao(s)}</span>` : ''}` }
     }
     const s = foco()
+    if (s && s.estado === 'trabalhar' && s.compactar) {
+      return { k: 'compactar', cls: 'acao', clique: 'conv:' + s.id, html: `${chip(s)}<span class="i-leg"><span>${esc(t('ilha.compactar'))}</span></span><span class="aescrever"><b></b><b></b><b></b></span>` }
+    }
     if (s && s.estado === 'trabalhar' && s.acao) {
-      return { k: 'acao', cls: 'acao', clique: 'conv:' + s.id, html: `${chip(s)}<span class="i-leg"><span>${esc(s.acao)}</span></span><span class="aescrever"><b></b><b></b><b></b></span>` }
+      const c = s.emCursoDesde && Date.now() - s.emCursoDesde > CRON_MIN_MS ? `<span class="i-t2 num i-cron" data-desde="${s.emCursoDesde}"></span>` : ''
+      if (s.emCursoDesde && !c && cronArmado !== s.emCursoDesde) {
+        cronArmado = s.emCursoDesde // um só temporizador por comando (render corre muitas vezes)
+        setTimeout(render, CRON_MIN_MS - (Date.now() - s.emCursoDesde) + 50)
+      }
+      const tr = s.tarefas && s.tarefas.total > 1 ? `<span class="i-tar num" style="--p:${Math.round((s.tarefas.feitas / s.tarefas.total) * 100)}%" title="${esc(s.tarefas.atual || '')}"><i></i>${s.tarefas.feitas}/${s.tarefas.total}</span>` : ''
+      return { k: 'acao', cls: 'acao', clique: 'conv:' + s.id, html: `${chip(s)}<span class="i-leg"><span>${esc(s.acao)}</span></span>${c}${tr}${c ? '' : '<span class="aescrever"><b></b><b></b><b></b></span>'}` }
     }
     return {
       k: 'repouso',
@@ -236,6 +301,7 @@
       c.innerHTML = st.html
       c._html = st.html
     }
+    atualizarCronos(c)
     // Largura: a do conteúdo, até um máximo; acima disso a legenda corre.
     c.classList.remove('aperta')
     // Na flutuante, a janela tem a largura da barra: o máximo não pode depender de innerWidth (a ilha
@@ -260,6 +326,8 @@
       leg.style.setProperty('--dur', Math.max(4, desl / 28) + 's')
     }
   }
+
+  const textoReuniao = () => (E.reuniao && E.reuniao.motivo === 'micro' ? t('barra.reuniaoMicro', { app: E.reuniao.app || '?' }) : t('barra.reuniaoEcra'))
 
   function modulo(id, s, vertical, flut) {
     switch (id) {
@@ -300,8 +368,10 @@
         return `<div class="it contexto clic" data-menu="uso" title="${esc(t('barra.contexto', { modelo: s.uso.modelo, usados: mil(s.uso.usados), limite: mil(s.uso.limite), saida: mil(s.uso.saidaPedido) }))}"><span class="anel" style="--p:${s.uso.pct}%"></span><span class="num">${s.uso.pct}%</span></div>`
       case 'microfone':
         return `<div class="it clic ${E.aOuvir ? 'a-ouvir' : ''}" data-falar="1" title="${E.aOuvir ? t('barra.aOuvir') : t('barra.falar')}">${svg('micro')}${E.aOuvir ? '<span class="ponto-rec"></span>' : ''}</div>`
-      case 'silencio':
-        return `<div class="it clic ${E.silencio ? 'silencio-on' : ''}" data-alternar-silencio="1" title="${E.silencio ? (E.cfg.naoIncomodar ? t('barra.silencioOn') : t('barra.silencioHorario')) : t('barra.silencioOff')}">${svg(E.silencio ? 'lua2' : 'sino')}</div>`
+      case 'silencio': {
+        const dica = E.silencio ? (E.cfg.naoIncomodar ? t('barra.silencioOn') : E.reuniao ? textoReuniao() : t('barra.silencioHorario')) : t('barra.silencioOff')
+        return `<div class="it clic ${E.silencio ? 'silencio-on' : ''}${E.reuniao && !E.cfg.naoIncomodar ? ' reuniao' : ''}" data-alternar-silencio="1" title="${esc(dica)}">${svg(E.silencio ? 'lua2' : 'sino')}</div>`
+      }
       case 'tema': {
         const L = temas()
         const atual = L.find(x => x[0] === (E.cfg.barraTema || 'sistema')) || L[0]
@@ -405,7 +475,7 @@
     const linha = (chave, ic, on, rot, sub, extra) =>
       `<div class="cc-l clic" data-alternar="${chave}"><span class="cc-bola ${on ? 'on' : ''} ${extra || ''}">${svg(ic)}</span><div><b>${rot}</b><small>${sub}</small></div></div>`
     const h = { ativo: false, inicio: '22:00', fim: '08:00', ...(c.silencioHorario || {}) }
-    const subSil = c.naoIncomodar ? t('cc.ligado') : h.ativo ? t('cc.ate', { h: esc(h.fim) }) : t('cc.desligado')
+    const subSil = c.naoIncomodar ? t('cc.ligado') : E.reuniao ? esc(textoReuniao()) : h.ativo ? t('cc.ate', { h: esc(h.fim) }) : t('cc.desligado')
     const u = E.uso
     const dias = u ? u.dias.map(d => d.entrada + d.saida) : []
     const maxDia = Math.max(1, ...dias)
@@ -430,11 +500,13 @@
         ${linha('anunciarAcoes', 'raio', c.anunciarAcoes, t('cc.anunciar'), c.anunciarAcoes ? t('cc.ligado') : t('cc.desligado'))}
       </div>
       <div class="cc-t w2">${linha('naoIncomodar', 'lua', c.naoIncomodar || E.silencio, t('cc.silencio'), subSil, 'roxo')}</div>
+      <div class="cc-t w2">${linha('maosLivres', 'micro', c.maosLivres, t('cc.maos'), E.ditadoInstalado === false ? t('cc.semDitado') : c.maosLivres ? t('cc.maosOn') : t('cc.desligado'), 'verde')}</div>
+      <div class="cc-t w2">${linha('aprovarPorVoz', 'escudo', c.aprovarPorVoz, t('cc.aprovarVoz'), E.ditadoInstalado === false ? t('cc.semDitado') : c.aprovarPorVoz ? t('cc.aprovarVozOn') : t('cc.desligado'), 'ambar')}</div>
       <div class="cc-t centro clic" data-acao="pausa"><span class="cc-bola">${svg(E.pausado ? 'tocar' : 'pausa')}</span>${E.pausado ? t('cc.retomar') : t('cc.pausar')}</div>
       <div class="cc-t centro clic" data-acao="saltar"><span class="cc-bola">${svg('saltar')}</span>${t('cc.saltar')}</div>
       <div class="cc-t w4">${deslizador('volume', t('cc.volume'), 0, 2, 0.05, v => Math.round(v * 100) + '%', true)}</div>
       <div class="cc-t w4">${deslizador('velocidade', t('cc.velocidade'), 0.6, 1.4, 0.02, v => num(v, 2))}${deslizador('altura', t('cc.tom'), -6, 6, 1, sinal)}</div>
-      <div class="cc-t w2 clic" data-ir="uso"><div class="cc-rot">${t('cc.tokens')}</div><div class="cc-num num">${u ? mil(u.hoje.entrada + u.hoje.saida) : '—'}</div>
+      <div class="cc-t w2 clic" data-ir="uso"><div class="cc-rot">${t('cc.tokens')}</div><div class="cc-num num">${u ? mil(u.hoje.entrada + u.hoje.saida) : '—'}${u && u.hoje.custo ? ` <small class="cc-custo">≈ ${dinheiro(u.hoje.custo)}</small>` : ''}</div>
         <div class="cc-spark">${dias.map((d, i) => `<i class="${i === dias.length - 1 ? 'hoje' : ''}" style="height:${Math.max(6, Math.round((d / maxDia) * 100))}%"></i>`).join('')}</div></div>
       <div class="cc-t centro clic" data-ciclo-idioma="1"><span class="cc-bola">${svg('globo')}</span>${esc(nomeLing)}</div>
       <div class="cc-t centro clic" data-ciclo-tema="${temaProx[0]}"><span class="cc-bola">${svg(temaAtual[1])}</span>${temaAtual[2]}</div>
@@ -506,6 +578,14 @@
       <div class="op" data-alternar="barraAvisos"><span class="chk">${chk(c.barraAvisos !== false)}</span>${t('def.avisos')}</div>
       <div class="op" data-alternar="respostasPelaBarra"><span class="chk">${chk(c.respostasPelaBarra !== false)}</span>${t('def.responder')}</div>
       <div class="op" data-alternar="aprovarPelaBarra"><span class="chk">${chk(c.aprovarPelaBarra !== false)}</span>${t('def.aprovar')}</div>
+      <div class="op" data-alternar="anunciarResultados"><span class="chk">${chk(c.anunciarResultados !== false)}</span>${t('def.resultados')}</div>
+      <hr>
+      <div class="tit">${t('def.som')}</div>
+      <div class="op" data-alternar="sons"><span class="chk">${chk(c.sons !== false)}</span>${t('def.sons')}</div>
+      <div class="op" data-alternar="somEspacial"><span class="chk">${chk(c.somEspacial !== false)}</span>${t('def.espacial')}</div>
+      <div class="op" data-alternar="silencioReunioes"><span class="chk">${chk(c.silencioReunioes !== false)}</span>${t('def.reunioes')}</div>
+      <div class="op" data-ciclo-moeda="1"><span class="chk"></span>${t('def.moeda')}<small>${esc(t('moeda.' + (c.moeda || 'auto')))}</small></div>
+      <div class="op" data-alternar="resumoAoVoltar"><span class="chk">${chk(c.resumoAoVoltar !== false)}</span>${t('def.regresso')}</div>
       <hr>
       <div class="tit">${t('def.arranque')}</div>
       <div class="op" data-arranque="windows"><span class="chk">${chk(c.barraArranque === 'windows')}</span>${t('def.comWindows')}</div>
@@ -530,6 +610,7 @@
       <div class="op" data-ir="conversas"><span class="chk"></span>${t('dir.conversas')}<small>Ctrl+Shift+Alt+C</small></div>
       <div class="op" data-ir="som"><span class="chk"></span>${t('dir.cc')}</div>
       <div class="op" data-ir="uso"><span class="chk"></span>${t('dir.tokens')}</div>
+      <div class="op" data-ir="wrapped"><span class="chk"></span>${t('dir.semana')}</div>
       <hr>
       <div class="op" data-alternar="naoIncomodar"><span class="chk">${chk(c.naoIncomodar)}</span>${t('dir.silencio')}<small>Ctrl+Shift+Alt+D</small></div>
       <div class="op" data-alternar="ligado"><span class="chk">${chk(c.ligado)}</span>${t('dir.vozLigada')}</div>
@@ -604,7 +685,7 @@
       <div class="tit">${t('uso.titulo')}</div>
       <div class="grafico${graficoVisto ? '' : ' entra'}">${u.dias
         .map(
-          d => `<div class="col" title="${esc(t('uso.dica', { dia: d.dia, entrada: mil(d.entrada), saida: mil(d.saida), cache: mil(d.cache) }))}"><div class="b" style="height:${Math.round((total(d) / max) * 100)}%"><i style="height:${total(d) ? Math.round((d.saida / total(d)) * 100) : 0}%"></i></div><small>${nomeDia(d.dia)}</small></div>`,
+          d => `<div class="col" title="${esc(t('uso.dica', { dia: d.dia, entrada: mil(d.entrada), saida: mil(d.saida), cache: mil(d.cache) }) + ' · ≈ ' + dinheiro(d.custo))}"><div class="b" style="height:${Math.round((total(d) / max) * 100)}%"><i style="height:${total(d) ? Math.round((d.saida / total(d)) * 100) : 0}%"></i></div><small>${nomeDia(d.dia)}</small></div>`,
         )
         .join('')}</div>
       <div class="kpis">
@@ -612,25 +693,188 @@
         <div><b class="num">${mil(u.hoje.saida)}</b><small>${t('uso.gerados')}</small></div>
         <div><b class="num">${mil(u.hoje.cache)}</b><small>${t('uso.cache')}</small></div>
       </div>
+      <div class="custo-linha" title="${esc(dicaCusto(u))}"><span>${t('uso.custoHoje')}</span><b class="num">≈ ${dinheiro(u.hoje.custo)}</b><small class="num">${t('uso.custoSemana', { v: dinheiro(u.semana ? u.semana.custo : 0) })}</small></div>
       ${
         u.topo.length
           ? `<div class="tit">${t('uso.conversas')}</div>${u.topo
-              .map(x => `<div class="linha-uso"><span>${esc(x.titulo || x.id.slice(0, 8))}</span><small class="num">${t('uso.geradosN', { n: mil(x.saida) })}</small></div>`)
+              .map(x => `<div class="linha-uso"><span>${esc(x.titulo || x.id.slice(0, 8))}</span><small class="num">${t('uso.geradosN', { n: mil(x.saida) })} · ${dinheiro(x.custo)}</small></div>`)
               .join('')}`
           : ''
       }
       ${s && s.uso ? `<div class="tit">${t('uso.esta')}</div><div class="linha-uso"><span>${esc(s.uso.modelo)} · ${t('uso.contexto')}</span><small class="num">${mil(s.uso.usados)} / ${mil(s.uso.limite)} (${s.uso.pct}%)</small></div>` : ''}
+      <div class="op-link clic" data-ir="wrapped">${t('uso.semana')}</div>
     </div>`
   }
 
+  function dicaCusto(u) {
+    const c = u.cambio || {}
+    const taxa = moeda() === 'EUR' ? t(c.data ? 'uso.taxa' : 'uso.taxaReserva', { v: num(c.eurPorDolar || 0, 3), data: c.data || '' }) : ''
+    return t('uso.custoDica') + taxa + (u.hoje.semPreco ? ' · ' + t('uso.semPreco', { n: mil(u.hoje.semPreco) }) : '')
+  }
+
+  // ---------------- «Voz Wrapped»: a semana num cartão para partilhar ----------------
+  const nomeHora = h => (h == null ? '—' : IDIOMA === 'en' ? `${((h + 11) % 12) + 1} ${h < 12 ? 'am' : 'pm'}` : `${h}h`)
+  const nomeDiaLongo = k => (k ? new Date(k + 'T12:00:00').toLocaleDateString(localeAtual(), { weekday: 'long' }) : '—')
+  const intervaloSemana = u => {
+    const f = k => new Date(k + 'T12:00:00').toLocaleDateString(localeAtual(), { day: 'numeric', month: 'short' })
+    return `${f(u.dias[0].dia)} – ${f(u.dias[u.dias.length - 1].dia)}`
+  }
+  const nomeFerramenta = n => (n === 'MCP' ? t('wr.mcp') : n)
+
+  function menuWrapped() {
+    const u = E.uso
+    const w = u && u.semana
+    if (!w || !(w.entrada + w.saida)) return `<div class="painel wrapped"><div class="vazio">${t('wr.vazio')}</div></div>`
+    const maxF = Math.max(1, ...w.ferramentas.map(f => f.valor))
+    return `<div class="painel wrapped">
+      <div class="wr-cartao">
+        <div class="wr-cab"><span class="wr-marca">${svg('estrela')} Voz</span><span>${esc(intervaloSemana(u))}</span></div>
+        <div class="wr-tit">${t('wr.titulo')}</div>
+        <div class="wr-grande num">${mil(w.entrada + w.saida + w.cache)}</div>
+        <div class="wr-sub">${t('wr.tokens')}</div>
+        <div class="wr-grelha">
+          <div><b class="num">${w.horasAtivas}</b><small>${t('wr.horas')}</small></div>
+          <div><b class="num">${w.conversas}</b><small>${t('wr.conversas')}</small></div>
+          <div><b class="num">${w.diasSeguidos}</b><small>${t('wr.seguidos')}</small></div>
+          <div><b class="num">${dinheiro(w.custo)}</b><small>${t('wr.custo')}</small></div>
+        </div>
+        <div class="wr-linha"><span>${t('wr.diaPico')}</span><b>${esc(nomeDiaLongo(w.diaPico))}</b></div>
+        <div class="wr-linha"><span>${t('wr.horaPico')}</span><b>${esc(nomeHora(w.horaPico))}</b></div>
+        ${w.projetos.length ? `<div class="wr-sec">${t('wr.projetos')}</div>${w.projetos.map((x, i) => `<div class="wr-linha"><span>${i + 1}. ${esc(x.nome)}</span><b class="num">${mil(x.valor)}</b></div>`).join('')}` : ''}
+        ${w.ferramentas.length ? `<div class="wr-sec">${t('wr.ferramentas')}</div>${w.ferramentas.map(f => `<div class="wr-barra"><span>${esc(nomeFerramenta(f.nome))}</span><i style="--w:${Math.round((f.valor / maxF) * 100)}%"></i><b class="num">${f.valor.toLocaleString(localeAtual())}</b></div>`).join('')}` : ''}
+      </div>
+      <div class="botoes"><button data-wrapped="copiar">${t('wr.copiar')}</button><button class="permitir" data-wrapped="guardar">${t('wr.guardar')}</button></div>
+    </div>`
+  }
+
+  /** O mesmo cartão desenhado num canvas 1080×1350 (formato de publicação nas redes). */
+  function imagemWrapped() {
+    const u = E.uso
+    const w = u.semana
+    const W = 1080
+    const H = 1350
+    const cv = document.createElement('canvas')
+    cv.width = W
+    cv.height = H
+    const g = cv.getContext('2d')
+    const fundo = g.createLinearGradient(0, 0, W, H)
+    fundo.addColorStop(0, '#1d1530')
+    fundo.addColorStop(0.55, '#3a1d2e')
+    fundo.addColorStop(1, '#e5794f')
+    g.fillStyle = fundo
+    g.fillRect(0, 0, W, H)
+    const brilho = g.createRadialGradient(W * 0.85, H * 0.1, 0, W * 0.85, H * 0.1, 600)
+    brilho.addColorStop(0, 'rgba(255,170,120,.35)')
+    brilho.addColorStop(1, 'rgba(255,170,120,0)')
+    g.fillStyle = brilho
+    g.fillRect(0, 0, W, H)
+    const fonte = (peso, px) => `${peso} ${px}px "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif`
+    const texto = (s, x, y, peso, px, cor, alinhar) => {
+      g.font = fonte(peso, px)
+      g.fillStyle = cor
+      g.textAlign = alinhar || 'left'
+      g.fillText(s, x, y)
+    }
+    const M = 84
+    texto('✦ Voz · Claude Code', M, 120, 600, 34, 'rgba(255,255,255,.85)')
+    texto(intervaloSemana(u), W - M, 120, 500, 32, 'rgba(255,255,255,.6)', 'right')
+    texto(t('wr.titulo'), M, 230, 700, 58, '#fff')
+    texto(mil(w.entrada + w.saida + w.cache), M, 380, 800, 150, '#ffb38f')
+    texto(t('wr.tokens'), M, 440, 500, 36, 'rgba(255,255,255,.7)')
+    const caixas = [
+      [String(w.horasAtivas), t('wr.horas')],
+      [String(w.conversas), t('wr.conversas')],
+      [String(w.diasSeguidos), t('wr.seguidos')],
+      [dinheiro(w.custo), t('wr.custo')],
+    ]
+    const cw = (W - M * 2 - 30) / 2
+    caixas.forEach(([v, r], i) => {
+      const x = M + (i % 2) * (cw + 30)
+      const y = 500 + Math.floor(i / 2) * 175
+      g.fillStyle = 'rgba(255,255,255,.08)'
+      g.beginPath()
+      g.roundRect(x, y, cw, 150, 28)
+      g.fill()
+      texto(v, x + 34, y + 82, 750, 60, '#fff')
+      texto(r, x + 34, y + 124, 500, 28, 'rgba(255,255,255,.65)')
+    })
+    let y = 920
+    const linha = (a, b) => {
+      texto(a, M, y, 500, 32, 'rgba(255,255,255,.7)')
+      texto(b, W - M, y, 700, 32, '#fff', 'right')
+      y += 52
+    }
+    linha(t('wr.diaPico'), nomeDiaLongo(w.diaPico))
+    linha(t('wr.horaPico'), nomeHora(w.horaPico))
+    if (w.projetos[0]) linha(t('wr.projetoTopo'), w.projetos[0].nome)
+    y += 14
+    const maxF = Math.max(1, ...w.ferramentas.map(f => f.valor))
+    for (const f of w.ferramentas.slice(0, 4)) {
+      texto(nomeFerramenta(f.nome), M, y, 600, 28, '#fff')
+      const bx = M + 230
+      const bw = W - M * 2 - 230 - 120
+      g.fillStyle = 'rgba(255,255,255,.12)'
+      g.beginPath()
+      g.roundRect(bx, y - 22, bw, 26, 13)
+      g.fill()
+      g.fillStyle = '#ffb38f'
+      g.beginPath()
+      g.roundRect(bx, y - 22, Math.max(26, bw * (f.valor / maxF)), 26, 13)
+      g.fill()
+      texto(f.valor.toLocaleString(localeAtual()), W - M, y, 600, 28, 'rgba(255,255,255,.8)', 'right')
+      y += 48
+    }
+    texto('github.com/Gleite05/voz-claude-code', W / 2, H - 60, 500, 26, 'rgba(255,255,255,.55)', 'center')
+    return new Promise(r => cv.toBlob(r, 'image/png'))
+  }
+
+  async function acaoWrapped(qual) {
+    const blob = await imagemWrapped()
+    if (!blob) return mostrarErro(t('wr.erro'))
+    if (qual === 'copiar') {
+      try {
+        await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })])
+        return mostrarErro(t('wr.copiada'), true)
+      } catch {
+        qual = 'guardar' // sem acesso à área de transferência: guarda o ficheiro
+      }
+    }
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(blob)
+    a.download = `voz-semana-${E.uso.dias[E.uso.dias.length - 1].dia}.png`
+    document.body.appendChild(a)
+    a.click()
+    setTimeout(() => (URL.revokeObjectURL(a.href), a.remove()), 1000)
+  }
+
   // ---------------- permissões ----------------
+  /** O que muda num Edit/Write: linhas a verde/vermelho, com o nome do ficheiro e os totais. */
+  function blocoDiff(d) {
+    const linhas = d.linhas
+      .map(([tp, l]) => (tp === '…' ? '<div class="dl sep">⋯</div>' : `<div class="dl ${tp === '+' ? 'add' : tp === '-' ? 'rem' : ''}"><span class="dm">${tp === ' ' ? '' : tp === '-' ? '−' : '+'}</span>${esc(l) || ' '}</div>`))
+      .join('')
+    return `<div class="diff"><div class="diff-cab"><span>${esc(d.ficheiro || '')}${d.novo ? ` <em>${t('perm.novo')}</em>` : ''}</span><span class="num"><b class="add">+${d.add}</b> <b class="rem">−${d.rem}</b></span></div><div class="diff-c">${linhas}${d.mais ? `<div class="dl sep">${esc(t('perm.mais', { n: d.mais }))}</div>` : ''}</div></div>`
+  }
+  /** Texto do botão «Permitir sempre»: a regra (git push…), ou o modo (aceitar edições). */
+  function rotuloSempre(x) {
+    if (x.modo === 'acceptEdits') return t('perm.aceitarEdicoes')
+    if (x.modo) return t('perm.modo', { m: x.modo })
+    const r = x.regras[0] || ''
+    const m = /^[^(]+\((.*)\)$/.exec(r)
+    const curto = (m ? m[1] : r).replace(/:\*$/, '…')
+    return t('perm.sempre', { r: curto.length > 26 ? curto.slice(0, 25) + '…' : curto })
+  }
+  function dicaSempre(x) {
+    const onde = { session: t('perm.dSessao'), localSettings: t('perm.dProjeto'), projectSettings: t('perm.dProjeto'), userSettings: t('perm.dSempre') }[x.destino] || ''
+    return [x.regras.join(', '), x.modo, onde].filter(Boolean).join(' · ')
+  }
   function cartaoPermissao(p, aviso) {
     const s = E.sessoes.find(x => x.id === p.sessao)
     return `<div class="cartao permissao" data-perm="${esc(p.id)}">
       <div class="cab"><span class="escudo">${svg('escudo')}</span><div class="tt"><b>${esc(t('ilha.pede', { nome: s ? s.titulo : t('perm.conversa') }))}</b><small>${esc(t('perm.sub', { f: p.ferramenta }))}</small></div>${aviso ? `<button class="x" data-fechar="1" title="${t('perm.fecharDepois')}">✕</button>` : ''}</div>
       ${p.descricao ? `<div class="ultima">${esc(p.descricao)}</div>` : ''}
-      <pre class="cmd"><span class="pr">$</span> ${esc(p.resumo)}</pre>
-      <div class="botoes"><button class="recusar" data-decidir="deny" data-id="${esc(p.id)}">${t('perm.recusar')}</button><button class="permitir" data-decidir="allow" data-id="${esc(p.id)}">${t('perm.permitir')}</button></div>
+      ${p.diff ? blocoDiff(p.diff) : `<pre class="cmd"><span class="pr">$</span> ${esc(p.resumo)}</pre>`}
+      <div class="botoes"><button class="recusar" data-decidir="deny" data-id="${esc(p.id)}">${t('perm.recusar')}</button>${p.sempre ? `<button class="sempre" data-decidir="always" data-id="${esc(p.id)}" title="${esc(dicaSempre(p.sempre))}">${esc(rotuloSempre(p.sempre))}</button>` : ''}<button class="permitir" data-decidir="allow" data-id="${esc(p.id)}">${t('perm.permitir')}</button></div>
     </div>`
   }
 
@@ -683,21 +927,33 @@
     const hora = ms => new Date(ms).toLocaleTimeString(localeAtual(), { hour: '2-digit', minute: '2-digit' })
     const linhas = h
       .map((a, i) => {
-        const agora = i === h.length - 1 && x.estado === 'trabalhar'
-        return `<li class="${agora ? 'agora' : ''}"><span>${esc(a.acao)}</span><small class="num">${agora ? t('conv.agora') : hora(a.t)}</small></li>`
+        const agora = i === h.length - 1 && x.estado === 'trabalhar' && a.ok === undefined
+        const dur = !agora && Number.isFinite(a.dur) && a.dur >= 1000 ? ` · ${durCurta(a.dur)}` : ''
+        return `<li class="${agora ? 'agora' : ''}${a.ok === false ? ' falhou' : ''}"><span>${esc(a.acao)}</span><small class="num">${agora ? (x.emCursoDesde ? `<span data-desde="${x.emCursoDesde}"></span>` : t('conv.agora')) : hora(a.t) + dur}</small></li>`
       })
       .join('')
+    const tr = x.tarefas
+    const tarefas = tr
+      ? `<div class="tl-tit">${t('conv.tarefas')} <span class="num">${tr.feitas}/${tr.total}</span></div><div class="tar-barra"><i style="width:${Math.round((tr.feitas / tr.total) * 100)}%"></i></div><ul class="tar-lista">${tr.itens
+          .map(i => `<li class="${i.s}"><span class="tar-c"></span><span>${esc(i.t)}</span></li>`)
+          .join('')}</ul>`
+      : ''
+    const subs = (x.subagentes || []).length
+      ? `<div class="tl-tit">${t('conv.subagentes')}</div><ul class="tl-acoes subs">${x.subagentes
+          .map(a => `<li class="agora"><span>${esc(a.tipo)}</span><small class="num" data-desde="${a.inicio}"></small></li>`)
+          .join('')}</ul>`
+      : ''
     const voz = x.voz && x.voz.manual && x.voz.voz ? x.voz.voz.split('-')[1] || x.voz.voz : null
     const uso = x.uso
       ? `<div class="uso-linha"><span>${t('conv.contexto')} <b class="num">${x.uso.pct}%</b></span><span><b class="num">${mil(x.uso.saidaPedido || 0)}</b> tokens</span>${voz ? `<span>${t('conv.voz')} <b>${esc(voz)}</b></span>` : ''}</div>`
       : ''
-    return `${linhas ? `<div class="tl-tit">${t('conv.acoes')}</div><ul class="tl-acoes">${linhas}</ul>` : ''}${uso}`
+    return `${tarefas}${linhas ? `<div class="tl-tit">${t('conv.acoes')}</div><ul class="tl-acoes">${linhas}</ul>` : ''}${subs}${uso}`
   }
 
   function cartao(x, aviso, detalhe) {
     const linhaEstado =
       x.estado === 'trabalhar'
-        ? `<span class="aescrever"><b></b><b></b><b></b></span>${esc(x.acao || t('conv.aTrabalhar'))}`
+        ? `<span class="aescrever"><b></b><b></b><b></b></span>${esc(x.compactar ? t('ilha.compactar') : x.acao || t('conv.aTrabalhar'))}${x.tarefas && x.tarefas.total > 1 ? ` · <span class="num">${x.tarefas.feitas}/${x.tarefas.total}</span>` : ''}`
         : x.estado === 'atencao'
           ? `<span class="alerta">● ${esc(x.acao || t('conv.precisaDeTi'))}</span>`
           : esc(ESTADOS[x.estado] || '')
@@ -771,6 +1027,7 @@
     if (m === 'direito') return menuDireito()
     if (m === 'vozes') return menuVozes()
     if (m === 'uso') return menuUso()
+    if (m === 'wrapped') return menuWrapped()
     return m === 'som'
       ? menuSom()
       : m === 'definicoes'
@@ -916,20 +1173,32 @@
     if (r && !r.ok) mostrarErro(r.erro || t('erro.microfone'))
   }
 
-  function mostrarErro(texto) {
+  function mostrarErro(texto, ok) {
     const el = document.createElement('div')
-    el.className = 'toast-erro'
+    el.className = 'toast-erro' + (ok ? ' ok' : '')
     el.textContent = texto
     document.body.appendChild(el)
     setTimeout(() => el.remove(), 4500)
   }
 
   /** Texto ditado: vai para a caixa de resposta da conversa, para reveres e carregares Enter. */
+  function aoRegresso(d) {
+    regressoRecente = { terminaram: d.terminaram || [], precisam: d.precisam || [], falhas: d.falhas || [], desde: d.desde, ate: Date.now() + 12000 }
+    render()
+    setTimeout(render, 12100)
+  }
+
   function aoDitado(d) {
     if (d.aTranscrever) return
     const sessao = d.sessao || ditadoSessao
     ditadoSessao = null
     if (d.erro) return mostrarErro(d.erro)
+    // Mãos-livres: o que disseste já seguiu para a conversa.
+    if (d.enviado) {
+      if (sessao) envios[sessao] = { texto: d.texto, entregue: d.entregue, t: Date.now() }
+      if (VISTA === 'barra') mostrarErro(t('maos.enviado', { t: d.texto.length > 60 ? d.texto.slice(0, 59) + '…' : d.texto }), true)
+      return redesenharMenuAtual()
+    }
     if (!d.texto || !sessao) return
     rascunhos[sessao] = (rascunhos[sessao] ? rascunhos[sessao] + ' ' : '') + d.texto
     const aberto = VISTA === 'menu' ? menuAtual : menuEmLinha && menuEmLinha.menu
@@ -1049,7 +1318,7 @@
     const alvo = ev.target.closest(
       '[data-menu],[data-acao],[data-foco],[data-ir],[data-posicao],[data-arranque],[data-tema],[data-ciclo-tema],[data-predef],[data-alternar],[data-sair],[data-esconder],[data-mod],' +
         '[data-falar],[data-falar-sessao],[data-alternar-silencio],[data-decidir],[data-voz-baixar],[data-voz-padrao],[data-voz-remover],' +
-        '[data-voz-experimentar],[data-ecra],[data-horario-ativo],[data-alternar-por-conversa],[data-idioma],[data-conv],[data-ilha],[data-ciclo-idioma],[data-cc-eq]',
+        '[data-voz-experimentar],[data-wrapped],[data-ciclo-moeda],[data-ecra],[data-horario-ativo],[data-alternar-por-conversa],[data-idioma],[data-conv],[data-ilha],[data-ciclo-idioma],[data-cc-eq]',
     )
     if (!alvo) {
       if (!host && menuEmLinha && !ev.target.closest('#menu-em-linha')) {
@@ -1097,6 +1366,11 @@
     }
     if (d.vozPadrao) return api({ acao: 'vozes', op: 'padrao', id: d.vozPadrao })
     if (d.vozRemover) return api({ acao: 'vozes', op: 'remover', id: d.vozRemover }).then(carregarCatalogo)
+    if (d.wrapped) return acaoWrapped(d.wrapped)
+    if (d.cicloMoeda) {
+      const L = ['auto', 'EUR', 'USD']
+      return config({ moeda: L[(L.indexOf(E.cfg.moeda || 'auto') + 1) % L.length] }).then(redesenharMenuAtual)
+    }
     if (d.vozExperimentar) return api({ acao: 'vozes', op: 'experimentar', id: d.vozExperimentar })
     if (d.ecra !== undefined) return config({ barraEcra: Number(d.ecra) })
     if (d.idioma) return config({ idioma: d.idioma })
@@ -1255,6 +1529,10 @@
         document.querySelectorAll('.it.aberto').forEach(x => x.classList.remove('aberto'))
       } else if (d.tipo === 'ecras') {
         ecras = Array.isArray(d.lista) ? d.lista : []
+      } else if ((d.tipo === 'ambiente' || d.tipo === 'regresso') && VISTA === 'barra') {
+        // Sensor do anfitrião: reunião/ecrã inteiro e regresso ao computador → servidor.
+        const { tipo, ...resto } = d
+        api({ acao: tipo, ...resto })
       } else if (d.tipo === 'atalho' && E) {
         // Atalhos globais (Ctrl+Shift+Alt+…), registados pelo anfitrião.
         if (d.qual === 'pausa') controlo('pausa')
@@ -1307,6 +1585,7 @@
     })
     es.addEventListener('sair', () => enviarHost({ tipo: 'sair' }))
     es.addEventListener('ditado', ev => aoDitado(JSON.parse(ev.data)))
+    es.addEventListener('regresso', ev => VISTA === 'barra' && aoRegresso(JSON.parse(ev.data)))
     es.addEventListener('progresso-voz', ev => {
       const p = JSON.parse(ev.data)
       if (p.fim) {
@@ -1329,6 +1608,7 @@
     if (!E || VISTA !== 'barra') return
     const el = raiz.querySelector('.tempo')
     if (el) el.textContent = duracao(foco())
+    atualizarCronos()
   }, 1000)
   enviarHost({ tipo: 'pronta', vista: VISTA })
 })()

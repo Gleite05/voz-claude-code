@@ -13,10 +13,17 @@ let pronto = null
 let espera = []
 let buffer = ''
 
+// O teste arranca o Python (meio segundo): a resposta fica guardada (sim: 10 min; não: 1 min).
+let instalacao = { valor: false, ate: 0 }
 function instalado() {
-  if (!fs.existsSync(CAMINHOS.pythonExe)) return false
-  const r = spawnSync(CAMINHOS.pythonExe, ['-I', '-c', 'import faster_whisper, sounddevice'], { windowsHide: true })
-  return r.status === 0
+  if (Date.now() < instalacao.ate) return instalacao.valor
+  let valor = false
+  if (fs.existsSync(CAMINHOS.pythonExe)) {
+    const r = spawnSync(CAMINHOS.pythonExe, ['-I', '-c', 'import faster_whisper, sounddevice'], { windowsHide: true })
+    valor = r.status === 0
+  }
+  instalacao = { valor, ate: Date.now() + (valor ? 10 * 60 * 1000 : 60 * 1000) }
+  return valor
 }
 
 function iniciar(modelo) {
@@ -79,6 +86,10 @@ module.exports = {
   gravar: modelo => ordem({ ordem: 'gravar' }, modelo),
   parar: (idioma, modelo) => ordem({ ordem: 'parar', idioma }, modelo),
   cancelar: modelo => ordem({ ordem: 'cancelar' }, modelo),
+  /** Grava sozinho até te calares (deteção de voz) e transcreve. o = { idioma, espera, silencio, max } */
+  escutar: (o, modelo) => ordem({ ordem: 'escutar', ...o }, modelo),
+  /** Termina já uma escuta em curso (transcreve o que ouviu). */
+  acabar: modelo => ordem({ ordem: 'acabar' }, modelo),
   aquecer: modelo => iniciar(modelo),
   fechar: () => {
     if (proc) proc.kill()

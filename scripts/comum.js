@@ -31,6 +31,12 @@ const PREDEFINICOES = {
   ligado: true,
   anunciarAcoes: true, // "A editar config.ts", "A usar o git"...
   lerRespostas: true, // lê o texto do Claude enquanto ele escreve
+  sons: true, // sons curtos por evento (testes passaram/falharam, autorização, conversa terminou)
+  somEspacial: true, // com várias conversas, cada uma fala do seu lado (esquerda/centro/direita)
+  silencioReunioes: true, // voz calada com o microfone ocupado por outra app (Teams, Zoom…) ou em ecrã inteiro
+  resumoAoVoltar: true, // ao voltar ao computador (5+ min fora), diz o que aconteceu entretanto
+  moeda: 'auto', // custo dos tokens: auto (euro em pt/es, dólar em en) | EUR | USD
+  anunciarResultados: true, // "Os 12 testes passaram", "A compilação falhou", comandos longos
   velocidade: 0.88, // 0.5 a 2.0 (abaixo de 1 é mais calmo)
   ruido: 0.4, // Piper noise_scale: mais baixo = voz mais estável e menos "metálica"
   ruidoDuracao: 0.5, // Piper noise_w_scale: variação do ritmo entre sílabas
