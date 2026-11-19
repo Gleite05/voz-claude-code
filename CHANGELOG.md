@@ -1,5 +1,10 @@
 # Histórico de versões
 
+## 1.4.1
+
+- **Perguntas do Claude na barra:** quando o Claude te faz uma pergunta com opções, o cartão da barra mostra as opções (uma ou várias, com a descrição de cada uma) e um campo «Outra resposta», em vez de só «Permitir» / «Recusar». A resposta que escolhes segue diretamente para a conversa; «Não responder» deixa o Claude continuar sem ela.
+- Aprovar um plano pela barra (sair do modo de planeamento) passa a funcionar: o Claude Code exige que o plano seja devolvido com a aprovação, e antes a barra só dizia «permitir».
+
 ## 1.4.0
 
 - **Vidro líquido:** a barra encaixada passa a desenhar o fundo real do ambiente de trabalho que fica por trás dela (a faixa fica «transparente») e os grupos aparecem em cápsulas de vidro que o refratam a sério: lente nas bordas, dispersão das cores, desfoque, brilho na aresta, sombra e tinta. A ilha dinâmica também é de vidro.

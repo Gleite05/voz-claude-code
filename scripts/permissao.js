@@ -71,6 +71,39 @@ function resumir(ferramenta, entrada) {
   return corta(JSON.stringify(e), 300)
 }
 
+/**
+ * Perguntas do Claude (AskUserQuestion): o pedido não é «posso?», é «qual escolhes?». A barra mostra
+ * as opções e devolve, por índice, o que escolheste (ou escreveste em «Outra»).
+ */
+function perguntasDe(ferramenta, entrada) {
+  if (ferramenta !== 'AskUserQuestion' || !entrada || !Array.isArray(entrada.questions)) return null
+  const txt = (s, n) => (typeof s === 'string' ? s.slice(0, n) : '')
+  const qs = entrada.questions
+    .filter(q => q && typeof q.question === 'string')
+    .slice(0, 6)
+    .map(q => ({
+      pergunta: txt(q.question, 600),
+      cabecalho: txt(q.header, 40),
+      multipla: !!q.multiSelect,
+      opcoes: (Array.isArray(q.options) ? q.options : [])
+        .filter(o => o && typeof o.label === 'string')
+        .slice(0, 8)
+        .map(o => ({ rotulo: txt(o.label, 160), descricao: txt(o.description, 300) })),
+    }))
+  return qs.length ? qs : null
+}
+
+/** As respostas no formato do Claude Code: { «texto da pergunta»: «opção» (várias separadas por vírgula) }. */
+function respostasPara(entrada, respostas) {
+  if (!Array.isArray(respostas)) return null
+  const answers = {}
+  entrada.questions.forEach((q, i) => {
+    const r = respostas[i]
+    if (q && typeof q.question === 'string' && typeof r === 'string' && r.trim()) answers[q.question] = r.trim().slice(0, 4000)
+  })
+  return Object.keys(answers).length ? answers : null
+}
+
 function naAppDoClaude() {
   const env = process.env
   return Boolean(env.CLAUDE_AGENT_SDK_VERSION) || /desktop|sdk/i.test(env.CLAUDE_CODE_ENTRYPOINT || '')
@@ -87,10 +120,11 @@ async function principal() {
     return
   }
   if (!e.session_id) return
-  const sugestoes = Array.isArray(e.permission_suggestions) ? e.permission_suggestions : null
+  const perguntas = perguntasDe(e.tool_name, e.tool_input)
+  const sugestoes = !perguntas && Array.isArray(e.permission_suggestions) ? e.permission_suggestions : null
   let diff = null
   try {
-    diff = daFerramenta(e.tool_name, e.tool_input, lerAtual)
+    if (!perguntas) diff = daFerramenta(e.tool_name, e.tool_input, lerAtual)
   } catch {}
 
   const { enviar } = require('./cliente')
@@ -100,7 +134,7 @@ async function principal() {
     return
   }
 
-  const decisao = await new Promise(resolve => {
+  const resposta = await new Promise(resolve => {
     const s = net.connect(CAMINHOS.canal)
     s.setEncoding('utf8')
     let buffer = ''
@@ -113,10 +147,11 @@ async function principal() {
             cwd: e.cwd,
             agente: e.agent_id || null,
             ferramenta: e.tool_name,
-            resumo: resumir(e.tool_name, e.tool_input),
+            resumo: perguntas ? perguntas[0].pergunta.slice(0, 300) : resumir(e.tool_name, e.tool_input),
             descricao: e.tool_input && typeof e.tool_input.description === 'string' ? e.tool_input.description.slice(0, 200) : '',
             sempre: descreverSugestoes(sugestoes),
             diff,
+            perguntas,
           },
         }) + '\n',
       ),
@@ -126,19 +161,26 @@ async function principal() {
       const i = buffer.indexOf('\n')
       if (i < 0) return
       try {
-        resolve(JSON.parse(buffer.slice(0, i)).decisao || null)
+        resolve(JSON.parse(buffer.slice(0, i)) || {})
       } catch {
-        resolve(null)
+        resolve({})
       }
       s.destroy()
     })
-    s.on('error', () => resolve(null))
-    s.on('close', () => resolve(null))
+    s.on('error', () => resolve({}))
+    s.on('close', () => resolve({}))
   })
+  const decisao = resposta.decisao
 
   if (decisao === 'allow' || decisao === 'deny' || decisao === 'always') {
+    // Uma pergunta só segue com respostas: «permitir» sem elas deixava o Claude sem resposta nenhuma.
+    const answers = perguntas ? respostasPara(e.tool_input, resposta.respostas) : null
+    if (perguntas && decisao !== 'deny' && !answers) return
     const saida = { hookSpecificOutput: { hookEventName: 'PermissionRequest', decision: { behavior: decisao === 'deny' ? 'deny' : 'allow' } } }
-    if (decisao === 'deny') saida.hookSpecificOutput.decision.message = 'O utilizador recusou pela barra «Voz».'
+    if (answers) saida.hookSpecificOutput.decision.updatedInput = { ...e.tool_input, answers }
+    // Aprovar um plano (ExitPlanMode) também só vale com o input devolvido: «allow» sozinho não chega.
+    else if (decisao !== 'deny' && e.tool_name === 'ExitPlanMode' && e.tool_input) saida.hookSpecificOutput.decision.updatedInput = e.tool_input
+    if (decisao === 'deny') saida.hookSpecificOutput.decision.message = perguntas ? 'O utilizador preferiu não responder pela barra «Voz».' : 'O utilizador recusou pela barra «Voz».'
     // «Permitir sempre»: aplica as regras que o Claude Code sugeriu para este pedido.
     if (decisao === 'always' && sugestoes) saida.hookSpecificOutput.decision.updatedPermissions = sugestoes
     process.stdout.write(JSON.stringify(saida) + '\n')

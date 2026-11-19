@@ -563,16 +563,25 @@ function registarPermissao(p, socket) {
   })
 }
 
-function decidirPermissao(id, decisao) {
+function decidirPermissao(id, decisao, respostas) {
   const p = permissoes.get(id)
   if (!p) return { ok: false, erro: texto.frase(idiomaEfetivo(lerConfig()), 'jaRespondido') }
   if (decisao !== 'allow' && decisao !== 'deny' && decisao !== 'always') return { ok: false, erro: 'decisão inválida' }
   if (decisao === 'always' && !p.sempre) decisao = 'allow'
+  // Pergunta do Claude: só se responde com uma resposta (texto) para cada pergunta.
+  let resp
+  if (p.perguntas && decisao !== 'deny') {
+    if (!Array.isArray(respostas) || respostas.length !== p.perguntas.length || respostas.some(r => typeof r !== 'string' || !r.trim()))
+      return { ok: false, erro: 'falta responder' }
+    resp = respostas.map(r => r.trim().slice(0, 4000))
+    decisao = 'allow'
+  }
   permissoes.delete(id)
   try {
-    p.socket.write(JSON.stringify({ decisao }) + '\n')
+    p.socket.write(JSON.stringify(resp ? { decisao, respostas: resp } : { decisao }) + '\n')
   } catch {}
-  log(`autorização ${decisao === 'always' ? 'dada para sempre' : decisao === 'allow' ? 'dada' : 'recusada'} pela barra (${p.ferramenta})`)
+  if (p.perguntas) log(`pergunta ${decisao === 'deny' ? 'ignorada' : 'respondida'} pela barra`)
+  else log(`autorização ${decisao === 'always' ? 'dada para sempre' : decisao === 'allow' ? 'dada' : 'recusada'} pela barra (${p.ferramenta})`)
   publicar()
   return { ok: true }
 }
@@ -603,6 +612,7 @@ async function escutarVoz(o, sessao) {
 /** Pedido de autorização falado: diz o que é, ouve «sim», «não» ou «sempre» e decide. */
 function perguntarPorVoz(p) {
   const cfg = lerConfig()
+  if (p.perguntas) return // uma pergunta com opções não se responde com «sim» ou «não»
   if (!cfg.aprovarPorVoz || !cfg.ligado || emSilencio(cfg) || !ouvido.instalado()) return
   const idioma = idiomaEfetivo(cfg)
   const s = estado.lista().find(x => x.id === p.sessao)
@@ -783,7 +793,7 @@ function pedidoDaBarra(p) {
     return r
   }
   if (p.acao === 'responder') return responder(p.sessao, p.texto)
-  if (p.acao === 'permissao') return decidirPermissao(p.id, p.decisao)
+  if (p.acao === 'permissao') return decidirPermissao(p.id, p.decisao, p.respostas)
   if (p.acao === 'ouvir') return ouvir(p.ordem, p.sessao)
   if (p.acao === 'vozes') return pedidoVozes(p)
   if (p.acao === 'ambiente') return atualizarAmbiente(p)

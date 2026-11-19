@@ -225,7 +225,10 @@
     const p = (E.permissoes || [])[0]
     if (p) {
       const s = S.find(x => x.id === p.sessao)
-      return { k: 'perm:' + p.id, cls: 'perm', clique: 'perm:' + p.id, html: `<span class="i-esc">${svg('escudo')}</span><b>${esc(t('ilha.pede', { nome: s ? s.titulo : t('perm.conversa') }))}</b><span class="i-t2">${esc(p.ferramenta)}</span>` }
+      const nome = s ? s.titulo : t('perm.conversa')
+      if (p.perguntas)
+        return { k: 'perm:' + p.id, cls: 'perm', clique: 'perm:' + p.id, html: `<span class="i-esc">${svg('balao')}</span><b>${esc(t('ilha.pergunta', { nome }))}</b><span class="i-t2">${esc(p.perguntas[0].cabecalho || '')}</span>` }
+      return { k: 'perm:' + p.id, cls: 'perm', clique: 'perm:' + p.id, html: `<span class="i-esc">${svg('escudo')}</span><b>${esc(t('ilha.pede', { nome }))}</b><span class="i-t2">${esc(p.ferramenta)}</span>` }
     }
     const at = S.find(x => x.estado === 'atencao')
     if (at) return { k: 'at:' + at.id, cls: 'perm', clique: 'aviso:' + at.id, html: `<span class="i-esc">${svg('sino')}</span><b>${esc(t('ilha.precisa', { nome: at.titulo }))}</b>` }
@@ -942,7 +945,75 @@
     const onde = { session: t('perm.dSessao'), localSettings: t('perm.dProjeto'), projectSettings: t('perm.dProjeto'), userSettings: t('perm.dSempre') }[x.destino] || ''
     return [x.regras.join(', '), x.modo, onde].filter(Boolean).join(' · ')
   }
+  // Perguntas do Claude (AskUserQuestion): escolhes as opções aqui e a resposta segue para a conversa.
+  const escolhas = {} // id do pedido -> [{ sel: [índices], outra: '' }] por pergunta
+  function escolhaDe(id, qi) {
+    const e = (escolhas[id] = escolhas[id] || [])
+    return (e[qi] = e[qi] || { sel: [], outra: '' })
+  }
+  function respostasDe(p) {
+    return p.perguntas.map((q, i) => {
+      const r = escolhaDe(p.id, i)
+      const v = r.sel.filter(j => q.opcoes[j]).map(j => q.opcoes[j].rotulo)
+      if (r.outra.trim()) v.push(r.outra.trim())
+      return v.join(', ')
+    })
+  }
+  const perguntaPronta = p => respostasDe(p).every(Boolean)
+  function cartaoPergunta(p, aviso) {
+    const s = E.sessoes.find(x => x.id === p.sessao)
+    const n = p.perguntas.length
+    const blocos = p.perguntas
+      .map((q, i) => {
+        const r = escolhaDe(p.id, i)
+        const ops = q.opcoes
+          .map(
+            (o, j) =>
+              `<button class="perg-op${q.multipla ? ' multi' : ''}${r.sel.includes(j) ? ' sel' : ''}" data-escolher="${esc(p.id)}" data-q="${i}" data-o="${j}"><span class="perg-marca"></span><span class="perg-tx"><b>${esc(o.rotulo)}</b>${o.descricao ? `<small>${esc(o.descricao)}</small>` : ''}</span></button>`,
+          )
+          .join('')
+        return `<div class="perg">
+          <div class="perg-q">${q.cabecalho ? `<span class="perg-cab">${esc(q.cabecalho)}</span>` : ''}${esc(q.pergunta)}${q.multipla ? `<small>${t('perg.varias')}</small>` : ''}</div>
+          <div class="perg-ops">${ops}</div>
+          <input class="perg-outra" type="text" data-outra="${esc(p.id)}" data-q="${i}" placeholder="${esc(t('perg.outra'))}" value="${esc(r.outra)}" spellcheck="false">
+        </div>`
+      })
+      .join('')
+    return `<div class="cartao permissao pergunta" data-perm="${esc(p.id)}">
+      <div class="cab"><span class="escudo">${svg('balao')}</span><div class="tt"><b>${esc(t('ilha.pergunta', { nome: s ? s.titulo : t('perm.conversa') }))}</b><small>${esc(t(n > 1 ? 'perg.subN' : 'perg.sub', { n }))}</small></div>${aviso ? `<button class="x" data-fechar="1" title="${t('perm.fecharDepois')}">✕</button>` : ''}</div>
+      ${blocos}
+      <div class="botoes"><button class="recusar" data-decidir="deny" data-id="${esc(p.id)}" title="${esc(t('perg.ignorarDica'))}">${t('perg.ignorar')}</button><button class="permitir" data-responder="${esc(p.id)}"${perguntaPronta(p) ? '' : ' disabled'}>${t('perg.responder')}</button></div>
+    </div>`
+  }
+  function responderPergunta(id) {
+    const p = (E.permissoes || []).find(x => x.id === id)
+    if (!p || !perguntaPronta(p)) return
+    return api({ acao: 'permissao', id, decisao: 'allow', respostas: respostasDe(p) }).then(r => {
+      if (r && !r.ok) return mostrarErro(r.erro)
+      delete escolhas[id]
+      fecharMenuDePermissao()
+    })
+  }
+  function fecharMenuDePermissao() {
+    if ((menuAtual || '').startsWith('perm:') || (menuEmLinha && menuEmLinha.menu.startsWith('perm:'))) fecharMenu()
+  }
+  /** O campo «Outra» em que estás a escrever sobrevive aos redesenhos do cartão. */
+  function focoOutra() {
+    const a = document.activeElement
+    return a && a.matches && a.matches('input[data-outra]') ? { id: a.dataset.outra, q: a.dataset.q, c: [a.selectionStart, a.selectionEnd] } : null
+  }
+  function reporFocoOutra(caixa, f) {
+    if (!f) return
+    const el = [...caixa.querySelectorAll('input[data-outra]')].find(x => x.dataset.outra === f.id && x.dataset.q === f.q)
+    if (!el) return
+    el.focus()
+    try {
+      el.setSelectionRange(f.c[0], f.c[1])
+    } catch {}
+  }
+
   function cartaoPermissao(p, aviso) {
+    if (p.perguntas) return cartaoPergunta(p, aviso)
     const s = E.sessoes.find(x => x.id === p.sessao)
     return `<div class="cartao permissao" data-perm="${esc(p.id)}">
       <div class="cab"><span class="escudo">${svg('escudo')}</span><div class="tt"><b>${esc(t('ilha.pede', { nome: s ? s.titulo : t('perm.conversa') }))}</b><small>${esc(t('perm.sub', { f: p.ferramenta }))}</small></div>${aviso ? `<button class="x" data-fechar="1" title="${t('perm.fecharDepois')}">✕</button>` : ''}</div>
@@ -1124,8 +1195,10 @@
     const ativo = document.activeElement
     const focoSessao = ativo && ativo.matches && ativo.matches('textarea[data-sessao]') ? ativo.dataset.sessao : null
     const cursor = focoSessao ? [ativo.selectionStart, ativo.selectionEnd] : null
+    const fo = focoOutra()
     raiz.innerHTML = htmlMenu(menuAtual)
     restaurarRascunhos(raiz, focoSessao, cursor)
+    reporFocoOutra(raiz, fo)
     const el = raiz.firstElementChild
     marcarEntradaIlha(el, menuAtual)
     const t = `${Math.ceil(el.offsetWidth)}x${Math.ceil(el.offsetHeight)}`
@@ -1179,8 +1252,10 @@
     const ativo = document.activeElement
     const focoSessao = ativo && ativo.matches && ativo.matches('textarea[data-sessao]') ? ativo.dataset.sessao : null
     const cursor = focoSessao ? [ativo.selectionStart, ativo.selectionEnd] : null
+    const fo = focoOutra()
     caixa.innerHTML = htmlMenu(menuEmLinha.menu)
     restaurarRascunhos(caixa, focoSessao, cursor)
+    reporFocoOutra(caixa, fo)
     const el = caixa.firstElementChild
     if (menuEmLinha.centro != null) marcarEntradaIlha(el, menuEmLinha.menu)
     if (menuEmLinha.centro != null) {
@@ -1375,12 +1450,32 @@
   })
   document.addEventListener('keydown', ev => {
     const ta = ev.target.closest && ev.target.closest('textarea[data-sessao]')
+    const outra = ev.target.matches && ev.target.matches('input[data-outra]') ? ev.target : null
     if (ta && ev.key === 'Enter' && !ev.shiftKey) {
       ev.preventDefault()
       enviarResposta(ta.closest('form'))
+    } else if (outra && ev.key === 'Enter') {
+      ev.preventDefault()
+      responderPergunta(outra.dataset.outra)
     } else if (ev.key === 'Escape') fecharMenu()
   })
   document.addEventListener('input', ev => {
+    const outra = ev.target.matches && ev.target.matches('input[data-outra]') ? ev.target : null
+    if (outra) {
+      // Escrever em «Outra» numa pergunta de uma só escolha substitui a opção marcada.
+      const p = (E.permissoes || []).find(x => x.id === outra.dataset.outra)
+      if (!p || !p.perguntas) return
+      const qi = Number(outra.dataset.q)
+      const r = escolhaDe(p.id, qi)
+      r.outra = outra.value
+      if (r.outra.trim() && !p.perguntas[qi].multipla && r.sel.length) {
+        r.sel = []
+        outra.closest('.perg').querySelectorAll('.perg-op.sel').forEach(b => b.classList.remove('sel'))
+      }
+      const btn = outra.closest('.cartao').querySelector('[data-responder]')
+      if (btn) btn.disabled = !perguntaPronta(p)
+      return
+    }
     const ta = ev.target.closest && ev.target.closest('textarea[data-sessao]')
     if (!ta) return
     rascunhos[ta.dataset.sessao] = ta.value
@@ -1393,7 +1488,7 @@
     const alvo = ev.target.closest(
       '[data-menu],[data-acao],[data-foco],[data-ir],[data-posicao],[data-arranque],[data-tema],[data-ciclo-tema],[data-predef],[data-alternar],[data-sair],[data-esconder],[data-mod],' +
         '[data-falar],[data-falar-sessao],[data-alternar-silencio],[data-decidir],[data-voz-baixar],[data-voz-padrao],[data-voz-remover],' +
-        '[data-voz-experimentar],[data-wrapped],[data-material],[data-ciclo-moeda],[data-ecra],[data-horario-ativo],[data-alternar-por-conversa],[data-idioma],[data-conv],[data-ilha],[data-ciclo-idioma],[data-cc-eq]',
+        '[data-voz-experimentar],[data-wrapped],[data-material],[data-escolher],[data-responder],[data-ciclo-moeda],[data-ecra],[data-horario-ativo],[data-alternar-por-conversa],[data-idioma],[data-conv],[data-ilha],[data-ciclo-idioma],[data-cc-eq]',
     )
     if (!alvo) {
       if (!host && menuEmLinha && !ev.target.closest('#menu-em-linha')) {
@@ -1428,10 +1523,25 @@
       render()
       return p
     }
+    if (d.escolher) {
+      const p = (E.permissoes || []).find(x => x.id === d.escolher)
+      if (!p || !p.perguntas) return
+      const qi = Number(d.q)
+      const j = Number(d.o)
+      const r = escolhaDe(p.id, qi)
+      if (p.perguntas[qi].multipla) r.sel = r.sel.includes(j) ? r.sel.filter(x => x !== j) : [...r.sel, j]
+      else {
+        r.sel = r.sel.includes(j) ? [] : [j]
+        if (r.sel.length) r.outra = ''
+      }
+      return redesenharMenuAtual()
+    }
+    if (d.responder) return responderPergunta(d.responder)
     if (d.decidir) {
       return api({ acao: 'permissao', id: d.id, decisao: d.decidir }).then(r => {
         if (r && !r.ok) mostrarErro(r.erro)
-        if ((menuAtual || '').startsWith('perm:') || (menuEmLinha && menuEmLinha.menu.startsWith('perm:'))) fecharMenu()
+        if (d.decidir === 'deny') delete escolhas[d.id]
+        fecharMenuDePermissao()
       })
     }
     if (d.vozBaixar) {
