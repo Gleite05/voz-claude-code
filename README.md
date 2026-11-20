@@ -83,7 +83,7 @@ Isto instala a **voz portuguesa** (Piper + «tugão»), o **ditado** (Whisper) e
 | `/voz:som [graves 3 \| altura -1 \| calma …]` | Afinar o som |
 | `/voz:vozes [catalogo pt \| instalar <id> \| padrao <id>]` | Vozes e idiomas |
 | `/voz:modo tudo\|acoes\|respostas` | O que é dito |
-| `/voz:barra ligar\|desligar\|posicao …\|arranque …` | A barra |
+| `/voz:barra ligar\|desligar\|posicao …\|arranque …\|ajustes` | A barra — ou pede-lhe em palavras tuas: «põe a barra em baixo», «vidro mais transparente», «tira o relógio» |
 | `/voz:testar [texto]` | Frase de teste |
 
 As opções ficam em `~/.claude/voz/config.json` (ex.: `idioma` — `auto`, `pt`, `en` ou `es`; `pronuncias` para corrigir a pronúncia de palavras — «Claude» lê-se «Cláude»).

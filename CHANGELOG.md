@@ -1,5 +1,10 @@
 # Histórico de versões
 
+## 1.5.0
+
+- **A barra passa a ser uma skill:** `/voz:barra` continua a funcionar como comando, mas agora também podes pedir ao Claude em palavras tuas — «põe a barra em baixo», «no outro ecrã», «vidro mais transparente», «muda para vidro fosco», «tira o relógio», «sem avisos» — e ele lê os ajustes atuais e muda o que for preciso.
+- Novos subcomandos `barra ajustes` (todos os ajustes com o valor atual e os possíveis), `barra ajustar chave=valor…` (tema, material e afinação do vidro, monitor, avisos, autorizações, não incomodar, língua, moeda) e `barra modulo <id> on|off`. Tudo validado: um valor errado não grava nada.
+
 ## 1.4.1
 
 - **Perguntas do Claude na barra:** quando o Claude te faz uma pergunta com opções, o cartão da barra mostra as opções (uma ou várias, com a descrição de cada uma) e um campo «Outra resposta», em vez de só «Permitir» / «Recusar». A resposta que escolhes segue diretamente para a conversa; «Não responder» deixa o Claude continuar sem ela.

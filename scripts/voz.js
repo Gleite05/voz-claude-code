@@ -182,6 +182,7 @@ async function instalar(args) {
 // ---------- barra (Windows) ----------
 
 const compilarBarra = require('./compilar-barra')
+const AJ = require('./barra-ajustes')
 const EXE_BARRA = compilarBarra.EXE
 const CHAVE_RUN = 'HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run'
 
@@ -247,6 +248,44 @@ async function barra(args) {
       definirArranque(ok[valor])
       return dizer({ windows: 'A barra arranca com o Windows.', claude: 'A barra abre quando começa uma sessão do Claude Code.', mao: 'A barra só abre com /voz:barra ligar.' }[ok[valor]])
     }
+    case 'ajustes': {
+      // Lista legível (também para o Claude, quando lhe pedes algo sobre a barra em linguagem normal).
+      const c = lerConfig()
+      dizer('Ajustes da barra (chave = valor atual · valores possíveis · o que é):')
+      for (const [k, a] of Object.entries(AJ.AJUSTES)) {
+        const v = c[k]
+        const possiveis = a.tipo === 'lista' ? a.valores.join('|') : a.tipo === 'num' ? `${a.min}–${a.max}` : 'sim|nao'
+        dizer(`  ${k} = ${typeof v === 'boolean' ? (v ? 'sim' : 'nao') : String(v).toLowerCase()} · ${possiveis} · ${a.desc}`)
+      }
+      dizer(`  arranque = ${c.barraArranque} · windows|claude|mao · quando abre (muda com: barra arranque <valor>)`)
+      dizer(`Módulos (pela ordem): ${AJ.modulos(c).map(m => `${m.id}:${m.on ? 'on' : 'off'}`).join(' ')}`)
+      dizer(`Barra ${fs.existsSync(EXE_BARRA) ? 'instalada' : 'NÃO instalada'}.`)
+      return
+    }
+    case 'ajustar': {
+      const r = AJ.interpretar(args.slice(1), lerConfig())
+      if (!r.ok) {
+        process.exitCode = 1
+        return dizer('Nada mudou: ' + r.erros.join('; ') + '.')
+      }
+      escreverConfig(r.alteracoes)
+      await semServidor({ controlo: 'publicar' })
+      return dizer('Mudado: ' + Object.entries(r.alteracoes).map(([k, v]) => `${k}=${typeof v === 'boolean' ? (v ? 'sim' : 'nao') : v}`).join(', ') + '.')
+    }
+    case 'modulos':
+    case 'módulos':
+      return dizer(`Módulos: ${AJ.modulos(lerConfig()).map(m => `${m.id}:${m.on ? 'on' : 'off'}`).join(' ')}`)
+    case 'modulo':
+    case 'módulo': {
+      const r = AJ.alternarModulo(lerConfig(), valor, args[2])
+      if (r.erro) {
+        process.exitCode = 1
+        return dizer('Nada mudou: ' + r.erro + '.')
+      }
+      escreverConfig({ barraModulos: r.lista })
+      await semServidor({ controlo: 'publicar' })
+      return dizer(`Módulo ${valor}: ${r.lista.find(m => m.id === valor).on ? 'ligado' : 'desligado'}.`)
+    }
     case 'desinstalar':
       await semServidor({ controlo: 'barra-sair' })
       spawnSync('reg.exe', ['delete', CHAVE_RUN, '/v', 'VozBarra', '/f'], { windowsHide: true, stdio: 'ignore' })
@@ -259,7 +298,7 @@ async function barra(args) {
       const c = lerConfig()
       dizer(`Barra: ${fs.existsSync(EXE_BARRA) ? 'instalada' : 'não instalada (/voz:barra instalar)'}`)
       dizer(`Posição: ${c.barraPosicao} · arranque: ${c.barraArranque} · tema: ${c.barraTema}`)
-      dizer('Subcomandos: instalar, ligar, desligar, posicao <topo|escondida|flutuante|esquerda|direita|fundo>, arranque <windows|claude|mao>, desinstalar')
+      dizer('Subcomandos: instalar, ligar, desligar, posicao <topo|escondida|flutuante|esquerda|direita|fundo>, arranque <windows|claude|mao>, ajustes, ajustar <chave=valor…>, modulos, modulo <id> on|off, desinstalar')
     }
   }
 }

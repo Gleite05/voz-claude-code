@@ -61,6 +61,8 @@ Reinicia Claude Code y ejecuta, dentro de él:
 
 Instala la **voz** (Piper), el **dictado** (Whisper) y, en Windows, la **barra**. Sin Python, el instalador descarga [uv](https://github.com/astral-sh/uv), que trae su propio Python. Para una voz en español: `/voz:vozes catalogo es` y luego `/voz:vozes instalar es_ES-davefx-medium` y `/voz:vozes padrao es_ES-davefx-medium`.
 
+La barra también se cambia con tus propias palabras («pon la barra abajo», «vidrio más transparente», «quita el reloj»): la skill `barra` se encarga (o usa `/voz:barra ajustes`).
+
 **Requisitos de la barra:** Windows 10/11 con WebView2 (incluido en Windows 11) y .NET Framework 4.8 (incluido en Windows). La barra se compila en tu PC — no hay ejecutables en este repositorio.
 
 ## Uso

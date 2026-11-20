@@ -73,7 +73,7 @@ This installs the **voice** (Piper + "tugão", pt-PT), **dictation** (Whisper) a
 
 **Global shortcuts:** `Ctrl+Shift+Alt` + `V` talk · `P` pause · `N` skip · `C` conversations · `D` do not disturb.
 
-**Commands:** `/voz:estado`, `/voz:ligar`, `/voz:desligar`, `/voz:parar`, `/voz:silencio`, `/voz:som`, `/voz:vozes`, `/voz:modo`, `/voz:barra`, `/voz:testar`. Options live in `~/.claude/voz/config.json` (e.g. `"idioma": "en"` — `auto`, `pt`, `en` or `es`).
+**Commands:** `/voz:estado`, `/voz:ligar`, `/voz:desligar`, `/voz:parar`, `/voz:silencio`, `/voz:som`, `/voz:vozes`, `/voz:modo`, `/voz:barra`, `/voz:testar`. The bar can also be changed in plain words ("move the bar to the bottom", "make the glass more transparent", "hide the timer"): the `barra` skill picks it up. Options live in `~/.claude/voz/config.json` (e.g. `"idioma": "en"` — `auto`, `pt`, `en` or `es`).
 
 ## How it works
 
