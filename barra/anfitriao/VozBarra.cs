@@ -523,7 +523,10 @@ namespace VozBarra
 
         int Espessura(bool vertical)
         {
-            return (int)Math.Round((vertical ? 40 : 30) * Escala);
+            // Vidro líquido: a faixa fica mais larga para as cápsulas flutuarem com ar à volta (e a
+            // sombra caber), em vez de encherem a faixa toda como a barra clássica.
+            int b = querFundo && Encaixada ? (vertical ? 52 : 40) : (vertical ? 40 : 30);
+            return (int)Math.Round(b * Escala);
         }
 
         int ecraEscolhido = -1; // -1 = principal
@@ -901,7 +904,10 @@ namespace VozBarra
                     break;
                 case "fundo":
                     object lg;
+                    bool antes = querFundo;
                     querFundo = msg.TryGetValue("ligado", out lg) && lg is bool && (bool)lg;
+                    // A espessura depende do vidro: volta a reservar a faixa com o tamanho novo.
+                    if (antes != querFundo && Encaixada && Visible && !NaBandeja) AplicarPosicao(Posicao);
                     if (querFundo) EnviarFundo(true);
                     break;
                 case "servidor-em-baixo":

@@ -1,5 +1,10 @@
 # Histórico de versões
 
+## 1.5.1
+
+- **Vidro líquido a flutuar a sério:** a faixa da barra encaixada passa de 30 para 40 px (52 px de lado) e as cápsulas ficam com 28 px, afastadas das bordas e com uma sombra por baixo, em vez de encherem a faixa toda e parecerem coladas ao topo do ecrã. A ilha dinâmica acompanha a mesma altura. A barra clássica mantém os 30 px.
+- Corrigido o retângulo que se via nas pontas das cápsulas: a camada de vidro é agora cortada depois do filtro de refração.
+
 ## 1.5.0
 
 - **A barra passa a ser uma skill:** `/voz:barra` continua a funcionar como comando, mas agora também podes pedir ao Claude em palavras tuas — «põe a barra em baixo», «no outro ecrã», «vidro mais transparente», «muda para vidro fosco», «tira o relógio», «sem avisos» — e ele lê os ajustes atuais e muda o que for preciso.
