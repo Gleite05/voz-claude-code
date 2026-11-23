@@ -253,7 +253,7 @@ async function barra(args) {
       const c = lerConfig()
       dizer('Ajustes da barra (chave = valor atual · valores possíveis · o que é):')
       for (const [k, a] of Object.entries(AJ.AJUSTES)) {
-        const v = c[k]
+        const v = k === 'design' ? AJ.designAtual(c) : c[k]
         const possiveis = a.tipo === 'lista' ? a.valores.join('|') : a.tipo === 'num' ? `${a.min}–${a.max}` : 'sim|nao'
         dizer(`  ${k} = ${typeof v === 'boolean' ? (v ? 'sim' : 'nao') : String(v).toLowerCase()} · ${possiveis} · ${a.desc}`)
       }

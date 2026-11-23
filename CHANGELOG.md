@@ -1,5 +1,12 @@
 # Histórico de versões
 
+## 1.6.0
+
+- **Cinco designs, num clique:** novo painel **Design** com miniaturas (clique direito → Design, Definições → Aspeto, ou a fila nova no Centro de Controlo) e o tema ao lado. No estilo macOS há o *Vidro líquido*, o *Vidro fosco* e o *Clássico*. No estilo Windows 11 há a *Mica* e o *Acrílico*.
+- **Estilo Windows 11:** a barra passa a uma faixa inteira como a barra de tarefas. A *Mica* desfoca o teu fundo real e o *Acrílico* deixa a barra translúcida. Os ícones são os do próprio Windows (Segoe Fluent Icons) e a cor de destaque é a tua, lida do sistema. Os menus, interruptores, barras deslizantes, botões e caixas de texto seguem o Fluent, e o Centro de Controlo fica como as Definições rápidas do Windows.
+- O *Vidro fosco* ficou mais leitoso, para se distinguir bem do líquido.
+- Pela skill ou pela linha de comandos: «põe a barra ao estilo do Windows», ou `barra ajustar design=liquido|fosco|classico|mica|acrilico`.
+
 ## 1.5.1
 
 - **Vidro líquido a flutuar a sério:** a faixa da barra encaixada passa de 30 para 40 px (52 px de lado) e as cápsulas ficam com 28 px, afastadas das bordas e com uma sombra por baixo, em vez de encherem a faixa toda e parecerem coladas ao topo do ecrã. A ilha dinâmica acompanha a mesma altura. A barra clássica mantém os 30 px.

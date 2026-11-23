@@ -10,7 +10,7 @@
   // Predefinições (como as do Atrium). «personalizado» usa os valores guardados nas definições.
   const PREDEF = {
     liquido: { transparencia: 90, desfoque: 15, refracao: 8, borda: 10, dispersao: 6, brilho: 55, sombra: 30 },
-    fosco: { transparencia: 74, desfoque: 100, refracao: 3, borda: 8, dispersao: 0, brilho: 35, sombra: 25 },
+    fosco: { transparencia: 58, desfoque: 100, refracao: 3, borda: 8, dispersao: 0, brilho: 35, sombra: 25 },
   }
   const CHAVES = ['transparencia', 'desfoque', 'refracao', 'borda', 'dispersao', 'brilho', 'sombra']
   const CFG = { transparencia: 'vidroTransparencia', desfoque: 'vidroDesfoque', refracao: 'vidroRefracao', borda: 'vidroBorda', dispersao: 'vidroDispersao', brilho: 'vidroBrilho', sombra: 'vidroSombra' }

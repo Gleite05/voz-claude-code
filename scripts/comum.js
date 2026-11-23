@@ -56,6 +56,7 @@ const PREDEFINICOES = {
   barraPosicao: 'topo', // topo | escondida | flutuante | esquerda | direita | fundo
   barraArranque: 'windows', // windows | claude | mao
   barraTema: 'sistema', // sistema | escuro | claro
+  barraEstilo: 'macos', // macos (vidro líquido, cápsulas) | windows (Windows 11: Mica, Fluent, cor de destaque)
   barraMaterial: 'liquido', // liquido | fosco | personalizado | classico (vidro líquido só na barra encaixada)
   vidroTransparencia: 87, // material «personalizado» (como o painel Material do Atrium)
   vidroDesfoque: 100,

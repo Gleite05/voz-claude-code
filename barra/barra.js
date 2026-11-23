@@ -51,7 +51,16 @@
   }
   // Temas: [valor, ícone, nome na língua atual]
   const temas = () => [['sistema', 'auto'], ['claro', 'sol'], ['escuro', 'lua']].map(([v, ic]) => [v, ic, t('tema.' + v)])
-  const svg = n => `<svg class="i" viewBox="0 0 24 24">${ICONES[n]}</svg>`
+  // Estilo Windows 11: os ícones passam a ser os glifos do próprio Windows (Segoe Fluent Icons).
+  // Os que não têm equivalente seguro (a estrela da marca, o «auto» do tema) ficam em SVG.
+  const GLIFOS = {
+    sliders: 'E9E9', altifalante: 'E767', mudo: 'E74F', pausa: 'E769', tocar: 'E768', saltar: 'E893', sol: 'E706', lua: 'E708',
+    sino: 'EA8F', semSino: 'E7ED', lua2: 'E708', micro: 'E720', escudo: 'EA18', balao: 'E8BD', raio: 'E945', globo: 'E774',
+  }
+  const svg = n =>
+    GLIFOS[n] && document.body.classList.contains('win')
+      ? `<i class="i fi" aria-hidden="true">&#x${GLIFOS[n]};</i>`
+      : `<svg class="i" viewBox="0 0 24 24">${ICONES[n]}</svg>`
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c])
   const mil = n =>
     n >= 1e9
@@ -103,10 +112,46 @@
   }
   const controlo = c => api({ acao: 'controlo', controlo: c })
 
+  // ---------------- designs ----------------
+  // Cada design junta um estilo (macOS ou Windows 11) e um material; escolhe-se num só clique.
+  const DESIGNS = [
+    { id: 'liquido', estilo: 'macos', material: 'liquido', sub: 'des.macos' },
+    { id: 'fosco', estilo: 'macos', material: 'fosco', sub: 'des.macos' },
+    { id: 'classico', estilo: 'macos', material: 'classico', sub: 'des.macos' },
+    { id: 'mica', estilo: 'windows', sub: 'des.windows' },
+    { id: 'acrilico', estilo: 'windows-acrilico', sub: 'des.windows' },
+  ]
+  function designAtual(c) {
+    if (c.barraEstilo === 'windows') return 'mica'
+    if (c.barraEstilo === 'windows-acrilico') return 'acrilico'
+    const m = c.barraMaterial || 'liquido'
+    return m === 'fosco' || m === 'classico' ? m : 'liquido' // «personalizado» é vidro líquido afinado
+  }
+  /** O que gravar para um design (o vidro líquido afinado à mão mantém as afinações). */
+  function valoresDesign(id, c) {
+    const d = DESIGNS.find(x => x.id === id)
+    if (!d) return null
+    const v = { barraEstilo: d.estilo }
+    if (d.material) v.barraMaterial = d.material === 'liquido' && c.barraMaterial === 'personalizado' ? 'personalizado' : d.material
+    return v
+  }
+  /** Miniatura de um design: um bocado de fundo com a barra desenhada por cima. */
+  const amostraDesign = (id, peq) => `<span class="des-amostra ${id}${peq ? ' peq' : ''}"><i></i><i></i><i></i></span>`
+
+  const estiloWin = () => !!E && String(E.cfg.barraEstilo || '').startsWith('windows')
+
   function aplicarTema() {
     const t = (E && E.cfg.barraTema) || 'sistema'
     const escuro = t === 'escuro' || (t === 'sistema' && matchMedia('(prefers-color-scheme: dark)').matches)
     document.body.classList.toggle('claro', !escuro)
+    document.body.classList.toggle('win', estiloWin())
+    document.body.classList.toggle('acrilico', !!E && E.cfg.barraEstilo === 'windows-acrilico')
+    const ac = E && E.acento
+    const b = document.body.style
+    if (ac && ac.claro) {
+      b.setProperty('--ac-claro', ac.claro)
+      b.setProperty('--ac-escuro', ac.escuro || ac.base)
+    }
     if (escuro !== temaEnviado) {
       temaEnviado = escuro
       enviarHost({ tipo: 'tema', escuro })
@@ -398,10 +443,14 @@
 
   // ---------------- vidro líquido ----------------
   const ENCAIXADAS = new Set(['topo', 'fundo', 'esquerda', 'direita'])
-  /** O vidro líquido só existe na barra encaixada: aí, por trás dela, só há o fundo do ambiente de trabalho. */
+  /**
+   * O fundo real só existe na barra encaixada (aí, por trás dela, só há o ambiente de trabalho): serve o
+   * vidro líquido do estilo macOS e a Mica do estilo Windows 11.
+   */
   function querLiquido() {
     return (
-      VISTA === 'barra' && !!E && (E.cfg.barraMaterial || 'liquido') !== 'classico' &&
+      VISTA === 'barra' && !!E &&
+      (E.cfg.barraEstilo === 'windows' || (!estiloWin() && (E.cfg.barraMaterial || 'liquido') !== 'classico')) &&
       ENCAIXADAS.has(E.cfg.barraPosicao || 'topo') && !document.body.classList.contains('sem-vidro')
     )
   }
@@ -421,13 +470,16 @@
       }
     }
     if (!quer && VozVidro.ativo()) VozVidro.definirFundo(null)
-    const liq = quer && VozVidro.ativo()
+    const tem = quer && VozVidro.ativo()
+    const liq = tem && !estiloWin() // cápsulas de vidro só no estilo macOS
     document.body.classList.toggle('liquido', liq)
+    document.body.classList.toggle('mica', tem && estiloWin())
     return liq
   }
 
   function renderBarra() {
     const pos = E.cfg.barraPosicao || 'topo'
+    for (const x of ['topo', 'fundo', 'esquerda', 'direita', 'flutuante', 'escondida']) document.body.classList.toggle('pos-' + x, x === pos)
     const vertical = pos === 'esquerda' || pos === 'direita'
     const flut = pos === 'flutuante'
     const s = foco()
@@ -565,6 +617,8 @@
       <div class="cc-t centro clic" data-ciclo-tema="${temaProx[0]}"><span class="cc-bola">${svg(temaAtual[1])}</span>${temaAtual[2]}</div>
       <div class="cc-t w4"><div class="cc-rot">${t('cc.posicao')}<span>${(posicoes().find(p => p[0] === posAtual) || ['', ''])[1]}</span></div>
         <div class="cc-pos">${posicoes().map(([v, r]) => `<div class="p-${v} ${posAtual === v ? 'on' : ''}" data-posicao="${v}" title="${esc(r)}"></div>`).join('')}</div></div>
+      <div class="cc-t w4"><div class="cc-rot clic" data-ir="design">${t('def.design')}<span>${esc(t('des.' + designAtual(E.cfg)))} ›</span></div>
+        <div class="cc-des">${DESIGNS.map(d => `<button class="${designAtual(E.cfg) === d.id ? 'on' : ''}" data-design="${d.id}" title="${esc(t('des.' + d.id) + ' · ' + t(d.sub))}">${amostraDesign(d.id, true)}</button>`).join('')}</div></div>
       <div class="cc-t w4"><div class="cc-rot clic" data-cc-eq="1">${t('cc.eq')}<span>${ccEq ? '▴' : '▾'}</span></div>
         <div class="pre">${Object.keys(PREDEF).map(k => `<button class="chip ${k === pre ? 'sel' : ''}" data-predef="${k}">${t('pre.' + k)}</button>`).join('')}</div>
         ${ccEq ? `<div class="eq">${['graves', 'medios', 'agudos'].map((k, i) => `<label><input type="range" data-chave="${k}" min="-12" max="12" step="1" value="${Number(c[k])}"><span>${[t('som.graves'), t('som.medios'), t('som.agudos')][i]} <span class="num" data-valor="${k}">${sinal(Number(c[k]))}</span></span></label>`).join('')}</div>` : ''}
@@ -646,10 +700,10 @@
       <div class="op" data-arranque="mao"><span class="chk">${chk(c.barraArranque === 'mao')}</span>${t('def.aMao')}</div>
       <hr>
       <div class="tit">${t('def.aspeto')}</div>
+      <div class="op" data-ir="design"><span class="chk"></span>${t('def.design')}<small>${esc(t('des.' + designAtual(c)))} ›</small></div>
       <div class="op" data-tema="sistema"><span class="chk">${chk(c.barraTema === 'sistema')}</span>${t('def.seguirWindows')}</div>
       <div class="op" data-tema="escuro"><span class="chk">${chk(c.barraTema === 'escuro')}</span>${t('tema.escuro')}</div>
       <div class="op" data-tema="claro"><span class="chk">${chk(c.barraTema === 'claro')}</span>${t('tema.claro')}</div>
-      <div class="op" data-ir="material"><span class="chk"></span>${t('def.material')}<small>${esc(t('mat.' + (c.barraMaterial || 'liquido')))} ›</small></div>
       <hr>
       <div class="op" data-acao="testar"><span class="chk"></span>${t('def.testar')}</div>
       <div class="op" data-sair="1"><span class="chk"></span>${t('def.sair')}</div>
@@ -679,6 +733,21 @@
     </div>`
   }
 
+  function menuDesign() {
+    const c = E.cfg
+    const atual = designAtual(c)
+    const tema = c.barraTema || 'sistema'
+    const enc = ENCAIXADAS.has(c.barraPosicao || 'topo')
+    return `<div class="painel design">
+      <div class="tit">${t('des.titulo')}</div>
+      <div class="des-cartoes">${DESIGNS.map(d => `<button class="des-cartao ${d.id === atual ? 'sel' : ''}" data-design="${d.id}">${amostraDesign(d.id)}<b>${t('des.' + d.id)}</b><small>${t(d.sub)}</small></button>`).join('')}</div>
+      ${!enc && (atual === 'liquido' || atual === 'mica') ? `<div class="leg">${t('des.soEncaixada')}</div>` : ''}
+      <div class="tit">${t('des.tema')}</div>
+      <div class="segmentado">${['sistema', 'escuro', 'claro'].map(x => `<button class="${tema === x ? 'sel' : ''}" data-tema="${x}">${t('tema.' + x)}</button>`).join('')}</div>
+      ${atual === 'liquido' ? `<button class="chip" data-ir="material">${t('des.afinar')}</button>` : ''}
+    </div>`
+  }
+
   /** Menu do clique direito: curto; o resto está no Centro de Controlo e nas Definições. */
   function menuDireito() {
     const c = E.cfg
@@ -686,6 +755,7 @@
     return `<div class="menu">
       <div class="op" data-ir="conversas"><span class="chk"></span>${t('dir.conversas')}<small>Ctrl+Shift+Alt+C</small></div>
       <div class="op" data-ir="som"><span class="chk"></span>${t('dir.cc')}</div>
+      <div class="op" data-ir="design"><span class="chk"></span>${t('def.design')}<small>${esc(t('des.' + designAtual(c)))} ›</small></div>
       <div class="op" data-ir="uso"><span class="chk"></span>${t('dir.tokens')}</div>
       <div class="op" data-ir="wrapped"><span class="chk"></span>${t('dir.semana')}</div>
       <hr>
@@ -1174,6 +1244,7 @@
     if (m === 'uso') return menuUso()
     if (m === 'wrapped') return menuWrapped()
     if (m === 'material') return menuMaterial()
+    if (m === 'design') return menuDesign()
     return m === 'som'
       ? menuSom()
       : m === 'definicoes'
@@ -1186,6 +1257,14 @@
   }
 
   let tamanhoEnviado = ''
+  /** Percentagem cheia de cada barra deslizante (o estilo Windows pinta essa parte na cor de destaque). */
+  function pintarRange(el) {
+    const min = Number(el.min || 0)
+    const max = Number(el.max || 100)
+    el.style.setProperty('--p', (((Number(el.value) - min) / (max - min || 1)) * 100).toFixed(1) + '%')
+  }
+  const pintarRanges = caixa => caixa && caixa.querySelectorAll('input[type=range]').forEach(pintarRange)
+
   function renderMenu() {
     if (!menuAtual) {
       raiz.innerHTML = ''
@@ -1199,6 +1278,7 @@
     raiz.innerHTML = htmlMenu(menuAtual)
     restaurarRascunhos(raiz, focoSessao, cursor)
     reporFocoOutra(raiz, fo)
+    pintarRanges(raiz)
     const el = raiz.firstElementChild
     marcarEntradaIlha(el, menuAtual)
     const t = `${Math.ceil(el.offsetWidth)}x${Math.ceil(el.offsetHeight)}`
@@ -1256,6 +1336,7 @@
     caixa.innerHTML = htmlMenu(menuEmLinha.menu)
     restaurarRascunhos(caixa, focoSessao, cursor)
     reporFocoOutra(caixa, fo)
+    pintarRanges(caixa)
     const el = caixa.firstElementChild
     if (menuEmLinha.centro != null) marcarEntradaIlha(el, menuEmLinha.menu)
     if (menuEmLinha.centro != null) {
@@ -1488,7 +1569,7 @@
     const alvo = ev.target.closest(
       '[data-menu],[data-acao],[data-foco],[data-ir],[data-posicao],[data-arranque],[data-tema],[data-ciclo-tema],[data-predef],[data-alternar],[data-sair],[data-esconder],[data-mod],' +
         '[data-falar],[data-falar-sessao],[data-alternar-silencio],[data-decidir],[data-voz-baixar],[data-voz-padrao],[data-voz-remover],' +
-        '[data-voz-experimentar],[data-wrapped],[data-material],[data-escolher],[data-responder],[data-ciclo-moeda],[data-ecra],[data-horario-ativo],[data-alternar-por-conversa],[data-idioma],[data-conv],[data-ilha],[data-ciclo-idioma],[data-cc-eq]',
+        '[data-voz-experimentar],[data-wrapped],[data-material],[data-design],[data-escolher],[data-responder],[data-ciclo-moeda],[data-ecra],[data-horario-ativo],[data-alternar-por-conversa],[data-idioma],[data-conv],[data-ilha],[data-ciclo-idioma],[data-cc-eq]',
     )
     if (!alvo) {
       if (!host && menuEmLinha && !ev.target.closest('#menu-em-linha')) {
@@ -1573,9 +1654,18 @@
     if (d.foco) return api({ acao: 'foco', sessao: d.foco })
     if (d.posicao) return config({ barraPosicao: d.posicao }).then(fecharMenu)
     if (d.arranque) return config({ barraArranque: d.arranque })
+    if (d.design) {
+      const v = valoresDesign(d.design, E.cfg)
+      if (!v) return
+      const p = config(v)
+      render() // muda já, sem esperar pelo servidor
+      redesenharMenuAtual()
+      return p
+    }
     if (d.tema || d.cicloTema) {
       const p = config({ barraTema: d.tema || d.cicloTema })
       render() // muda já, sem esperar pelo servidor
+      if (d.tema && (menuAtual === 'design' || (menuEmLinha && menuEmLinha.menu === 'design'))) redesenharMenuAtual()
       return p
     }
     if (d.predef) return config(PREDEF[d.predef])
@@ -1636,6 +1726,7 @@
   })
   document.addEventListener('input', ev => {
     const el = ev.target
+    if (el.type === 'range') pintarRange(el)
     if (!el.dataset.chave) return
     const v = Number(el.value)
     const rot = document.querySelector(`[data-valor="${el.dataset.chave}"]`)

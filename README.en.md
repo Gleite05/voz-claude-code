@@ -22,6 +22,7 @@
 - 📋 **Task progress and subagents** — a "4/7" ring for the task list, agents orbiting the conversation's avatar and a notice when the conversation is compacted.
 - 🛡️ **Approve permissions from the bar** — the request shows up as a card with the exact command or a **coloured diff** of what will change: *Allow*, *Deny* or **"Always"** (the rule Claude Code itself suggests, e.g. `git push:*`).
 - 🎧 **Hands-free and voice approval** — after each reply the bar listens and sends what you say (it stops when you go quiet); on permission requests it asks "Allow?" and understands "yes", "no" or "always". Off by default.
+- 🎨 **Five designs** — liquid glass, frosted glass or classic in macOS style, or Mica and Acrylic in Windows 11 style (Windows icons and accent color), picked in one click from the *Design* panel.
 - 🫧 **Liquid glass** — the docked bar truly refracts your wallpaper (lens edges, dispersion, rim light), with a *Material* panel to fine-tune it or go back to classic.
 - 🔔 **Sounds and spatial audio** — short sounds for passed, failed, permission and done; with several conversations each one speaks from its own side.
 - 🤫 **Quiet in meetings** — when another app is using the microphone (Teams, Zoom…) or something is full screen, the voice goes quiet by itself.

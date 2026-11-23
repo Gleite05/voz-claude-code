@@ -22,6 +22,7 @@
 - 🛡️ **Aprovar permissões pela barra** — o pedido aparece num cartão com o comando exato ou o **diff colorido** do que vai mudar: *Permitir*, *Recusar* ou **«Sempre»** (a regra que o próprio Claude Code sugere, ex.: `git push:*`).
 - 🎧 **Mãos-livres e autorizar por voz** — depois de cada resposta a barra ouve-te e envia o que disseres (pára sozinha quando te calas); nos pedidos de autorização pergunta «Autorizas?» e percebe «sim», «não» ou «sempre». Desligados por omissão.
 - 🎤 **Falar com o Claude** — dita a resposta; o Whisper transcreve no teu PC.
+- 🎨 **Cinco designs** — vidro líquido, vidro fosco ou clássico ao estilo macOS, ou Mica e Acrílico ao estilo Windows 11 (ícones e cor de destaque do Windows), escolhidos num clique no painel *Design*.
 - 🫧 **Vidro líquido** — a barra encaixada refrata o teu fundo a sério (lente nas bordas, dispersão, brilho na aresta), com um painel *Material* para afinar ou voltar ao clássico.
 - 🔔 **Sons e som espacial** — sons curtos para «passou», «falhou», «autorização» e «terminou»; com várias conversas, cada uma fala do seu lado (esquerda, centro, direita).
 - 🤫 **Calada nas reuniões** — com o microfone ocupado por outra app (Teams, Zoom…) ou um programa em ecrã inteiro, a voz cala-se sozinha.

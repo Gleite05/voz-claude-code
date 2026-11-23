@@ -606,3 +606,48 @@ body.liquido.vista-barra { background: var(--fundo) 0 0 / 100% 100% no-repeat; }
 .mat-grupos > .chip { align-self: flex-start; }
 .painel.material .leg { font-size: 11.5px; color: var(--txt2); padding: 0 4px; white-space: normal; }
 body.liquido:not(.anfitriao) .barra.liquida { background: none; backdrop-filter: none; }
+
+/* ---------------- painel Design (escolher o aspeto num clique) ---------------- */
+.painel.design { width: 392px; }
+.des-cartoes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.des-cartao { border: 0; background: var(--bloco); color: inherit; font: inherit; border-radius: 12px; padding: 6px 6px 8px; display: flex; flex-direction: column; align-items: stretch; gap: 3px; text-align: left; box-shadow: inset 0 0 0 1.5px transparent; }
+.des-cartao b { font-size: 12px; font-weight: 600; margin: 4px 2px 0; }
+.des-cartao small { font-size: 10.5px; color: var(--txt2); font-weight: 400; margin: 0 2px; }
+.des-cartao:hover { filter: brightness(1.08); }
+.des-cartao.sel { box-shadow: inset 0 0 0 1.5px var(--azul); }
+.painel.design .segmentado button { font-size: 12px; }
+.painel.design > .chip { align-self: flex-start; }
+.painel.design .leg { font-size: 11.5px; color: var(--txt2); padding: 0 4px; }
+
+/* miniatura: um bocado de fundo com a barra por cima (três <i>: esquerda, centro, direita) */
+.des-amostra { position: relative; display: block; height: 50px; border-radius: 7px; overflow: hidden;
+  background: linear-gradient(140deg, #3f6fa8 0%, #8fb8de 45%, #c6a4d6 75%, #e7b9a5 100%); }
+.des-amostra::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 13px; }
+.des-amostra i { position: absolute; top: 3px; height: 7px; border-radius: 4px; }
+.des-amostra i:nth-child(1) { left: 5px; width: 30%; }
+.des-amostra i:nth-child(2) { left: 50%; width: 20%; transform: translateX(-50%); }
+.des-amostra i:nth-child(3) { right: 5px; width: 26%; }
+/* macOS: cápsulas */
+.des-amostra.liquido i { top: 2.5px; height: 8px; background: rgba(255, 255, 255, 0.16); box-shadow: inset 0 0.5px 0 rgba(255, 255, 255, 0.8), inset 0 -0.5px 0 rgba(255, 255, 255, 0.35), 0 1.5px 3px rgba(0, 0, 0, 0.3); backdrop-filter: blur(1px) saturate(160%); }
+.des-amostra.fosco i { top: 2.5px; height: 8px; background: rgba(255, 255, 255, 0.42); box-shadow: inset 0 0.5px 0 rgba(255, 255, 255, 0.7), 0 1.5px 3px rgba(0, 0, 0, 0.22); backdrop-filter: blur(4px); }
+.des-amostra.classico::before { height: 11px; background: rgba(24, 24, 28, 0.62); backdrop-filter: blur(4px); }
+.des-amostra.classico i { top: 4px; height: 3px; background: rgba(255, 255, 255, 0.7); }
+.des-amostra.classico i:nth-child(2) { opacity: 0.5; }
+/* Windows 11: faixa inteira, ilha como a caixa de pesquisa */
+.des-amostra.mica::before { height: 13px; background: rgba(36, 40, 47, 0.95); box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.09); }
+.des-amostra.acrilico::before { height: 13px; background: rgba(32, 32, 32, 0.5); backdrop-filter: blur(6px); box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.12); }
+.des-amostra.mica i, .des-amostra.acrilico i { top: 5px; height: 3px; border-radius: 2px; background: rgba(255, 255, 255, 0.75); }
+.des-amostra.mica i:nth-child(1), .des-amostra.acrilico i:nth-child(1) { width: 22%; }
+.des-amostra.mica i:nth-child(2), .des-amostra.acrilico i:nth-child(2) { top: 2.5px; height: 8px; border-radius: 4px; background: rgba(255, 255, 255, 0.07); box-shadow: inset 0 0 0 0.5px rgba(255, 255, 255, 0.18); }
+.des-amostra.mica i:nth-child(3), .des-amostra.acrilico i:nth-child(3) { width: 18%; }
+.claro .des-amostra.mica::before { background: rgba(240, 242, 245, 0.95); box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.08); }
+.claro .des-amostra.acrilico::before { background: rgba(243, 243, 243, 0.55); }
+.claro .des-amostra.mica i, .claro .des-amostra.acrilico i, .claro .des-amostra.classico i { background: rgba(0, 0, 0, 0.6); }
+.claro .des-amostra.classico::before { background: rgba(255, 255, 255, 0.5); }
+.claro .des-amostra.mica i:nth-child(2), .claro .des-amostra.acrilico i:nth-child(2) { background: rgba(255, 255, 255, 0.7); box-shadow: inset 0 0 0 0.5px rgba(0, 0, 0, 0.12); }
+/* miniaturas pequenas na fila do Centro de Controlo */
+.des-amostra.peq { height: 30px; border-radius: 5px; }
+.cc-des { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+.cc-des button { border: 0; padding: 0; background: none; border-radius: 7px; box-shadow: 0 0 0 1.5px transparent; cursor: default; }
+.cc-des button:hover { filter: brightness(1.1); }
+.cc-des button.on { box-shadow: 0 0 0 1.5px var(--laranja); }

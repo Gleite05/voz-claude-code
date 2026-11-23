@@ -9,6 +9,8 @@ const SIM = desc => ({ tipo: 'sim', desc })
 
 const AJUSTES = {
   barraPosicao: LISTA(['topo', 'fundo', 'esquerda', 'direita', 'flutuante', 'escondida'], 'onde fica a barra'),
+  design: LISTA(['liquido', 'fosco', 'classico', 'mica', 'acrilico'], 'design (o mais fácil): liquido/fosco/classico = estilo macOS; mica/acrilico = estilo Windows 11 (ícones e cor de destaque do Windows)'),
+  barraEstilo: LISTA(['macos', 'windows', 'windows-acrilico'], 'estilo (o design já o escolhe): macos, windows (Mica) ou windows-acrilico'),
   barraTema: LISTA(['sistema', 'escuro', 'claro'], 'tema (sistema = segue o Windows)'),
   barraMaterial: LISTA(['liquido', 'fosco', 'personalizado', 'classico'], 'material: vidro líquido, vidro fosco, personalizado ou clássico (vidro só com a barra encaixada)'),
   vidroTransparencia: NUM(40, 100, 'vidro: transparência %'),
@@ -31,7 +33,7 @@ const AJUSTES = {
 // partir de uma predefinição, o material passa a «personalizado» com os outros valores dela.
 const VIDRO_PREDEF = {
   liquido: { vidroTransparencia: 90, vidroDesfoque: 15, vidroRefracao: 8, vidroBorda: 10, vidroDispersao: 6, vidroBrilho: 55, vidroSombra: 30 },
-  fosco: { vidroTransparencia: 74, vidroDesfoque: 100, vidroRefracao: 3, vidroBorda: 8, vidroDispersao: 0, vidroBrilho: 35, vidroSombra: 25 },
+  fosco: { vidroTransparencia: 58, vidroDesfoque: 100, vidroRefracao: 3, vidroBorda: 8, vidroDispersao: 0, vidroBrilho: 35, vidroSombra: 25 },
 }
 
 const MODULOS = ['ilha', 'sessao', 'acao', 'conversas', 'legenda', 'onda', 'sessoes', 'contexto', 'microfone', 'silencio', 'tema', 'som', 'tempo']
@@ -75,6 +77,11 @@ function interpretar(pares, cfg) {
     else erros.push(r.erro)
   }
   if (erros.length) return { ok: false, erros }
+  // «design» não se grava: é um atalho para o estilo + o material (como no painel Design da barra).
+  if ('design' in alteracoes) {
+    Object.assign(alteracoes, valoresDesign(alteracoes.design, cfg))
+    delete alteracoes.design
+  }
   const mexeNoVidro = Object.keys(alteracoes).some(k => k.startsWith('vidro'))
   if (mexeNoVidro && !('barraMaterial' in alteracoes)) {
     const atual = cfg.barraMaterial || 'liquido'
@@ -85,6 +92,27 @@ function interpretar(pares, cfg) {
     }
   }
   return { ok: true, alteracoes }
+}
+
+// Designs (os mesmos do painel Design de barra/barra.js): estilo + material.
+const DESIGNS = {
+  liquido: { barraEstilo: 'macos', barraMaterial: 'liquido' },
+  fosco: { barraEstilo: 'macos', barraMaterial: 'fosco' },
+  classico: { barraEstilo: 'macos', barraMaterial: 'classico' },
+  mica: { barraEstilo: 'windows' },
+  acrilico: { barraEstilo: 'windows-acrilico' },
+}
+function designAtual(cfg) {
+  if (cfg.barraEstilo === 'windows') return 'mica'
+  if (cfg.barraEstilo === 'windows-acrilico') return 'acrilico'
+  const m = cfg.barraMaterial || 'liquido'
+  return m === 'fosco' || m === 'classico' ? m : 'liquido'
+}
+/** O vidro líquido afinado à mão («personalizado») mantém as afinações ao voltar ao design líquido. */
+function valoresDesign(id, cfg) {
+  const v = { ...DESIGNS[id] }
+  if (id === 'liquido' && cfg.barraMaterial === 'personalizado') v.barraMaterial = 'personalizado'
+  return v
 }
 
 /** Aceita a chave sem olhar a maiúsculas (barratema, BarraTema…). */
@@ -108,4 +136,4 @@ function alternarModulo(cfg, id, estado) {
   return { lista: modulos(cfg).map(x => (x.id === m ? { ...x, on } : x)) }
 }
 
-module.exports = { AJUSTES, MODULOS, VIDRO_PREDEF, validar, interpretar, modulos, alternarModulo }
+module.exports = { AJUSTES, MODULOS, VIDRO_PREDEF, DESIGNS, designAtual, valoresDesign, validar, interpretar, modulos, alternarModulo }

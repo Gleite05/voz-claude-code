@@ -1,0 +1,193 @@
+/* Voz · estilo Windows 11 (body.win). Por cima de barra.css, sem lhe mexer: o estilo macOS continua igual.
+   Segue os tokens do Fluent 2 / WinUI 3: Mica na barra (o fundo real, muito desfocado, com tinta),
+   acrílico nos menus, cantos de 4 px nos controlos e 8 px nos cartões, ícones Segoe Fluent Icons,
+   realce discreto ao passar o rato e a cor de destaque do próprio Windows (--ac-claro / --ac-escuro,
+   lida do registo pelo servidor). */
+
+body.win {
+  --txt: #ffffff;
+  --txt2: rgba(255, 255, 255, 0.786);
+  --txt3: rgba(255, 255, 255, 0.544);
+  --hover: rgba(255, 255, 255, 0.0605);
+  --press: rgba(255, 255, 255, 0.0419);
+  --sep: rgba(255, 255, 255, 0.0837);
+  --bloco: rgba(255, 255, 255, 0.0512);
+  --borda-card: rgba(0, 0, 0, 0.1);
+  --borda-ctl: rgba(255, 255, 255, 0.0698);
+  --borda-flyout: rgba(117, 117, 117, 0.4);
+  --trilho: rgba(255, 255, 255, 0.0605);
+  --trilho-forte: rgba(255, 255, 255, 0.544);
+  --polegar: #454545;
+  --acento: var(--ac-claro, #4cc2ff);
+  --sobre-acento: #000000;
+  --azul: var(--acento);
+  --sel: var(--acento);
+  --laranja: var(--acento);
+  --vidro-barra: rgba(32, 32, 32, 0.8);
+  --vidro-menu: rgba(44, 44, 44, 0.88);
+  --mica-tinta: rgba(32, 32, 32, 0.8);
+  --disco: #2b2b2b;
+  --ilha-fundo: rgba(255, 255, 255, 0.0605);
+  --ilha-borda: rgba(255, 255, 255, 0.0837);
+  font-family: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+}
+body.win.claro {
+  --txt: rgba(0, 0, 0, 0.896);
+  --txt2: rgba(0, 0, 0, 0.606);
+  --txt3: rgba(0, 0, 0, 0.446);
+  --hover: rgba(0, 0, 0, 0.0373);
+  --press: rgba(0, 0, 0, 0.0241);
+  --sep: rgba(0, 0, 0, 0.0803);
+  --bloco: rgba(255, 255, 255, 0.7);
+  --borda-card: rgba(0, 0, 0, 0.0578);
+  --borda-ctl: rgba(0, 0, 0, 0.0578);
+  --trilho: rgba(0, 0, 0, 0.0373);
+  --trilho-forte: rgba(0, 0, 0, 0.446);
+  --polegar: #ffffff;
+  --acento: var(--ac-escuro, #0067c0);
+  --sobre-acento: #ffffff;
+  --vidro-barra: rgba(243, 243, 243, 0.82);
+  --vidro-menu: rgba(249, 249, 249, 0.9);
+  --mica-tinta: rgba(243, 243, 243, 0.78);
+  --disco: #ffffff;
+  --ilha-fundo: rgba(255, 255, 255, 0.7);
+  --ilha-borda: rgba(0, 0, 0, 0.0578);
+  --sombra-bloco: none;
+}
+
+/* ícones nativos */
+.win .fi { font-family: "Segoe Fluent Icons", "Segoe MDL2 Assets"; font-style: normal; font-weight: 400; font-size: 16px; line-height: 1;
+  width: 16px; height: 16px; display: inline-flex; align-items: center; justify-content: center; flex: none; speak: never; }
+
+/* ---------------- barra ---------------- */
+body.win.anfitriao.vista-barra { background: var(--vidro-barra); }
+body.win:not(.anfitriao) .barra { background: var(--vidro-barra); backdrop-filter: blur(30px) saturate(125%); }
+/* Mica: o fundo do ambiente de trabalho por trás da barra, muito desfocado e com a tinta do tema. */
+body.win.mica.vista-barra { background: transparent; }
+body.win.mica.vista-barra::before { content: ""; position: fixed; inset: 0; z-index: -2; pointer-events: none;
+  background: var(--fundo) 0 0 / 100% 100% no-repeat; filter: url(#mica); }
+body.win.mica.vista-barra::after { content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none; background: var(--mica-tinta); }
+/* a linha fina do lado de dentro, como a da barra de tarefas */
+body.win.vista-barra.pos-topo::after { box-shadow: inset 0 -1px 0 var(--sep); }
+body.win.vista-barra.pos-fundo::after { box-shadow: inset 0 1px 0 var(--sep); }
+body.win.vista-barra.pos-esquerda::after { box-shadow: inset -1px 0 0 var(--sep); }
+body.win.vista-barra.pos-direita::after { box-shadow: inset 1px 0 0 var(--sep); }
+body.win.vista-barra:not(.mica)::after { content: ""; position: fixed; inset: 0; pointer-events: none; }
+
+.win .barra { padding: 0 6px; gap: 2px; }
+.win .it { height: min(32px, calc(100vh - 6px)); padding: 0 10px; border-radius: 4px; gap: 8px; }
+.win .it.clic:hover, .win .it.aberto, .win.claro .barra .it.clic:hover, .win.claro .barra .it.aberto { background: var(--hover); }
+.win .it.clic:active { background: var(--press); }
+.win .it.marca { padding: 0 10px 0 8px; }
+.win .it.marca b { font-weight: 600; }
+.win .it.fraco { color: var(--txt2); }
+.win .barra.v { padding: 6px 0; gap: 4px; }
+.win .barra.v .it { width: min(40px, calc(100vw - 8px)); height: 36px; padding: 0; }
+.win .barra.flut { padding: 0 6px; }
+.win .it.a-ouvir .fi { animation: respira 1.1s ease-in-out infinite; }
+.win .fraco-n { font-weight: 400; }
+
+/* ilha: como a caixa de pesquisa da barra de tarefas */
+.win .ilha { height: 28px; border-radius: 14px; background: var(--ilha-fundo); border: 1px solid var(--ilha-borda); box-shadow: none; }
+.win.mica .ilha { height: 30px; border-radius: 15px; }
+.win .ilha:hover { filter: none; background: color-mix(in srgb, var(--ilha-fundo), var(--txt) 4%); }
+.win .ilha.fala, .win .ilha.perm, .win .ilha.fim, .win .ilha.dit { border-color: color-mix(in srgb, var(--halo) 70%, transparent); box-shadow: none; }
+.win .ilha.perm { animation: win-pulso 1.8s ease-in-out infinite; }
+@keyframes win-pulso { 50% { border-color: color-mix(in srgb, var(--halo) 25%, transparent); } }
+.win .ilha.fala, .win .ilha.acao { --halo: var(--acento); }
+.win .ilha-c { font-size: 12px; }
+.win .ilha-c .fi { font-size: 13px; width: 13px; height: 13px; }
+.win .ilha-c b { font-weight: 600; }
+
+/* ---------------- menus e painéis (acrílico) ---------------- */
+body.win.anfitriao.vista-menu { background: var(--vidro-menu); box-shadow: inset 0 0 0 1px var(--borda-flyout); }
+body.win:not(.anfitriao) .menu, body.win:not(.anfitriao) .painel, body.win:not(.anfitriao) .cc {
+  border-radius: 8px; background: var(--vidro-menu); border: 1px solid var(--borda-flyout); box-shadow: 0 8px 16px rgba(0, 0, 0, 0.26); backdrop-filter: blur(30px) saturate(125%); }
+.win .menu { padding: 4px; font-size: 13px; }
+.win .menu .tit, .win.claro .menu .tit { padding: 8px 12px 4px; font-size: 12px; font-weight: 600; color: var(--txt2); }
+.win .menu .op { min-height: 30px; padding: 0 12px; border-radius: 4px; gap: 12px; }
+.win .menu .op:hover, .win.claro .menu .op:hover { background: var(--hover); color: var(--txt); }
+.win .menu .op:active { background: var(--press); }
+.win .menu .op:hover small, .win .menu .op:hover .ponto, .win.claro .menu .op:hover small { color: var(--txt2); }
+.win .menu .op small { font-size: 12px; }
+.win .menu hr { margin: 4px 0; background: var(--sep); }
+/* o visto dos menus é o glifo do Windows (o «⋮⋮» de arrastar módulos fica como está) */
+.win .menu .op:not([draggable]) .chk:not(:empty) { font-size: 0; }
+.win .menu .op:not([draggable]) .chk:not(:empty)::before { content: "\E73E"; font-family: "Segoe Fluent Icons", "Segoe MDL2 Assets"; font-size: 12px; }
+.win .menu .op .chk { width: 14px; }
+
+.win .painel { padding: 8px; }
+.win .painel > .tit, .win.claro .painel > .tit { font-size: 12px; color: var(--txt2); }
+.win .cartao, .win .bloco, .win .cc-t { border-radius: 8px; box-shadow: inset 0 0 0 1px var(--borda-card); }
+.win .cartao.atencao, .win.claro .cartao.atencao { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--alerta) 70%, transparent); }
+.win .cartao.permissao { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--alerta) 65%, transparent); }
+.win .cartao.pergunta { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--acento) 60%, transparent); }
+.win .cartao .x { border-radius: 4px; background: transparent; }
+.win .cartao .x:hover { background: var(--hover); filter: none; }
+.win .cartao.permissao .escudo { border-radius: 4px; }
+.win .cc { gap: 8px; }
+.win .cc-bola { border-radius: 4px; }
+.win .cc-bola.on, .win .cc-bola.roxo.on, .win .cc-bola.ambar.on { background: var(--acento); color: var(--sobre-acento); }
+.win .cc-pos div { border-radius: 4px; border-width: 1px; }
+.win .cc-spark i.hoje { background: var(--acento); }
+
+/* ---------------- controlos Fluent ---------------- */
+.win .botoes button { border-radius: 4px; padding: 6px 0; font-weight: 400; background: var(--hover); box-shadow: inset 0 0 0 1px var(--borda-ctl); }
+.win.claro .botoes button { background: rgba(255, 255, 255, 0.7); }
+.win .botoes button:hover { filter: none; background: color-mix(in srgb, var(--txt) 8%, transparent); }
+.win .botoes .permitir, .win.claro .botoes .permitir { background: var(--acento); color: var(--sobre-acento); box-shadow: none; }
+.win .botoes .permitir:hover { background: color-mix(in srgb, var(--acento) 90%, var(--txt)); }
+.win .chip, .win.claro .chip { border-radius: 4px; background: var(--hover); box-shadow: inset 0 0 0 1px var(--borda-ctl); }
+.win .chip.sel, .win.claro .chip.sel, .win .cc .chip.sel { background: var(--acento); color: var(--sobre-acento); box-shadow: none; }
+.win .redondo, .win.claro .redondo { border-radius: 4px; background: var(--hover); }
+.win .redondo.on, .win.claro .redondo.on { background: var(--acento); color: var(--sobre-acento); }
+.win .segmentado { border-radius: 4px; }
+.win .segmentado button { border-radius: 4px; }
+.win .bloco.testar svg, .win .bloco.testar .fi { border-radius: 4px; background: var(--acento); color: var(--sobre-acento); }
+
+/* interruptor (ToggleSwitch) */
+.win .interruptor, .win.claro .interruptor { width: 40px; height: 20px; border-radius: 10px; background: transparent; box-shadow: inset 0 0 0 1px var(--txt2); }
+.win .interruptor::after { top: 4px; left: 4px; width: 12px; height: 12px; background: var(--txt2); box-shadow: none; transition: left 0.15s, width 0.1s; }
+.win .interruptor.on, .win.claro .interruptor.on { background: var(--acento); box-shadow: none; }
+.win .interruptor.on::after { left: 24px; background: var(--sobre-acento); }
+
+/* barra deslizante (Slider): trilho fino com a parte cheia na cor de destaque (--p vem do JS) */
+.win input[type=range] { height: 4px; border-radius: 2px;
+  background: linear-gradient(to right, var(--acento) var(--p, 50%), var(--trilho-forte) var(--p, 50%)); }
+.win input[type=range]::-webkit-slider-thumb, .win.claro input[type=range]::-webkit-slider-thumb { width: 20px; height: 20px; border-radius: 50%;
+  background: radial-gradient(circle, var(--acento) 0 5px, var(--polegar) 5.5px); box-shadow: 0 0 0 1px var(--borda-ctl), 0 1px 2px rgba(0, 0, 0, 0.25); transition: background 0.1s; }
+.win input[type=range]:hover::-webkit-slider-thumb { background: radial-gradient(circle, var(--acento) 0 6px, var(--polegar) 6.5px); }
+.win input[type=range].grosso { height: 4px; }
+.win input[type=range].grosso::-webkit-slider-thumb { width: 20px; height: 20px; }
+.win .eq input[type=range] { width: 4px; height: 92px; border-radius: 2px; margin: 0 auto;
+  background: linear-gradient(to top, var(--acento) var(--p, 50%), var(--trilho-forte) var(--p, 50%)); }
+.win .eq input[type=range]::-webkit-slider-thumb { width: 20px; height: 20px; border-radius: 50%; }
+
+/* caixas de texto (TextBox): linha de baixo que acende na cor de destaque */
+.win .resp, .win.claro .resp { border-radius: 4px; background: var(--hover); box-shadow: inset 0 0 0 1px var(--borda-ctl), inset 0 -1px 0 var(--trilho-forte); }
+.win .resp:focus-within { box-shadow: inset 0 0 0 1px var(--borda-ctl), inset 0 -2px 0 var(--acento); }
+.win .resp button { border-radius: 4px; background: var(--acento); color: var(--sobre-acento); }
+.win .resp .mic { border-radius: 4px; }
+.win .perg-outra { border-radius: 4px; box-shadow: inset 0 -1px 0 var(--trilho-forte); }
+.win .perg-outra:focus { box-shadow: inset 0 -2px 0 var(--acento); }
+.win .perg-op { border-radius: 4px; }
+.win .perg-op.sel { background: color-mix(in srgb, var(--acento) 18%, transparent); box-shadow: inset 0 0 0 1px var(--acento); }
+.win .perg-op.sel .perg-marca, .win .perg-op.multi.sel .perg-marca { background-color: var(--acento); }
+.win .perg-op.sel .perg-marca { box-shadow: inset 0 0 0 3px var(--acento), inset 0 0 0 5px var(--sobre-acento); }
+.win .linha-horas input, .win .linha-voz select, .win .painel select { border-radius: 4px; }
+
+/* painel Material: no estilo Windows a barra usa Mica, não o vidro líquido */
+.win .mat-cartao { border-radius: 8px; }
+.win .mat-cartao.sel { box-shadow: inset 0 0 0 1.5px var(--acento); }
+
+/* Acrílico: sem Mica, o desfoque translúcido do próprio Windows por trás da barra */
+body.win.acrilico.anfitriao.vista-barra { background: rgba(32, 32, 32, 0.55); }
+body.win.acrilico.claro.anfitriao.vista-barra { background: rgba(243, 243, 243, 0.58); }
+/* painel Design */
+.win .des-cartao { border-radius: 8px; box-shadow: inset 0 0 0 1px var(--borda-card); }
+.win .des-cartao.sel { box-shadow: inset 0 0 0 2px var(--acento); }
+.win .des-amostra { border-radius: 4px; }
+.win .cc-des button { border-radius: 4px; }
+.win .cc-des button.on { box-shadow: 0 0 0 2px var(--acento); }

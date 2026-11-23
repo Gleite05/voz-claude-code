@@ -735,12 +735,37 @@ async function pedidoVozes(p) {
 
 // ---------- barra ----------
 
+// Cor de destaque do Windows (para o estilo Windows 11 da barra): a paleta que o próprio Windows
+// calcula (AccentPalette). Lida em segundo plano, no máximo uma vez por minuto; muda quando a mudas.
+let acento = { em: 0, valor: null }
+function acentoWindows() {
+  if (WIN && Date.now() - acento.em > 60000) {
+    acento.em = Date.now()
+    require('node:child_process').execFile(
+      'reg.exe',
+      ['query', String.raw`HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Accent`, '/v', 'AccentPalette'],
+      { windowsHide: true, timeout: 4000 },
+      (err, out) => {
+        const m = !err && /AccentPalette\s+REG_BINARY\s+([0-9A-F]{64})/i.exec(String(out))
+        if (!m) return
+        const cor = i => '#' + m[1].slice(i * 8, i * 8 + 6).toLowerCase()
+        const novo = { claro: cor(1), base: cor(3), escuro: cor(4) } // tema escuro usa o «claro 2», o claro o «escuro 1»
+        if (JSON.stringify(novo) !== JSON.stringify(acento.valor)) {
+          acento.valor = novo
+          publicar()
+        }
+      },
+    )
+  }
+  return acento.valor
+}
+
 const CHAVES_BARRA = new Set([
   'ligado', 'anunciarAcoes', 'lerRespostas', 'velocidade', 'volume', 'altura', 'graves', 'medios', 'agudos',
   'soSessaoAtiva', 'avisarOutrasSessoes', 'barraPosicao', 'barraModulos', 'barraArranque', 'barraTema',
   'barraAvisos', 'respostasPelaBarra', 'naoIncomodar', 'silencioHorario', 'vozPorConversa', 'idiomaAuto',
   'vozPadrao', 'aprovarPelaBarra', 'barraEcra', 'ditadoIdioma', 'ditadoModelo', 'idioma', 'anunciarResultados', 'sons', 'somEspacial', 'silencioReunioes', 'resumoAoVoltar', 'moeda', 'aprovarPorVoz', 'maosLivres',
-  'barraMaterial', 'vidroTransparencia', 'vidroDesfoque', 'vidroRefracao', 'vidroBorda', 'vidroDispersao', 'vidroBrilho', 'vidroSombra',
+  'barraEstilo', 'barraMaterial', 'vidroTransparencia', 'vidroDesfoque', 'vidroRefracao', 'vidroBorda', 'vidroDispersao', 'vidroBrilho', 'vidroSombra',
 ])
 
 function estadoParaBarra() {
@@ -755,6 +780,7 @@ function estadoParaBarra() {
     agora: Date.now(),
     idioma: idiomaEfetivo(c),
     cfg,
+    acento: acentoWindows(),
     motor: motor ? motor.nome : null,
     sessoes: sessoes.map(s => ({ ...s, voz: vozes.vozDaSessao(s.id) })),
     foco: sessaoFoco,

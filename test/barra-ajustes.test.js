@@ -41,3 +41,13 @@ test('módulos: liga, desliga e acrescenta os que faltam', () => {
   assert.equal(r.lista[0].id, 'ilha') // mantém a ordem
   assert.ok(AJ.alternarModulo(cfg, 'relogio', 'on').erro)
 })
+
+test('design: atalho para estilo + material, sem gravar «design»', () => {
+  assert.deepEqual(AJ.interpretar(['design=mica'], {}).alteracoes, { barraEstilo: 'windows' })
+  assert.deepEqual(AJ.interpretar(['design=fosco'], { barraEstilo: 'windows' }).alteracoes, { barraEstilo: 'macos', barraMaterial: 'fosco' })
+  // o vidro líquido afinado mantém as afinações
+  assert.deepEqual(AJ.interpretar(['design=liquido'], { barraMaterial: 'personalizado' }).alteracoes, { barraEstilo: 'macos', barraMaterial: 'personalizado' })
+  assert.equal(AJ.designAtual({ barraEstilo: 'windows-acrilico' }), 'acrilico')
+  assert.equal(AJ.designAtual({ barraMaterial: 'personalizado' }), 'liquido')
+  assert.equal(AJ.interpretar(['design=neon'], {}).ok, false)
+})
