@@ -132,6 +132,7 @@ async function principal() {
       break
     case 'Notification':
       msg.mensagem = e.message
+      msg.tipoNotificacao = e.notification_type
       break
     case 'UserPromptSubmit':
       msg.pedido = typeof e.prompt === 'string' ? e.prompt.slice(0, 2000) : undefined

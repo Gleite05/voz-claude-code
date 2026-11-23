@@ -354,6 +354,9 @@ function tratarEvento(msg) {
     pendentes.delete(msg.sessao)
   }
   if (msg.evento === 'SessionStart') talvezAbrirBarra(cfg)
+  // Antes de olhar para a voz: o aviso «à espera de autorização» prova que o Claude mostra o pedido.
+  if (msg.evento === 'Notification' && (msg.tipoNotificacao === 'permission_prompt' || /permission|permiss/i.test(String(msg.mensagem || ''))))
+    claudeMostraPedido(msg.sessao)
   if (!cfg.ligado || emSilencio(cfg) || aOuvir) return
   if (msg.agente) return // subagentes ficam calados
   const s = msg.sessao
@@ -407,7 +410,8 @@ function tratarEvento(msg) {
     case 'Notification': {
       const frase = texto.frasesNotificacao(msg.mensagem, idioma)
       // O pedido de autorização já tocou o seu som quando chegou à barra.
-      const pedeAutorizacao = /permission|permiss/i.test(String(msg.mensagem || '')) && permissoesDaSessao(s)
+      const pedeAutorizacao =
+        (msg.tipoNotificacao === 'permission_prompt' || /permission|permiss/i.test(String(msg.mensagem || ''))) && permissoesDaSessao(s)
       if (!pedeAutorizacao) tocarSom('atencao', s)
       if (pedeAutorizacao && cfg.aprovarPorVoz) return // a pergunta falada já diz o que é
       if (emFoco(s, cfg)) enfileirar('aviso', frase, s)
@@ -550,17 +554,82 @@ function responder(id, texto) {
 
 // ---------- permissões pela barra ----------
 
+// O pedido tem de aparecer SEMPRE no Claude. Nalguns ambientes o Claude mostra o seu diálogo ao mesmo
+// tempo que o gancho corre; noutros só depois de o gancho acabar (e esperar pela barra prendia-o).
+// Enquanto não se sabe («sonda»), o pedido fica na barra no máximo SONDA_MS: se entretanto chegar o
+// aviso do Claude «à espera de autorização» (prova de que o diálogo está à vista), é «paralelo» e
+// pode continuar; senão é «bloqueia» e o pedido volta logo para o Claude. Fica guardado por ambiente.
+const SONDA_MS = 8000
+const FICHEIRO_MODO = path.join(CAMINHOS.pasta, 'autorizacoes-modo.json')
+const sondas = new Map() // id -> temporizador (fora de `permissoes`, que é publicado em JSON)
+
+function aprenderModo(chave, modo) {
+  if (!chave) return
+  let m = {}
+  try {
+    m = JSON.parse(fs.readFileSync(FICHEIRO_MODO, 'utf8')) || {}
+  } catch {}
+  if (m[chave] && m[chave].modo === modo && Date.now() - m[chave].em < 24 * 3600 * 1000) return
+  m[chave] = { modo, em: Date.now() }
+  try {
+    fs.writeFileSync(FICHEIRO_MODO, JSON.stringify(m, null, 2))
+  } catch {}
+  log(
+    modo === 'paralelo'
+      ? `autorizações (${chave}): o Claude mostra o pedido ao mesmo tempo — a barra pode responder`
+      : `autorizações (${chave}): o Claude só mostra o pedido depois do gancho — a partir de agora vão direto para o Claude`,
+  )
+}
+
+/** Devolve o pedido ao Claude sem decidir (o gancho sai e o Claude mostra o seu diálogo). */
+function libertarPermissao(id) {
+  const p = permissoes.get(id)
+  if (!p) return
+  permissoes.delete(id)
+  try {
+    p.socket.write(JSON.stringify({ libertar: true }) + '\n')
+  } catch {}
+  log(`pedido de autorização (${p.ferramenta}) devolvido ao Claude`)
+  publicar()
+}
+
+function pararSonda(id) {
+  clearTimeout(sondas.get(id))
+  sondas.delete(id)
+}
+
 function registarPermissao(p, socket) {
   if (!p || !p.id) return
   permissoes.set(p.id, { ...p, socket, criado: Date.now() })
-  log(`pedido de autorização (${p.ferramenta}) da sessão ${String(p.sessao).slice(0, 8)}`)
+  log(`pedido de autorização (${p.ferramenta}) da sessão ${String(p.sessao).slice(0, 8)}${p.sonda ? ' (a confirmar se o Claude também o mostra)' : ''}`)
   tocarSom('atencao', p.sessao)
   perguntarPorVoz(p)
   publicar()
+  if (p.sonda) {
+    sondas.set(
+      p.id,
+      setTimeout(() => {
+        sondas.delete(p.id)
+        if (!permissoes.has(p.id)) return
+        aprenderModo(p.chave, 'bloqueia')
+        libertarPermissao(p.id)
+      }, SONDA_MS),
+    )
+  }
   // Se o Claude Code decidir por outro lado (diálogo da app) ou desistir, o gancho fecha a ligação.
   socket.on('close', () => {
+    pararSonda(p.id)
     if (permissoes.delete(p.id)) publicar()
   })
+}
+
+/** O Claude avisou que está à espera de autorização: o diálogo dele está à vista ao mesmo tempo. */
+function claudeMostraPedido(sessao) {
+  for (const p of permissoes.values()) {
+    if (p.sessao !== sessao || !sondas.has(p.id)) continue
+    pararSonda(p.id)
+    aprenderModo(p.chave, 'paralelo')
+  }
 }
 
 function decidirPermissao(id, decisao, respostas) {
@@ -577,6 +646,7 @@ function decidirPermissao(id, decisao, respostas) {
     decisao = 'allow'
   }
   permissoes.delete(id)
+  pararSonda(id)
   try {
     p.socket.write(JSON.stringify(resp ? { decisao, respostas: resp } : { decisao }) + '\n')
   } catch {}

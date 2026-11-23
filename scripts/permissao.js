@@ -7,6 +7,7 @@
 // diálogo, por isso aí não espera (não atrasa nada): sai logo sem decidir.
 
 const fs = require('node:fs')
+const path = require('node:path')
 const net = require('node:net')
 const crypto = require('node:crypto')
 const { CAMINHOS, lerConfig } = require('./comum')
@@ -109,10 +110,29 @@ function naAppDoClaude() {
   return Boolean(env.CLAUDE_AGENT_SDK_VERSION) || /desktop|sdk/i.test(env.CLAUDE_CODE_ENTRYPOINT || '')
 }
 
+// O pedido tem de aparecer SEMPRE no Claude. Há ambientes em que o Claude mostra o seu diálogo ao
+// mesmo tempo que este gancho corre (vale quem responder primeiro) e outros em que só o mostra
+// depois de o gancho acabar — aí, esperar pela barra prendia o Claude. O servidor aprende qual é
+// (por ambiente) e guarda-o aqui: «paralelo» = pode esperar pela barra; «bloqueia» = sai já.
+const FICHEIRO_MODO = path.join(CAMINHOS.pasta, 'autorizacoes-modo.json')
+const VALIDADE_MODO = 7 * 24 * 3600 * 1000 // volta a confirmar uma vez por semana
+const chaveAmbiente = () => [process.env.CLAUDE_CODE_ENTRYPOINT || '?', process.env.CLAUDE_AGENT_SDK_VERSION ? 'sdk' : 'cli'].join('|')
+function modoConhecido(chave) {
+  try {
+    const m = JSON.parse(fs.readFileSync(FICHEIRO_MODO, 'utf8'))[chave]
+    if (m && Date.now() - m.em < VALIDADE_MODO) return m.modo
+  } catch {}
+  return null
+}
+
 async function principal() {
   const cfg = lerConfig()
   if (cfg.aprovarPelaBarra === false || process.env.VOZ_SILENCIO) return
   if (!naAppDoClaude() && !cfg.aprovarPelaBarraNoTerminal) return
+  if (!fs.existsSync(path.join(CAMINHOS.pasta, 'barra', 'VozBarra.exe'))) return // sem barra, ninguém responderia aqui
+  const chave = chaveAmbiente()
+  const modo = modoConhecido(chave)
+  if (modo === 'bloqueia') return // aqui o Claude só pergunta depois do gancho: sai já, o pedido vai para o Claude
   let e
   try {
     e = JSON.parse(await lerStdin())
@@ -152,6 +172,8 @@ async function principal() {
             sempre: descreverSugestoes(sugestoes),
             diff,
             perguntas,
+            chave, // ambiente (para o servidor aprender se o Claude pergunta ao mesmo tempo)
+            sonda: modo !== 'paralelo', // ainda não se sabe: o servidor só segura o pedido uns segundos
           },
         }) + '\n',
       ),
@@ -170,6 +192,7 @@ async function principal() {
     s.on('error', () => resolve({}))
     s.on('close', () => resolve({}))
   })
+  if (resposta.libertar) return // o Claude não mostrou o pedido enquanto esperávamos: devolve-lho já
   const decisao = resposta.decisao
 
   if (decisao === 'allow' || decisao === 'deny' || decisao === 'always') {

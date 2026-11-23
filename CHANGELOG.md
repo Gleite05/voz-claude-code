@@ -1,5 +1,15 @@
 # Histórico de versões
 
+## 1.7.1
+
+- **Os pedidos de autorização voltam a aparecer sempre no Claude.** Nalguns ambientes, a app do Claude só mostra o diálogo de autorização depois de o gancho da barra acabar, e a barra esperava pela tua resposta (até 10 minutos), por isso o Claude ficava parado. Agora a barra nunca segura o pedido sem saber se o Claude também o está a mostrar:
+  - no primeiro pedido espera no máximo 8 segundos pelo aviso do Claude de que o pedido está à vista;
+  - se o aviso chegar, a barra e o Claude podem responder os dois e vale quem responder primeiro;
+  - se não chegar, o pedido volta logo para o Claude e, nesse ambiente, passa a ir sempre diretamente para o Claude, sem atraso.
+
+  O que aprendeu fica guardado por ambiente e é confirmado de novo uma vez por semana.
+- Sem a barra instalada, o gancho de autorização sai logo.
+
 ## 1.7.0
 
 - **Onze designs em quatro famílias:** ao macOS (*Vidro líquido*, *Vidro fosco*, *Clássico*) e ao Windows 11 (*Mica*, *Acrílico*) juntam-se o **Linux** (*GNOME*: barra preta com botões em pílula; *Plasma*: painel flutuante arredondado sobre o teu fundo) e os **Criativos** (*Sólido*: plano e opaco; *Aurora*: gradiente colorido em movimento; *Terminal*: verde fósforo e letra monoespaçada; *Retro*: cinzento clássico com relevos). Cada design muda a barra, os menus e todos os controlos. O painel Design mostra-os por família, com miniaturas e uma descrição curta.
