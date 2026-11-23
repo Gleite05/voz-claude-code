@@ -9,8 +9,9 @@ const SIM = desc => ({ tipo: 'sim', desc })
 
 const AJUSTES = {
   barraPosicao: LISTA(['topo', 'fundo', 'esquerda', 'direita', 'flutuante', 'escondida'], 'onde fica a barra'),
-  design: LISTA(['liquido', 'fosco', 'classico', 'mica', 'acrilico'], 'design (o mais fácil): liquido/fosco/classico = estilo macOS; mica/acrilico = estilo Windows 11 (ícones e cor de destaque do Windows)'),
-  barraEstilo: LISTA(['macos', 'windows', 'windows-acrilico'], 'estilo (o design já o escolhe): macos, windows (Mica) ou windows-acrilico'),
+  design: LISTA(['liquido', 'fosco', 'classico', 'mica', 'acrilico', 'gnome', 'plasma', 'solido', 'aurora', 'terminal', 'retro'],
+    'design (o mais fácil): macOS = liquido|fosco|classico; Windows 11 = mica|acrilico; Linux = gnome|plasma; criativos = solido|aurora|terminal|retro'),
+  barraEstilo: LISTA(['macos', 'windows', 'windows-acrilico', 'gnome', 'plasma', 'solido', 'aurora', 'terminal', 'retro'], 'estilo (o design já o escolhe)'),
   barraTema: LISTA(['sistema', 'escuro', 'claro'], 'tema (sistema = segue o Windows)'),
   barraMaterial: LISTA(['liquido', 'fosco', 'personalizado', 'classico'], 'material: vidro líquido, vidro fosco, personalizado ou clássico (vidro só com a barra encaixada)'),
   vidroTransparencia: NUM(40, 100, 'vidro: transparência %'),
@@ -101,10 +102,19 @@ const DESIGNS = {
   classico: { barraEstilo: 'macos', barraMaterial: 'classico' },
   mica: { barraEstilo: 'windows' },
   acrilico: { barraEstilo: 'windows-acrilico' },
+  gnome: { barraEstilo: 'gnome' },
+  plasma: { barraEstilo: 'plasma' },
+  solido: { barraEstilo: 'solido' },
+  aurora: { barraEstilo: 'aurora' },
+  terminal: { barraEstilo: 'terminal' },
+  retro: { barraEstilo: 'retro' },
 }
 function designAtual(cfg) {
-  if (cfg.barraEstilo === 'windows') return 'mica'
-  if (cfg.barraEstilo === 'windows-acrilico') return 'acrilico'
+  const e = cfg.barraEstilo || 'macos'
+  if (e !== 'macos') {
+    const id = Object.keys(DESIGNS).find(k => DESIGNS[k].barraEstilo === e)
+    if (id) return id
+  }
   const m = cfg.barraMaterial || 'liquido'
   return m === 'fosco' || m === 'classico' ? m : 'liquido'
 }

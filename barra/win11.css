@@ -191,3 +191,10 @@ body.win.acrilico.claro.anfitriao.vista-barra { background: rgba(243, 243, 243, 
 .win .des-amostra { border-radius: 4px; }
 .win .cc-des button { border-radius: 4px; }
 .win .cc-des button.on { box-shadow: 0 0 0 2px var(--acento); }
+/* painéis organizados (Definições, Design, subpainéis) */
+.win .pg-c { border-radius: 8px; box-shadow: inset 0 0 0 1px var(--borda-card); }
+.win .pl.clic:hover { background: var(--hover); }
+.win .cab-p .voltar { border-radius: 4px; }
+.win .des-grelha button { border-radius: 4px; }
+.win .des-grelha button.on { box-shadow: 0 0 0 2px var(--acento); }
+.win .pg-tit, .win .des-fam { font-weight: 600; }

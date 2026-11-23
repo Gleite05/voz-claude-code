@@ -22,7 +22,8 @@
 - 📋 **Progreso de tareas y subagentes** — el anillo «4/7» de la lista de tareas, los asistentes orbitando el avatar de la conversación y el aviso cuando se compacta.
 - 🛡️ **Aprobar permisos desde la barra** — la petición aparece en una tarjeta con el comando exacto o el **diff en color** de lo que va a cambiar: *Permitir*, *Rechazar* o **«Siempre»** (la regla que sugiere el propio Claude Code, p. ej. `git push:*`).
 - 🎧 **Manos libres y aprobar por voz** — tras cada respuesta la barra te escucha y envía lo que digas (para sola cuando te callas); en las peticiones de permiso pregunta «¿Lo permites?» y entiende «sí», «no» o «siempre». Desactivados por defecto.
-- 🎨 **Cinco diseños** — vidrio líquido, esmerilado o clásico al estilo macOS, o Mica y Acrílico al estilo Windows 11 (iconos y color de énfasis de Windows), elegidos con un clic en el panel *Diseño*.
+- 🎨 **Once diseños en cuatro familias** — macOS (vidrio líquido, esmerilado, clásico), Windows 11 (Mica, Acrílico, con los iconos y el color de énfasis de Windows), Linux (GNOME, Plasma) y creativos (Sólido, Aurora, Terminal, Retro), elegidos con un clic en el panel *Diseño*.
+- ⚙️ **Ajustes organizados** — cuatro pestañas (General, Apariencia, Conversaciones, Voz y sonido), interruptores y una frase que explica cada ajuste.
 - 🫧 **Vidrio líquido** — la barra anclada refracta tu fondo de verdad (lente en los bordes, dispersión, brillo en el borde), con un panel *Material* para ajustarlo o volver al clásico.
 - 🔔 **Sonidos y sonido espacial** — sonidos cortos para pasó, falló, permiso y terminó; con varias conversaciones, cada una habla desde su lado.
 - 🤫 **Callada en reuniones** — con el micrófono ocupado por otra app (Teams, Zoom…) o algo a pantalla completa, la voz se calla sola.

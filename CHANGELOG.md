@@ -1,5 +1,13 @@
 # Histórico de versões
 
+## 1.7.0
+
+- **Onze designs em quatro famílias:** ao macOS (*Vidro líquido*, *Vidro fosco*, *Clássico*) e ao Windows 11 (*Mica*, *Acrílico*) juntam-se o **Linux** (*GNOME*: barra preta com botões em pílula; *Plasma*: painel flutuante arredondado sobre o teu fundo) e os **Criativos** (*Sólido*: plano e opaco; *Aurora*: gradiente colorido em movimento; *Terminal*: verde fósforo e letra monoespaçada; *Retro*: cinzento clássico com relevos). Cada design muda a barra, os menus e todos os controlos. O painel Design mostra-os por família, com miniaturas e uma descrição curta.
+- **Definições reorganizadas:** em vez de uma lista enorme, um painel com quatro separadores (*Geral*, *Aspeto*, *Conversas*, *Voz e som*). Os ajustes estão agrupados em cartões, as opções de ligar/desligar são interruptores, as escolhas são segmentadas e cada ajuste tem uma frase a explicar o que faz. Os módulos da barra ficam no separador *Aspeto*, com interruptor e arrastar para ordenar.
+- **Menus coerentes:** o clique direito tem ícones e interruptores visíveis. Os subpainéis (Vozes, Design, Material, Módulos) têm todos o mesmo cabeçalho com «‹» para voltar. Os nomes passam a ser os mesmos em todo o lado («Centro de Controlo», «Definições…»).
+- Corrigidos: os interruptores dos módulos e do clique direito não apareciam; clicar nas horas do horário de silêncio ligava e desligava o horário.
+- `barra ajustar design=gnome|plasma|solido|aurora|terminal|retro`, e a skill conhece os designs novos.
+
 ## 1.6.0
 
 - **Cinco designs, num clique:** novo painel **Design** com miniaturas (clique direito → Design, Definições → Aspeto, ou a fila nova no Centro de Controlo) e o tema ao lado. No estilo macOS há o *Vidro líquido*, o *Vidro fosco* e o *Clássico*. No estilo Windows 11 há a *Mica* e o *Acrílico*.

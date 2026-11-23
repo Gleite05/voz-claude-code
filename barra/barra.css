@@ -651,3 +651,104 @@ body.liquido:not(.anfitriao) .barra.liquida { background: none; backdrop-filter:
 .cc-des button { border: 0; padding: 0; background: none; border-radius: 7px; box-shadow: 0 0 0 1.5px transparent; cursor: default; }
 .cc-des button:hover { filter: brightness(1.1); }
 .cc-des button.on { box-shadow: 0 0 0 1.5px var(--laranja); }
+
+/* ---------------- painéis organizados: cabeçalho, separadores, grupos e linhas ---------------- */
+.cab-p { display: flex; align-items: center; gap: 6px; padding: 2px 4px 2px; min-height: 26px; }
+.cab-p b { font-size: 13.5px; font-weight: 650; }
+.cab-p .voltar { width: 24px; height: 24px; border: 0; border-radius: 7px; background: transparent; color: inherit; font: inherit; font-size: 18px; line-height: 1; display: grid; place-items: center; padding: 0 0 2px; }
+.cab-p .voltar:hover { background: var(--hover); }
+.menu > .cab-p { padding: 2px 6px 4px; }
+
+.painel.pdef { width: 420px; gap: 10px; }
+.abas { margin: 0 2px; }
+.segmentado.n2 { grid-template-columns: repeat(2, 1fr); }
+.segmentado.n4 { grid-template-columns: repeat(4, 1fr); }
+.segmentado.n5 { grid-template-columns: repeat(5, 1fr); }
+.segmentado.n6 { grid-template-columns: repeat(6, 1fr); }
+.segmentado button { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.pdef-c { display: flex; flex-direction: column; gap: 10px; max-height: 560px; overflow: auto; padding: 0 2px; }
+.pgrupo { display: flex; flex-direction: column; gap: 5px; }
+.pg-tit { font-size: 11px; font-weight: 650; color: var(--txt2); text-transform: uppercase; letter-spacing: 0.04em; padding: 0 6px; }
+.pg-c { background: var(--bloco); border-radius: 12px; overflow: hidden; }
+.claro .pg-c { box-shadow: var(--sombra-bloco); }
+.pl { display: flex; align-items: center; gap: 10px; padding: 8px 11px; min-height: 38px; }
+.pl + .pl { box-shadow: inset 0 1px 0 var(--sep); }
+.pl.clic:hover { background: var(--hover); }
+.pl.col { flex-direction: column; align-items: stretch; gap: 7px; }
+.pl.leve { min-height: 0; padding: 7px 11px 4px; }
+.pl.leve + .pl { box-shadow: none; }
+.pl-t { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.pl-t > span { font-weight: 500; }
+.pl-t small, .pl.leve small { color: var(--txt2); font-size: 11px; font-weight: 400; line-height: 1.35; }
+.pl-v { color: var(--txt2); font-size: 12px; white-space: nowrap; }
+.pl .linha-horas { padding: 3px 0 0; display: flex; align-items: center; gap: 6px; }
+.pl .linha-horas input { font-size: 11.5px; }
+.pl .cc-pos { gap: 7px; }
+.pl.aviso-voz { flex-wrap: wrap; font-size: 11.5px; color: var(--alerta); gap: 8px; }
+.pl.mod { cursor: grab; padding-left: 6px; }
+.pl.mod .pega { color: var(--txt2); font-size: 11px; letter-spacing: -2px; width: 14px; text-align: center; }
+.pl.mod.arrastar { opacity: 0.5; }
+.pdef-rod { display: flex; align-items: center; gap: 6px; padding: 2px 2px 0; }
+.pdef-rod .espaco { flex: 1; }
+
+/* clique direito com ícones */
+.menu.direito { min-width: 270px; }
+.menu .op .mi { width: 16px; height: 16px; display: grid; place-items: center; flex: none; color: var(--txt2); }
+.menu .op:hover .mi { color: inherit; }
+.menu .op .mi svg.i { width: 15px; height: 15px; }
+.menu .op small .interruptor { vertical-align: middle; margin-left: 6px; }
+.interruptor.mini { width: 26px; height: 15px; }
+.interruptor.mini::after { width: 11px; height: 11px; }
+.interruptor.mini.on::after { left: 13px; }
+.mods .op .interruptor { margin-left: auto; }
+
+/* grelha de miniaturas (Definições e Centro de Controlo) */
+.des-grelha { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
+.des-grelha button { border: 0; padding: 0; background: none; border-radius: 7px; box-shadow: 0 0 0 1.5px transparent; cursor: default; }
+.des-grelha button:hover { filter: brightness(1.1); }
+.des-grelha button.on { box-shadow: 0 0 0 1.5px var(--laranja); }
+.des-fam { font-size: 11px; font-weight: 650; color: var(--txt2); text-transform: uppercase; letter-spacing: 0.04em; margin: 4px 4px -2px; }
+.des-fam small { text-transform: none; letter-spacing: 0; font-weight: 400; }
+.painel.design { width: 420px; max-height: 640px; overflow: auto; }
+
+/* miniaturas dos designs novos */
+.des-amostra.gnome::before { height: 12px; background: #0b0b0b; }
+.des-amostra.gnome i { top: 4.5px; height: 3px; border-radius: 2px; background: rgba(255, 255, 255, 0.85); }
+.des-amostra.gnome i:nth-child(1) { width: 18%; }
+.des-amostra.gnome i:nth-child(2) { width: 14%; }
+.des-amostra.gnome i:nth-child(3) { width: 16%; opacity: 0.7; }
+.des-amostra.plasma::before { top: 2px; left: 3px; right: 3px; height: 10px; border-radius: 3px; background: rgba(35, 38, 43, 0.82); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35); }
+.des-amostra.plasma i { top: 5.5px; height: 3px; border-radius: 1px; background: rgba(255, 255, 255, 0.8); }
+.des-amostra.plasma i:nth-child(1) { left: 7px; width: 9%; background: #3daee9; }
+.des-amostra.plasma i:nth-child(2) { width: 22%; opacity: 0.6; }
+.des-amostra.plasma i:nth-child(3) { right: 7px; width: 18%; }
+.des-amostra.solido::before { height: 12px; background: #1c1c1e; }
+.des-amostra.solido i { top: 4.5px; height: 3px; border-radius: 2px; background: rgba(255, 255, 255, 0.75); }
+.des-amostra.solido i:nth-child(2) { top: 3px; height: 6px; border-radius: 3px; background: none; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.3); }
+.claro .des-amostra.solido::before { background: #f5f5f7; }
+.claro .des-amostra.solido i { background: rgba(0, 0, 0, 0.6); }
+.claro .des-amostra.solido i:nth-child(2) { background: none; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.25); }
+.des-amostra.aurora::before { height: 12px; background: linear-gradient(90deg, #5b5bf7, #a35bf7, #f75bb5, #f7a35b); }
+.des-amostra.aurora i { top: 4.5px; height: 3px; border-radius: 2px; background: rgba(255, 255, 255, 0.9); }
+.des-amostra.aurora i:nth-child(2) { top: 2.5px; height: 7px; border-radius: 4px; background: rgba(255, 255, 255, 0.28); }
+.des-amostra.terminal { background: #101010; }
+.des-amostra.terminal::before { height: 12px; background: #050505; box-shadow: inset 0 -1px 0 rgba(51, 255, 119, 0.35); }
+.des-amostra.terminal i { top: 4.5px; height: 3px; border-radius: 0; background: #33ff77; }
+.des-amostra.terminal i:nth-child(2) { top: 2.5px; height: 7px; background: none; box-shadow: inset 0 0 0 1px rgba(51, 255, 119, 0.6); }
+.des-amostra.terminal::after { content: "❯ _"; position: absolute; left: 6px; bottom: 6px; font: 9px/1 "Cascadia Code", Consolas, monospace; color: #33ff77; }
+.des-amostra.retro { background: #008080; }
+.des-amostra.retro::before { height: 12px; background: #c0c0c0; box-shadow: inset 0 -1px 0 #808080, inset 0 1px 0 #fff; }
+.des-amostra.retro i { border-radius: 0; top: 3px; height: 6px; background: #c0c0c0; box-shadow: inset -1px -1px 0 #0a0a0a, inset 1px 1px 0 #fff; }
+.des-amostra.retro i:nth-child(1) { width: 16%; }
+.des-amostra.retro i:nth-child(2) { width: 26%; box-shadow: inset 1px 1px 0 #808080, inset -1px -1px 0 #fff; }
+.des-amostra.retro i:nth-child(3) { width: 20%; box-shadow: inset 1px 1px 0 #808080, inset -1px -1px 0 #fff; }
+.des-amostra.peq::after { display: none; }
+/* interruptores dentro de texto (clique direito): precisam de caixa própria para terem largura */
+.interruptor { display: inline-block; }
+.menu .op small { overflow: visible; }
+.des-fam { text-transform: none; letter-spacing: 0; font-size: 12px; }
+/* barras de deslocamento finas, discretas */
+.pdef-c::-webkit-scrollbar, .painel.design::-webkit-scrollbar, .catalogo::-webkit-scrollbar { width: 6px; }
+.pdef-c::-webkit-scrollbar-thumb, .painel.design::-webkit-scrollbar-thumb, .catalogo::-webkit-scrollbar-thumb { background: var(--trilho); border-radius: 3px; }
+.pdef-c::-webkit-scrollbar-track, .painel.design::-webkit-scrollbar-track, .catalogo::-webkit-scrollbar-track { background: transparent; }
+.pdef-c::-webkit-scrollbar-button, .painel.design::-webkit-scrollbar-button, .catalogo::-webkit-scrollbar-button { display: none; }

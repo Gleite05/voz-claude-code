@@ -50,4 +50,6 @@ test('design: atalho para estilo + material, sem gravar «design»', () => {
   assert.equal(AJ.designAtual({ barraEstilo: 'windows-acrilico' }), 'acrilico')
   assert.equal(AJ.designAtual({ barraMaterial: 'personalizado' }), 'liquido')
   assert.equal(AJ.interpretar(['design=neon'], {}).ok, false)
+  assert.deepEqual(AJ.interpretar(['design=retro'], {}).alteracoes, { barraEstilo: 'retro' })
+  assert.equal(AJ.designAtual({ barraEstilo: 'plasma' }), 'plasma')
 })

@@ -47,6 +47,10 @@
     grafico: '<path fill="currentColor" d="M4 20h16v-1.6H4zM5.5 17h2.6V10H5.5zm5.2 0h2.6V5h-2.6zm5.2 0h2.6v-5h-2.6z"/>',
     balao: '<path fill="currentColor" d="M4 5.5A2.5 2.5 0 0 1 6.5 3h11A2.5 2.5 0 0 1 20 5.5v8a2.5 2.5 0 0 1-2.5 2.5H10l-4.5 4v-4A2.5 2.5 0 0 1 4 13.5z"/>',
     raio: '<path fill="currentColor" d="M13.5 2L5 13.5h6L9.8 22 19 10h-6.2z"/>',
+    paleta: '<path fill="currentColor" d="M12 3a9 9 0 0 0 0 18c1.1 0 1.8-.8 1.8-1.7 0-.5-.2-.9-.5-1.2-.3-.3-.5-.7-.5-1.2 0-.9.8-1.7 1.7-1.7H16a5 5 0 0 0 5-5c0-4-4-7.2-9-7.2zM6.8 12.3a1.3 1.3 0 1 1 0-2.6 1.3 1.3 0 0 1 0 2.6zm2.7-3.8a1.3 1.3 0 1 1 0-2.6 1.3 1.3 0 0 1 0 2.6zm5 0a1.3 1.3 0 1 1 0-2.6 1.3 1.3 0 0 1 0 2.6zm2.8 3.8a1.3 1.3 0 1 1 0-2.6 1.3 1.3 0 0 1 0 2.6z"/>',
+    engrenagem: '<path fill="currentColor" fill-rule="evenodd" d="M13.6 2.5l.4 2.3c.6.2 1.2.5 1.7.9l2.2-.8 1.6 2.8-1.8 1.5c.1.6.1 1.3 0 1.9l1.8 1.5-1.6 2.8-2.2-.8c-.5.4-1.1.7-1.7.9l-.4 2.3h-3.2l-.4-2.3c-.6-.2-1.2-.5-1.7-.9l-2.2.8-1.6-2.8 1.8-1.5a6 6 0 0 1 0-1.9L4.5 7.7l1.6-2.8 2.2.8c.5-.4 1.1-.7 1.7-.9l.4-2.3zM12 8.4a2.6 2.6 0 1 0 0 5.2 2.6 2.6 0 0 0 0-5.2z" transform="translate(0 1)"/>',
+    calendario: '<path fill="currentColor" d="M7 2.5h2V4h6V2.5h2V4h1.5A2.5 2.5 0 0 1 21 6.5v12a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 18.5v-12A2.5 2.5 0 0 1 5.5 4H7zM5 9v9.5c0 .3.2.5.5.5h13c.3 0 .5-.2.5-.5V9zm2 2.5h3v3H7z"/>',
+    ocultar: '<path fill="currentColor" d="M5 11h14v2.2H5z"/>',
     globo: '<circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M3.5 12h17M12 3.5c2.6 2.6 2.6 14.4 0 17M12 3.5c-2.6 2.6-2.6 14.4 0 17" fill="none" stroke="currentColor" stroke-width="1.8"/>',
   }
   // Temas: [valor, ícone, nome na língua atual]
@@ -56,6 +60,7 @@
   const GLIFOS = {
     sliders: 'E9E9', altifalante: 'E767', mudo: 'E74F', pausa: 'E769', tocar: 'E768', saltar: 'E893', sol: 'E706', lua: 'E708',
     sino: 'EA8F', semSino: 'E7ED', lua2: 'E708', micro: 'E720', escudo: 'EA18', balao: 'E8BD', raio: 'E945', globo: 'E774',
+    paleta: 'E790', engrenagem: 'E713', calendario: 'E787', ocultar: 'E73F',
   }
   const svg = n =>
     GLIFOS[n] && document.body.classList.contains('win')
@@ -113,20 +118,32 @@
   const controlo = c => api({ acao: 'controlo', controlo: c })
 
   // ---------------- designs ----------------
-  // Cada design junta um estilo (macOS ou Windows 11) e um material; escolhe-se num só clique.
+  // Cada design junta um estilo e (no macOS) um material; escolhe-se num só clique. fundo = usa o
+  // fundo real do ambiente de trabalho (só com a barra encaixada); temaFixo = tem cores próprias.
   const DESIGNS = [
-    { id: 'liquido', estilo: 'macos', material: 'liquido', sub: 'des.macos' },
-    { id: 'fosco', estilo: 'macos', material: 'fosco', sub: 'des.macos' },
-    { id: 'classico', estilo: 'macos', material: 'classico', sub: 'des.macos' },
-    { id: 'mica', estilo: 'windows', sub: 'des.windows' },
-    { id: 'acrilico', estilo: 'windows-acrilico', sub: 'des.windows' },
+    { id: 'liquido', fam: 'macos', estilo: 'macos', material: 'liquido', sub: 'des.macos', fundo: true },
+    { id: 'fosco', fam: 'macos', estilo: 'macos', material: 'fosco', sub: 'des.macos', fundo: true },
+    { id: 'classico', fam: 'macos', estilo: 'macos', material: 'classico', sub: 'des.macos' },
+    { id: 'mica', fam: 'windows', estilo: 'windows', sub: 'des.windows', fundo: true },
+    { id: 'acrilico', fam: 'windows', estilo: 'windows-acrilico', sub: 'des.windows' },
+    { id: 'gnome', fam: 'linux', estilo: 'gnome', sub: 'des.linux' },
+    { id: 'plasma', fam: 'linux', estilo: 'plasma', sub: 'des.linux', fundo: true },
+    { id: 'solido', fam: 'criativo', estilo: 'solido', sub: 'des.criativo' },
+    { id: 'aurora', fam: 'criativo', estilo: 'aurora', sub: 'des.criativo' },
+    { id: 'terminal', fam: 'criativo', estilo: 'terminal', sub: 'des.criativo', temaFixo: true },
+    { id: 'retro', fam: 'criativo', estilo: 'retro', sub: 'des.criativo', temaFixo: true },
   ]
+  const FAMILIAS = ['macos', 'windows', 'linux', 'criativo']
   function designAtual(c) {
-    if (c.barraEstilo === 'windows') return 'mica'
-    if (c.barraEstilo === 'windows-acrilico') return 'acrilico'
+    const e = c.barraEstilo || 'macos'
+    if (e !== 'macos') {
+      const d = DESIGNS.find(x => x.estilo === e)
+      if (d) return d.id
+    }
     const m = c.barraMaterial || 'liquido'
     return m === 'fosco' || m === 'classico' ? m : 'liquido' // «personalizado» é vidro líquido afinado
   }
+  const designDe = c => DESIGNS.find(d => d.id === designAtual(c))
   /** O que gravar para um design (o vidro líquido afinado à mão mantém as afinações). */
   function valoresDesign(id, c) {
     const d = DESIGNS.find(x => x.id === id)
@@ -138,7 +155,7 @@
   /** Miniatura de um design: um bocado de fundo com a barra desenhada por cima. */
   const amostraDesign = (id, peq) => `<span class="des-amostra ${id}${peq ? ' peq' : ''}"><i></i><i></i><i></i></span>`
 
-  const estiloWin = () => !!E && String(E.cfg.barraEstilo || '').startsWith('windows')
+  const estiloWin = () => !!E && designDe(E.cfg).fam === 'windows'
 
   function aplicarTema() {
     const t = (E && E.cfg.barraTema) || 'sistema'
@@ -146,6 +163,9 @@
     document.body.classList.toggle('claro', !escuro)
     document.body.classList.toggle('win', estiloWin())
     document.body.classList.toggle('acrilico', !!E && E.cfg.barraEstilo === 'windows-acrilico')
+    // uma classe por design (d-gnome, d-retro…), para designs.css
+    const dId = E ? designAtual(E.cfg) : 'liquido'
+    for (const d of DESIGNS) document.body.classList.toggle('d-' + d.id, d.id === dId)
     const ac = E && E.acento
     const b = document.body.style
     if (ac && ac.claro) {
@@ -449,8 +469,7 @@
    */
   function querLiquido() {
     return (
-      VISTA === 'barra' && !!E &&
-      (E.cfg.barraEstilo === 'windows' || (!estiloWin() && (E.cfg.barraMaterial || 'liquido') !== 'classico')) &&
+      VISTA === 'barra' && !!E && !!designDe(E.cfg).fundo &&
       ENCAIXADAS.has(E.cfg.barraPosicao || 'topo') && !document.body.classList.contains('sem-vidro')
     )
   }
@@ -471,9 +490,11 @@
     }
     if (!quer && VozVidro.ativo()) VozVidro.definirFundo(null)
     const tem = quer && VozVidro.ativo()
-    const liq = tem && !estiloWin() // cápsulas de vidro só no estilo macOS
+    const fam = designDe(E.cfg).fam
+    const liq = tem && fam === 'macos' // cápsulas de vidro só no estilo macOS
     document.body.classList.toggle('liquido', liq)
-    document.body.classList.toggle('mica', tem && estiloWin())
+    document.body.classList.toggle('mica', tem && fam === 'windows')
+    document.body.classList.toggle('com-fundo', tem)
     return liq
   }
 
@@ -558,8 +579,8 @@
       `<div class="op" data-acao="saltar"><span class="chk"></span>${t('sessao.saltar')}</div>`,
       `<div class="op" data-acao="parar"><span class="chk"></span>${t('sessao.calar')}</div>`,
       '<hr>',
-      `<div class="op" data-ir="som"><span class="chk"></span>${t('menu.som')}</div>`,
-      `<div class="op" data-ir="definicoes"><span class="chk"></span>${t('menu.definicoesVoz')}</div>`,
+      `<div class="op" data-ir="som"><span class="chk"></span>${t('dir.cc')}</div>`,
+      `<div class="op" data-ir="definicoes"><span class="chk"></span>${t('dir.definicoes')}</div>`,
       '</div>',
     )
     return linhas.join('')
@@ -618,7 +639,7 @@
       <div class="cc-t w4"><div class="cc-rot">${t('cc.posicao')}<span>${(posicoes().find(p => p[0] === posAtual) || ['', ''])[1]}</span></div>
         <div class="cc-pos">${posicoes().map(([v, r]) => `<div class="p-${v} ${posAtual === v ? 'on' : ''}" data-posicao="${v}" title="${esc(r)}"></div>`).join('')}</div></div>
       <div class="cc-t w4"><div class="cc-rot clic" data-ir="design">${t('def.design')}<span>${esc(t('des.' + designAtual(E.cfg)))} ›</span></div>
-        <div class="cc-des">${DESIGNS.map(d => `<button class="${designAtual(E.cfg) === d.id ? 'on' : ''}" data-design="${d.id}" title="${esc(t('des.' + d.id) + ' · ' + t(d.sub))}">${amostraDesign(d.id, true)}</button>`).join('')}</div></div>
+        <div class="cc-des des-grelha">${DESIGNS.map(d => `<button class="${designAtual(E.cfg) === d.id ? 'on' : ''}" data-design="${d.id}" title="${esc(t('des.' + d.id) + ' · ' + t(d.sub))}">${amostraDesign(d.id, true)}</button>`).join('')}</div></div>
       <div class="cc-t w4"><div class="cc-rot clic" data-cc-eq="1">${t('cc.eq')}<span>${ccEq ? '▴' : '▾'}</span></div>
         <div class="pre">${Object.keys(PREDEF).map(k => `<button class="chip ${k === pre ? 'sel' : ''}" data-predef="${k}">${t('pre.' + k)}</button>`).join('')}</div>
         ${ccEq ? `<div class="eq">${['graves', 'medios', 'agudos'].map((k, i) => `<label><input type="range" data-chave="${k}" min="-12" max="12" step="1" value="${Number(c[k])}"><span>${[t('som.graves'), t('som.medios'), t('som.agudos')][i]} <span class="num" data-valor="${k}">${sinal(Number(c[k]))}</span></span></label>`).join('')}</div>` : ''}
@@ -666,47 +687,140 @@
       <div class="linha-horas ${h.ativo ? '' : 'inativo'}">${t('sil.das')} <input type="time" data-hora="inicio" value="${esc(h.inicio)}"> ${t('sil.as')} <input type="time" data-hora="fim" value="${esc(h.fim)}"></div>`
   }
 
+  // ---------------- definições (painel com separadores) ----------------
+  let abaDef = 'geral'
+  const ABAS = ['geral', 'aspeto', 'conversas', 'voz']
+  /** Linha com interruptor (ligar/desligar um ajuste). */
+  const linhaSw = (chave, rot, on, sub) =>
+    `<div class="pl clic" data-alternar="${chave}"><div class="pl-t"><span>${rot}</span>${sub ? `<small>${sub}</small>` : ''}</div><span class="interruptor ${on ? 'on' : ''}"></span></div>`
+  /** Linha com escolha segmentada. itens: [atributo, valor, texto, selecionado]. */
+  const linhaSeg = (rot, itens, sub) =>
+    `<div class="pl col"><div class="pl-t"><span>${rot}</span>${sub ? `<small>${sub}</small>` : ''}</div><div class="segmentado n${itens.length}">${itens.map(([a, v, txt, sel]) => `<button class="${sel ? 'sel' : ''}" data-${a}="${esc(v)}">${txt}</button>`).join('')}</div></div>`
+  /** Linha que abre outro painel. */
+  const linhaIr = (menu, rot, valor, sub) =>
+    `<div class="pl clic" data-ir="${menu}"><div class="pl-t"><span>${rot}</span>${sub ? `<small>${sub}</small>` : ''}</div><small class="pl-v">${valor !== '' && valor != null ? esc(valor) + ' ' : ''}›</small></div>`
+  const grupo = (tit, html) => `<div class="pgrupo">${tit ? `<div class="pg-tit">${tit}</div>` : ''}<div class="pg-c">${html}</div></div>`
+  /** Cabeçalho dos subpainéis, com o botão para voltar atrás. */
+  const cabPainel = (titulo, voltar) =>
+    `<div class="cab-p">${voltar ? `<button class="voltar" data-ir="${voltar}" title="${esc(t('menu.voltar'))}">‹</button>` : ''}<b>${titulo}</b></div>`
+
+  function abaGeral(c) {
+    const pos = c.barraPosicao || 'topo'
+    const nomePos = (posicoes().find(p => p[0] === pos) || ['', ''])[1]
+    const ecraAtual = Number.isInteger(c.barraEcra) ? c.barraEcra : -1
+    const h = { ativo: false, inicio: '22:00', fim: '08:00', ...(c.silencioHorario || {}) }
+    const linguas = [['auto', 'Auto'], ['pt', 'PT'], ['en', 'EN'], ['es', 'ES']]
+    const temVoz = ((E.vozes && E.vozes.instaladas) || []).some(v => v.lingua.startsWith(IDIOMA))
+    const rec = VOZ_RECOMENDADA[IDIOMA]
+    const prog = rec && progressoVoz[rec[0]]
+    const avisoVoz =
+      temVoz || !rec
+        ? ''
+        : `<div class="pl aviso-voz">${t('def.semVozIdioma')} ${prog ? `<span class="barra-prog"><i style="width:${prog.pct || 0}%"></i></span>` : `<button class="chip azul" data-voz-baixar="${esc(rec[0])}">${t('def.baixarVoz', { nome: esc(rec[1]) })}</button>`}</div>`
+    return (
+      grupo(
+        t('pd.barra'),
+        `<div class="pl col"><div class="pl-t"><span>${t('pd.posicao')}</span><small>${esc(nomePos)}</small></div>
+          <div class="cc-pos">${posicoes().map(([v, rr]) => `<div class="p-${v} ${pos === v ? 'on' : ''}" data-posicao="${v}" title="${esc(rr)}"></div>`).join('')}</div></div>` +
+          (ecras.length > 1
+            ? linhaSeg(t('ecra.titulo'), [['ecra', -1, t('pd.principal'), ecraAtual === -1], ...ecras.map((e, i) => ['ecra', i, String(i + 1), ecraAtual === i])])
+            : '') +
+          linhaSeg(t('pd.abre'), [
+            ['arranque', 'windows', t('pd.abreWindows'), c.barraArranque === 'windows'],
+            ['arranque', 'claude', t('pd.abreClaude'), c.barraArranque === 'claude'],
+            ['arranque', 'mao', t('pd.abreMao'), c.barraArranque === 'mao'],
+          ]),
+      ) +
+      grupo(
+        t('pd.lingua'),
+        linhaSeg(t('pd.idioma'), linguas.map(([v, txt]) => ['idioma', v, txt, (c.idioma || 'auto') === v])) +
+          avisoVoz +
+          linhaSeg(t('pd.moeda'), [
+            ['moeda', 'auto', 'Auto', (c.moeda || 'auto') === 'auto'],
+            ['moeda', 'EUR', '€', c.moeda === 'EUR'],
+            ['moeda', 'USD', '$', c.moeda === 'USD'],
+          ]),
+      ) +
+      grupo(
+        t('sil.titulo'),
+        linhaSw('naoIncomodar', t('pd.silAgora'), c.naoIncomodar, t('pd.silAgoraSub')) +
+          `<div class="pl clic" data-horario-ativo="1"><div class="pl-t"><span>${t('pd.silHorario')}</span><small class="linha-horas ${h.ativo ? '' : 'inativo'}">${t('sil.das')} <input type="time" data-hora="inicio" value="${esc(h.inicio)}"> ${t('sil.as')} <input type="time" data-hora="fim" value="${esc(h.fim)}"></small></div><span class="interruptor ${h.ativo ? 'on' : ''}"></span></div>`,
+      )
+    )
+  }
+
+  function abaAspeto(c) {
+    const atual = designAtual(c)
+    const des = DESIGNS.find(d => d.id === atual)
+    const tema = c.barraTema || 'sistema'
+    const mods = modulosCompletos()
+    return (
+      grupo(
+        t('def.design'),
+        `<div class="pl col"><div class="pl-t"><span>${esc(t('des.' + atual))}</span><small>${esc(t(des.sub))}</small></div>
+          <div class="des-grelha">${DESIGNS.map(d => `<button class="${atual === d.id ? 'on' : ''}" data-design="${d.id}" title="${esc(t('des.' + d.id) + ' · ' + t(d.sub))}">${amostraDesign(d.id, true)}</button>`).join('')}</div></div>` +
+          linhaIr('design', t('pd.todos')) +
+          linhaSeg(t('des.tema'), ['sistema', 'escuro', 'claro'].map(x => ['tema', x, t('tema.' + x), tema === x]), des.temaFixo ? t('pd.temaFixo') : '') +
+          (atual === 'liquido' ? linhaIr('material', t('pd.afinar'), t('mat.' + (c.barraMaterial || 'liquido'))) : ''),
+      ) +
+      grupo(
+        t('pd.modulos'),
+        `<div class="pl leve"><small>${t('pd.modulosSub')}</small></div>` +
+          mods
+            .map(
+              (m, i) =>
+                `<div class="pl clic mod" draggable="true" data-mod="${i}"><span class="pega">⋮⋮</span><div class="pl-t"><span>${t(MODULOS[m.id])}</span></div><span class="interruptor ${m.on ? 'on' : ''}"></span></div>`,
+            )
+            .join(''),
+      )
+    )
+  }
+
+  function abaConversas(c) {
+    return grupo(
+      '',
+      linhaSw('barraAvisos', t('pd.avisos'), c.barraAvisos !== false, t('pd.avisosSub')) +
+        linhaSw('respostasPelaBarra', t('pd.responder'), c.respostasPelaBarra !== false, t('pd.responderSub')) +
+        linhaSw('aprovarPelaBarra', t('pd.aprovar'), c.aprovarPelaBarra !== false, t('pd.aprovarSub')) +
+        linhaSw('anunciarResultados', t('pd.resultados'), c.anunciarResultados !== false, t('pd.resultadosSub')) +
+        linhaSw('resumoAoVoltar', t('pd.regresso'), c.resumoAoVoltar !== false, t('pd.regressoSub')),
+    )
+  }
+
+  function abaVoz(c) {
+    const semDitado = E.ditadoInstalado === false
+    const nVozes = ((E.vozes && E.vozes.instaladas) || []).length
+    return (
+      grupo(
+        t('pd.voz'),
+        linhaSw('ligado', t('pd.vozLigada'), c.ligado) +
+          linhaSw('lerRespostas', t('pd.ler'), c.lerRespostas) +
+          linhaSw('anunciarAcoes', t('pd.anunciar'), c.anunciarAcoes) +
+          linhaIr('vozes', t('pd.vozes'), nVozes || '') +
+          linhaIr('som', t('pd.somFino'), '', t('pd.somFinoSub')),
+      ) +
+      grupo(
+        t('pd.sons'),
+        linhaSw('sons', t('pd.sonsCurtos'), c.sons !== false, t('pd.sonsCurtosSub')) +
+          linhaSw('somEspacial', t('pd.espacial'), c.somEspacial !== false, t('pd.espacialSub')) +
+          linhaSw('silencioReunioes', t('pd.reunioes'), c.silencioReunioes !== false, t('pd.reunioesSub')),
+      ) +
+      grupo(
+        t('pd.porVoz'),
+        linhaSw('maosLivres', t('cc.maos'), c.maosLivres, semDitado ? t('cc.semDitado') : t('cc.maosOn')) +
+          linhaSw('aprovarPorVoz', t('cc.aprovarVoz'), c.aprovarPorVoz, semDitado ? t('cc.semDitado') : t('cc.aprovarVozOn')),
+      )
+    )
+  }
+
   function menuDefinicoes() {
     const c = E.cfg
-    const chk = b => (b ? '✓' : '')
-    return `<div class="menu">
-      <div class="tit">${t('def.posicao')}</div>
-      ${posicoes().map(([v, r]) => `<div class="op" data-posicao="${v}"><span class="chk">${chk(c.barraPosicao === v)}</span>${r}</div>`).join('')}
-      <hr>
-      ${opcoesEcra(c)}
-      <div class="op" data-ir="modulos"><span class="chk"></span>${t('def.modulos')}<small>›</small></div>
-      <div class="op" data-ir="vozes"><span class="chk"></span>${t('def.vozes')}<small>›</small></div>
-      <hr>
-      ${blocoIdioma(c)}
-      <hr>
-      ${blocoSilencio(c)}
-      <hr>
-      <div class="tit">${t('def.conversas')}</div>
-      <div class="op" data-alternar="barraAvisos"><span class="chk">${chk(c.barraAvisos !== false)}</span>${t('def.avisos')}</div>
-      <div class="op" data-alternar="respostasPelaBarra"><span class="chk">${chk(c.respostasPelaBarra !== false)}</span>${t('def.responder')}</div>
-      <div class="op" data-alternar="aprovarPelaBarra"><span class="chk">${chk(c.aprovarPelaBarra !== false)}</span>${t('def.aprovar')}</div>
-      <div class="op" data-alternar="anunciarResultados"><span class="chk">${chk(c.anunciarResultados !== false)}</span>${t('def.resultados')}</div>
-      <hr>
-      <div class="tit">${t('def.som')}</div>
-      <div class="op" data-alternar="sons"><span class="chk">${chk(c.sons !== false)}</span>${t('def.sons')}</div>
-      <div class="op" data-alternar="somEspacial"><span class="chk">${chk(c.somEspacial !== false)}</span>${t('def.espacial')}</div>
-      <div class="op" data-alternar="silencioReunioes"><span class="chk">${chk(c.silencioReunioes !== false)}</span>${t('def.reunioes')}</div>
-      <div class="op" data-ciclo-moeda="1"><span class="chk"></span>${t('def.moeda')}<small>${esc(t('moeda.' + (c.moeda || 'auto')))}</small></div>
-      <div class="op" data-alternar="resumoAoVoltar"><span class="chk">${chk(c.resumoAoVoltar !== false)}</span>${t('def.regresso')}</div>
-      <hr>
-      <div class="tit">${t('def.arranque')}</div>
-      <div class="op" data-arranque="windows"><span class="chk">${chk(c.barraArranque === 'windows')}</span>${t('def.comWindows')}</div>
-      <div class="op" data-arranque="claude"><span class="chk">${chk(c.barraArranque === 'claude')}</span>${t('def.comClaude')}</div>
-      <div class="op" data-arranque="mao"><span class="chk">${chk(c.barraArranque === 'mao')}</span>${t('def.aMao')}</div>
-      <hr>
-      <div class="tit">${t('def.aspeto')}</div>
-      <div class="op" data-ir="design"><span class="chk"></span>${t('def.design')}<small>${esc(t('des.' + designAtual(c)))} ›</small></div>
-      <div class="op" data-tema="sistema"><span class="chk">${chk(c.barraTema === 'sistema')}</span>${t('def.seguirWindows')}</div>
-      <div class="op" data-tema="escuro"><span class="chk">${chk(c.barraTema === 'escuro')}</span>${t('tema.escuro')}</div>
-      <div class="op" data-tema="claro"><span class="chk">${chk(c.barraTema === 'claro')}</span>${t('tema.claro')}</div>
-      <hr>
-      <div class="op" data-acao="testar"><span class="chk"></span>${t('def.testar')}</div>
-      <div class="op" data-sair="1"><span class="chk"></span>${t('def.sair')}</div>
+    const corpo = { geral: abaGeral, aspeto: abaAspeto, conversas: abaConversas, voz: abaVoz }[abaDef] || abaGeral
+    return `<div class="painel pdef">
+      <div class="cab-p"><b>${t('pd.titulo')}</b></div>
+      <div class="abas segmentado n4">${ABAS.map(a => `<button class="${abaDef === a ? 'sel' : ''}" data-aba="${a}">${t('aba.' + a)}</button>`).join('')}</div>
+      <div class="pdef-c">${corpo(c)}</div>
+      <div class="pdef-rod"><button class="chip" data-acao="testar">${t('def.testar')}</button><button class="chip" data-ir="som">${t('pd.cc')}</button><span class="espaco"></span><button class="chip" data-sair="1">${t('def.sair')}</button></div>
     </div>`
   }
 
@@ -721,7 +835,7 @@
       `<div class="rot"><span>${t('mat.' + k)}</span><span class="num" data-valor="${VozVidro.CFG[k]}">${p[k]}${un}</span></div><input type="range" data-chave="${VozVidro.CFG[k]}" min="${min}" max="${max}" step="1" value="${p[k]}">`
     const desligado = atual === 'classico'
     return `<div class="painel material">
-      <div class="tit">${t('mat.titulo')}</div>
+      ${cabPainel(t('mat.titulo'), 'design')}
       <div class="mat-cartoes">${MATERIAIS.map(m => `<button class="mat-cartao ${m === atual ? 'sel' : ''}" data-material="${m}"><span class="mat-amostra ${m}"><i></i></span><span>${t('mat.' + m)}</span></button>`).join('')}</div>
       ${enc ? '' : `<div class="leg">${t('mat.soEncaixada')}</div>`}
       <div class="mat-grupos ${desligado ? 'desligado' : ''}">
@@ -736,34 +850,39 @@
   function menuDesign() {
     const c = E.cfg
     const atual = designAtual(c)
+    const des = designDe(c)
     const tema = c.barraTema || 'sistema'
     const enc = ENCAIXADAS.has(c.barraPosicao || 'topo')
+    const cartao = d =>
+      `<button class="des-cartao ${d.id === atual ? 'sel' : ''}" data-design="${d.id}">${amostraDesign(d.id)}<b>${t('des.' + d.id)}</b><small>${t('des.' + d.id + 'Sub')}</small></button>`
     return `<div class="painel design">
-      <div class="tit">${t('des.titulo')}</div>
-      <div class="des-cartoes">${DESIGNS.map(d => `<button class="des-cartao ${d.id === atual ? 'sel' : ''}" data-design="${d.id}">${amostraDesign(d.id)}<b>${t('des.' + d.id)}</b><small>${t(d.sub)}</small></button>`).join('')}</div>
-      ${!enc && (atual === 'liquido' || atual === 'mica') ? `<div class="leg">${t('des.soEncaixada')}</div>` : ''}
-      <div class="tit">${t('des.tema')}</div>
-      <div class="segmentado">${['sistema', 'escuro', 'claro'].map(x => `<button class="${tema === x ? 'sel' : ''}" data-tema="${x}">${t('tema.' + x)}</button>`).join('')}</div>
+      ${cabPainel(t('des.titulo'), 'definicoes')}
+      ${FAMILIAS.map(f => `<div class="des-fam">${t('des.fam.' + f)}</div><div class="des-cartoes">${DESIGNS.filter(d => d.fam === f).map(cartao).join('')}</div>`).join('')}
+      ${!enc && des.fundo ? `<div class="leg">${t('des.soEncaixada')}</div>` : ''}
+      <div class="des-fam">${t('des.tema')}${des.temaFixo ? ` <small>· ${t('pd.temaFixo')}</small>` : ''}</div>
+      <div class="segmentado n3">${['sistema', 'escuro', 'claro'].map(x => `<button class="${tema === x ? 'sel' : ''}" data-tema="${x}">${t('tema.' + x)}</button>`).join('')}</div>
       ${atual === 'liquido' ? `<button class="chip" data-ir="material">${t('des.afinar')}</button>` : ''}
     </div>`
   }
 
-  /** Menu do clique direito: curto; o resto está no Centro de Controlo e nas Definições. */
+  /** Menu do clique direito: curto, com ícones; o resto está no Centro de Controlo e nas Definições. */
   function menuDireito() {
     const c = E.cfg
-    const chk = b => (b ? '✓' : '')
-    return `<div class="menu">
-      <div class="op" data-ir="conversas"><span class="chk"></span>${t('dir.conversas')}<small>Ctrl+Shift+Alt+C</small></div>
-      <div class="op" data-ir="som"><span class="chk"></span>${t('dir.cc')}</div>
-      <div class="op" data-ir="design"><span class="chk"></span>${t('def.design')}<small>${esc(t('des.' + designAtual(c)))} ›</small></div>
-      <div class="op" data-ir="uso"><span class="chk"></span>${t('dir.tokens')}</div>
-      <div class="op" data-ir="wrapped"><span class="chk"></span>${t('dir.semana')}</div>
+    const op = (attr, ic, txt, dir) => `<div class="op" ${attr}><span class="mi">${ic ? svg(ic) : ''}</span>${txt}${dir ? `<small>${dir}</small>` : ''}</div>`
+    const sw = (chave, ic, txt, on, atalho) =>
+      `<div class="op" data-alternar="${chave}"><span class="mi">${svg(ic)}</span>${txt}<small>${atalho ? atalho + ' ' : ''}<span class="interruptor mini ${on ? 'on' : ''}"></span></small></div>`
+    return `<div class="menu direito">
+      ${op('data-ir="conversas"', 'balao', t('dir.conversas'), 'Ctrl+Shift+Alt+C')}
+      ${op('data-ir="som"', 'sliders', t('dir.cc'))}
+      ${op('data-ir="uso"', 'grafico', t('dir.tokens'))}
+      ${op('data-ir="wrapped"', 'calendario', t('dir.semana'))}
       <hr>
-      <div class="op" data-alternar="naoIncomodar"><span class="chk">${chk(c.naoIncomodar)}</span>${t('dir.silencio')}<small>Ctrl+Shift+Alt+D</small></div>
-      <div class="op" data-alternar="ligado"><span class="chk">${chk(c.ligado)}</span>${t('dir.vozLigada')}</div>
+      ${sw('naoIncomodar', 'lua', t('dir.silencio'), c.naoIncomodar, 'Ctrl+Shift+Alt+D')}
+      ${sw('ligado', 'altifalante', t('dir.vozLigada'), c.ligado)}
       <hr>
-      <div class="op" data-ir="definicoes"><span class="chk"></span>${t('dir.definicoes')}</div>
-      <div class="op" data-esconder="1"><span class="chk"></span>${t('dir.fechar')}</div>
+      ${op('data-ir="design"', 'paleta', t('def.design'), esc(t('des.' + designAtual(c))) + ' ›')}
+      ${op('data-ir="definicoes"', 'engrenagem', t('dir.definicoes'))}
+      ${op('data-esconder="1"', 'ocultar', t('dir.fechar'))}
     </div>`
   }
 
@@ -779,6 +898,7 @@
     const linguas = catalogoVozes ? [...new Map(catalogoVozes.map(x => [x.lingua, x.linguaNome])).entries()] : []
     const lista = (catalogoVozes || []).filter(x => x.lingua === filtroLingua)
     return `<div class="painel vozes">
+      ${cabPainel(t('pd.vozes'), 'definicoes')}
       <div class="tit">${t('vozes.instaladas')}</div>
       ${v.instaladas
         .map(
@@ -808,7 +928,6 @@
                .join('')}</div>`
           : `<div class="vazio">${t('vozes.aCarregar')}</div>`
       }
-      <div class="op" data-ir="definicoes"><span class="chk">‹</span>${t('menu.voltar')}</div>
     </div>`
   }
 
@@ -1096,14 +1215,14 @@
   function menuModulos() {
     const mods = modulosCompletos()
     return `<div class="menu mods">
-      <div class="tit">${t('mods.titulo')}</div>
+      ${cabPainel(t('pd.modulos'), 'definicoes')}
+      <div class="tit">${t('pd.modulosSub')}</div>
       ${mods
         .map(
           (m, i) =>
-            `<div class="op" draggable="true" data-mod="${i}"><span class="chk">⋮⋮</span><span>${t(MODULOS[m.id])}</span><small><span class="interruptor ${m.on ? 'on' : ''}"></span></small></div>`,
+            `<div class="op" draggable="true" data-mod="${i}"><span class="chk">⋮⋮</span><span>${t(MODULOS[m.id])}</span><span class="interruptor ${m.on ? 'on' : ''}"></span></div>`,
         )
         .join('')}
-      <hr><div class="op" data-ir="definicoes"><span class="chk">‹</span>${t('menu.voltar')}</div>
     </div>`
   }
 
@@ -1566,10 +1685,11 @@
 
   document.addEventListener('click', ev => {
     if (ev.target.closest('[data-fechar]')) return fecharMenu()
+    if (ev.target.closest('input, select, textarea')) return
     const alvo = ev.target.closest(
       '[data-menu],[data-acao],[data-foco],[data-ir],[data-posicao],[data-arranque],[data-tema],[data-ciclo-tema],[data-predef],[data-alternar],[data-sair],[data-esconder],[data-mod],' +
         '[data-falar],[data-falar-sessao],[data-alternar-silencio],[data-decidir],[data-voz-baixar],[data-voz-padrao],[data-voz-remover],' +
-        '[data-voz-experimentar],[data-wrapped],[data-material],[data-design],[data-escolher],[data-responder],[data-ciclo-moeda],[data-ecra],[data-horario-ativo],[data-alternar-por-conversa],[data-idioma],[data-conv],[data-ilha],[data-ciclo-idioma],[data-cc-eq]',
+        '[data-voz-experimentar],[data-wrapped],[data-material],[data-design],[data-aba],[data-moeda],[data-escolher],[data-responder],[data-ciclo-moeda],[data-ecra],[data-horario-ativo],[data-alternar-por-conversa],[data-idioma],[data-conv],[data-ilha],[data-ciclo-idioma],[data-cc-eq]',
     )
     if (!alvo) {
       if (!host && menuEmLinha && !ev.target.closest('#menu-em-linha')) {
@@ -1634,12 +1754,17 @@
     if (d.vozRemover) return api({ acao: 'vozes', op: 'remover', id: d.vozRemover }).then(carregarCatalogo)
     if (d.wrapped) return acaoWrapped(d.wrapped)
     if (d.material) return config({ barraMaterial: d.material }).then(redesenharMenuAtual)
+    if (d.aba) {
+      abaDef = d.aba
+      return redesenharMenuAtual()
+    }
+    if (d.moeda) return config({ moeda: d.moeda }).then(redesenharMenuAtual)
     if (d.cicloMoeda) {
       const L = ['auto', 'EUR', 'USD']
       return config({ moeda: L[(L.indexOf(E.cfg.moeda || 'auto') + 1) % L.length] }).then(redesenharMenuAtual)
     }
     if (d.vozExperimentar) return api({ acao: 'vozes', op: 'experimentar', id: d.vozExperimentar })
-    if (d.ecra !== undefined) return config({ barraEcra: Number(d.ecra) })
+    if (d.ecra !== undefined) return config({ barraEcra: Number(d.ecra) }).then(redesenharMenuAtual)
     if (d.idioma) return config({ idioma: d.idioma })
     if (d.horarioAtivo) {
       const h = { ativo: false, inicio: '22:00', fim: '08:00', ...(E.cfg.silencioHorario || {}) }
@@ -1652,8 +1777,9 @@
       return
     }
     if (d.foco) return api({ acao: 'foco', sessao: d.foco })
-    if (d.posicao) return config({ barraPosicao: d.posicao }).then(fecharMenu)
-    if (d.arranque) return config({ barraArranque: d.arranque })
+    const noPainel = !!alvo.closest('.pdef')
+    if (d.posicao) return config({ barraPosicao: d.posicao }).then(noPainel ? redesenharMenuAtual : fecharMenu)
+    if (d.arranque) return config({ barraArranque: d.arranque }).then(redesenharMenuAtual)
     if (d.design) {
       const v = valoresDesign(d.design, E.cfg)
       if (!v) return
@@ -1669,7 +1795,11 @@
       return p
     }
     if (d.predef) return config(PREDEF[d.predef])
-    if (d.alternar) return config({ [d.alternar]: !E.cfg[d.alternar] })
+    if (d.alternar) {
+      const p = config({ [d.alternar]: !E.cfg[d.alternar] })
+      redesenharMenuAtual() // o interruptor muda já
+      return p
+    }
     if (d.sair) return enviarHost({ tipo: 'sair' })
     if (d.esconder) return enviarHost({ tipo: 'esconder' })
     if (d.mod !== undefined) {
